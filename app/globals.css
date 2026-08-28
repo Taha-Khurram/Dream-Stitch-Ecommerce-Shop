@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════
+   AASHNA — Pakistani pret, fabrics & festive wear
+   Editorial storefront design tokens
+   ══════════════════════════════════════════════════════════════ */
+@theme {
+  /* Ink & neutrals */
+  --color-ink: #1b1a18;
+  --color-ink-soft: #55504a;
+  --color-muted: #8b847b;
+  --color-faint: #b6afa5;
+
+  /* Warm paper surfaces */
+  --color-cream: #fbf9f6;
+  --color-sand: #f5f1ea;
+  --color-linen: #ece5da;
+  --color-line: #e4ded4;
+  --color-line-soft: #efeae2;
+
+  /* Brand accents */
+  --color-clay: #97452f;
+  --color-clay-deep: #7b3423;
+  --color-henna: #6d2f3d;
+  --color-sale: #b02318;
+  --color-jade: #3f6b57;
+
+  --font-display: var(--font-cormorant), "Cormorant Garamond", "Times New Roman", serif;
+  --font-sans: var(--font-jost), "Jost", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Fashion retail = square corners; only pills stay round */
+  --radius-card: 0px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: #ffffff;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+
+  input, textarea, select, button {
+    font-family: inherit;
+  }
+
+  ::selection {
+    background: var(--color-linen);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  /* Wide-tracked uppercase micro-label — the workhorse of the whole site */
+  .eyebrow {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .label-track {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* Primary solid ink button */
+  .btn-ink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-ink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.95rem 2rem;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  .btn-ink:hover { background: var(--color-clay); }
+
+  /* Outlined counterpart */
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-ink);
+    color: var(--color-ink);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.9rem 2rem;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  .btn-outline:hover { background: var(--color-ink); color: #fff; }
+
+  /* Thin animated underline for editorial text links */
+  .link-rule {
+    position: relative;
+    display: inline-block;
+  }
+  .link-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    height: 1px;
+    width: 100%;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .link-rule:hover::after { transform: scaleX(1); transform-origin: left; }
+
+  /* Permanent hairline underline (nav "view all" links) */
+  .link-underline {
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 2px;
+  }
+
+  /* Centred section heading with flanking rules */
+  .rule-heading {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .rule-heading::before,
+  .rule-heading::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-line);
+  }
+
+  /* Marquee used by the announcement bar */
+  .marquee-track {
+    display: inline-flex;
+    animation: marquee 34s linear infinite;
+    will-change: transform;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Product image cross-fade on hover */
+  .img-swap > .img-back { opacity: 0; transition: opacity 0.7s ease; }
+  .img-swap:hover > .img-back { opacity: 1; }
+  .img-swap > .img-front { transition: opacity 0.7s ease, transform 1.2s ease; }
+  .img-swap:hover > .img-front { opacity: 0; }
+
+  /* Fabric-swatch chip used for colour selection */
+  .swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(27, 26, 24, 0.16);
+    box-shadow: inset 0 0 0 2px #fff;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .swatch[data-active="true"] {
+    box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px var(--color-ink);
+  }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+  .animate-fade-up { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-sand); }
+::-webkit-scrollbar-thumb { background: #cfc7ba; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
