@@ -9,7 +9,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
 
   if (images.length === 0) {
     return (
-      <div className="eyebrow flex aspect-[3/4] items-center justify-center bg-sand text-faint">
+      <div className="eyebrow flex aspect-[4/5] items-center justify-center bg-lilac text-faint">
         Image coming soon
       </div>
     );
@@ -27,24 +27,24 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
               onClick={() => setIndex(i)}
               aria-label={`View image ${i + 1}`}
               aria-current={i === index}
-              className={`aspect-[3/4] cursor-pointer overflow-hidden border transition-colors ${
+              className={`aspect-[4/5] cursor-pointer overflow-hidden border transition-colors ${
                 i === index ? "border-ink" : "border-transparent hover:border-line"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className="h-full w-full object-cover object-top" />
+              <img src={src} alt="" className="h-full w-full object-cover object-center" />
             </button>
           ))}
         </div>
       )}
 
       <div className="relative min-w-0 flex-1">
-        <div className="relative aspect-[3/4] overflow-hidden bg-sand">
+        <div className="relative aspect-[4/5] overflow-hidden bg-lilac">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={images[index]}
             alt={alt}
-            className="h-full w-full object-cover object-top"
+            className="h-full w-full object-cover object-center"
           />
         </div>
 

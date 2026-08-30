@@ -6,33 +6,45 @@ import { BRAND } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
 import { Mail, Phone, MessageCircle, MapPin, Plus, Minus, Check } from "lucide-react";
 
+/* Placeholder locations — replace with your real showroom and stockists. */
 const STORES = [
-  { city: "Karachi", address: "Dolmen Mall Clifton, Block 4, Marine Drive", hours: "11am – 11pm" },
-  { city: "Lahore", address: "Packages Mall, Walton Road, Nishtar Town", hours: "11am – 11pm" },
-  { city: "Islamabad", address: "Centaurus Mall, F-8 Markaz, Jinnah Avenue", hours: "11am – 10pm" },
-  { city: "Faisalabad", address: "Boulevard Mall, Kohinoor City, Jaranwala Road", hours: "12pm – 10pm" },
+  {
+    city: "Karachi — The Studio",
+    address: "Plot 42, Textile Avenue, S.I.T.E. Industrial Area",
+    hours: "10am – 7pm",
+  },
+  {
+    city: "Karachi — Showroom",
+    address: "Shop 14, Badar Commercial, DHA Phase V",
+    hours: "12pm – 9pm",
+  },
+  {
+    city: "Lahore — Stockist",
+    address: "Shop 8, Y Block Commercial, DHA Phase III",
+    hours: "12pm – 9pm",
+  },
 ];
 
 const FAQS = [
   {
     q: "How long does delivery take?",
-    a: "Orders leave our Karachi studio within 24 hours. Delivery takes 3–5 working days nationwide, and 2 days within Karachi. You'll receive a tracking link by SMS.",
+    a: "Stocked sets leave our Karachi studio within 24 hours. Delivery takes 3–5 working days nationwide, and 2 days within Karachi. You will receive a tracking link by SMS. Custom-size orders are cut first and dispatch in 7–10 working days.",
   },
   {
-    q: "Can I exchange something I bought online?",
-    a: "Yes — within 14 days, with tags intact and the original invoice, either by courier or at any AASHNA store. Sale pieces are exchange-only, not refundable.",
+    q: "How does the custom size service work?",
+    a: "Send us three numbers — mattress width, mattress length and the drop you want on each side — through the custom order page or on WhatsApp. We confirm the price, cut the same fabric to your measurements, and dispatch in 7–10 working days.",
   },
   {
-    q: "How does the stitching service work?",
-    a: "Add stitching to any unstitched suit at checkout, then enter your measurements or pick a standard size. Stitched orders ship in 7–10 working days.",
+    q: "What is the difference between pure cotton, cotton zeen and cotton satin?",
+    a: "Pure cotton is the coolest and most breathable, best for hot months. Cotton zeen is close-woven and crease-resistant, our easiest everyday option. Cotton satin is cotton finished in a satin weave, with a low sheen and a smoother hand.",
   },
   {
-    q: "Do you ship internationally?",
-    a: "We ship to the UK, UAE, Saudi Arabia, the US and Canada. International delivery takes 7–12 working days and duties are calculated at checkout.",
+    q: "Can I exchange a bedsheet I bought online?",
+    a: "Yes — within 7 days, unused and in its original packing, by courier or at the studio. Made-to-order sets are cut for one bed only, so they cannot be exchanged.",
   },
   {
-    q: "How should I care for embroidered pieces?",
-    a: "Dry clean embroidered and embellished panels. Everything else can be cold hand-washed separately, dried in shade and ironed warm on the reverse.",
+    q: "Will the colour fade?",
+    a: "Our sets are dyed for repeated machine washing. Wash cold with like colours and dry in shade rather than direct sun, and the colour will hold for years.",
   },
 ];
 
@@ -52,14 +64,14 @@ export default function ContactPage() {
   return (
     <div className="pb-8">
       {/* Hero */}
-      <section className="relative h-[260px] w-full overflow-hidden bg-sand sm:h-[340px]">
+      <section className="relative h-[260px] w-full overflow-hidden bg-lilac sm:h-[340px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={img(IMG.storyAtelier, 1900)}
           alt=""
           className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-ink/40" />
+        <div className="absolute inset-0 bg-aubergine/55" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           <span className="eyebrow text-white/80">We&apos;re Here</span>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[36px] leading-tight text-white sm:text-[48px]">
@@ -77,16 +89,16 @@ export default function ContactPage() {
           {[
             { icon: Phone, label: "Call Us", value: BRAND.phone, href: `tel:${BRAND.phone.replace(/\s/g, "")}` },
             { icon: Mail, label: "Email", value: BRAND.email, href: `mailto:${BRAND.email}` },
-            { icon: MessageCircle, label: "WhatsApp", value: "+92 300 927 4620", href: "#" },
+            { icon: MessageCircle, label: "WhatsApp", value: BRAND.whatsapp, href: "#" },
           ].map(({ icon: Icon, label, value, href }) => (
             <a
               key={label}
               href={href}
-              className="group flex flex-col items-center gap-2 bg-white px-6 py-10 text-center transition-colors hover:bg-cream"
+              className="group flex flex-col items-center gap-2 bg-white px-6 py-10 text-center transition-colors hover:bg-frost"
             >
-              <Icon className="h-5 w-5 text-clay" strokeWidth={1.3} />
+              <Icon className="h-5 w-5 text-purple" strokeWidth={1.3} />
               <span className="eyebrow mt-1 text-ink">{label}</span>
-              <span className="text-[13px] text-ink-soft transition-colors group-hover:text-clay">
+              <span className="text-[13px] text-ink-soft transition-colors group-hover:text-purple">
                 {value}
               </span>
             </a>
@@ -97,13 +109,13 @@ export default function ContactPage() {
       {/* Form + stores */}
       <section className="mx-auto grid max-w-[1500px] grid-cols-1 gap-16 px-6 py-16 lg:grid-cols-2 sm:py-20 xl:px-10">
         <div>
-          <span className="eyebrow text-clay">Write to Us</span>
+          <span className="eyebrow text-purple">Write to Us</span>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink">
             Send a message
           </h2>
 
           {submitted ? (
-            <div className="mt-8 border border-line bg-cream p-8 text-center">
+            <div className="mt-8 border border-line bg-frost p-8 text-center">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-jade text-white">
                 <Check className="h-5 w-5" />
               </span>
@@ -136,7 +148,7 @@ export default function ContactPage() {
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ayesha Khan"
+                    placeholder="Your name"
                     className={inputClass}
                   />
                 </div>
@@ -165,7 +177,7 @@ export default function ContactPage() {
                   required
                   value={form.subject}
                   onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                  placeholder="Order #12345 — exchange request"
+                  placeholder="Custom size for a king bed"
                   className={inputClass}
                 />
               </div>
@@ -185,7 +197,7 @@ export default function ContactPage() {
                 />
               </div>
 
-              <button type="submit" className="btn-ink w-full cursor-pointer sm:w-auto">
+              <button type="submit" className="btn-primary w-full cursor-pointer sm:w-auto">
                 Send Message
               </button>
             </form>
@@ -193,15 +205,15 @@ export default function ContactPage() {
         </div>
 
         <div>
-          <span className="eyebrow text-clay">Visit Us</span>
+          <span className="eyebrow text-purple">Visit Us</span>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink">
-            Our stores
+            Where to find us
           </h2>
 
           <div className="mt-8 divide-y divide-line border-y border-line">
             {STORES.map((store) => (
               <div key={store.city} className="flex items-start gap-4 py-5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-clay" strokeWidth={1.4} />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.4} />
                 <div>
                   <h3 className="text-[14px] text-ink">{store.city}</h3>
                   <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">{store.address}</p>
@@ -211,7 +223,7 @@ export default function ContactPage() {
             ))}
           </div>
 
-          <div className="mt-8 bg-cream p-6">
+          <div className="mt-8 bg-frost p-6">
             <span className="eyebrow text-muted">Head Office</span>
             <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{BRAND.address}</p>
           </div>
@@ -219,10 +231,10 @@ export default function ContactPage() {
       </section>
 
       {/* FAQs */}
-      <section className="border-t border-line bg-cream">
+      <section className="border-t border-line bg-frost">
         <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
           <div className="text-center">
-            <span className="eyebrow text-clay">Answers</span>
+            <span className="eyebrow text-purple">Answers</span>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[36px]">
               Frequently Asked
             </h2>
@@ -255,8 +267,8 @@ export default function ContactPage() {
 
           <p className="mt-10 text-center text-[13px] text-ink-soft">
             Still stuck?{" "}
-            <Link href="/shop" className="link-rule text-ink">
-              Browse the collection
+            <Link href="/custom" className="link-rule text-ink">
+              Start a custom order
             </Link>{" "}
             or call us — a person picks up.
           </p>

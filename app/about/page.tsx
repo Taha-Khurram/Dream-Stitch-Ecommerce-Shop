@@ -6,30 +6,47 @@ import { BRAND } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
 
 export const metadata: Metadata = {
-  title: `Our Story | ${BRAND.name}`,
+  title: `Our Story | ${BRAND.name} ${BRAND.suffix}`,
   description:
-    "How AASHNA prints, weaves and hand-finishes Pakistani pret and unstitched fabric from its Karachi studio.",
+    "How Dream Stitch By Sk chooses its cloth, cuts every set to size and hand-finishes premium bedsheets in pure cotton, cotton zeen and cotton satin.",
 };
 
+/* Placeholder dates — swap for the real founding years before launch. */
 const MILESTONES = [
-  { year: "2014", title: "A single table in Karachi", copy: "Two block-printers, one lawn run of 60 suits, sold out of a friend's living room." },
-  { year: "2017", title: "The first studio", copy: "A Korangi workshop with twenty artisans and our own dyeing line." },
-  { year: "2021", title: "Ready to wear", copy: "Pret joins unstitched — every piece cut, stitched and pressed in-house." },
-  { year: "2026", title: "Twelve stores, one studio", copy: "Stores across six cities, still printing every collection ourselves." },
+  {
+    year: "2018",
+    title: "One table, one bolt of cotton",
+    copy: "A single order of pure cotton, cut into forty sets and sold to neighbours who kept asking for more.",
+  },
+  {
+    year: "2020",
+    title: "The custom order that started it",
+    copy: "A customer with an old wooden frame no standard sheet would fit. We cut to her numbers, and never stopped.",
+  },
+  {
+    year: "2023",
+    title: "Three fabrics, one standard",
+    copy: "Cotton zeen and cotton satin join pure cotton — each chosen on the roll, not from a catalogue.",
+  },
+  {
+    year: "2026",
+    title: "Made to order, nationwide",
+    copy: "Custom sizing shipped to every city in Pakistan, still cut and checked by the same hands.",
+  },
 ];
 
 const VALUES = [
   {
-    title: "Cloth first",
-    copy: "We buy greige from mills in Faisalabad and Punjab that we visit each season, and finish it ourselves rather than buying converted fabric.",
+    title: "Fabric first",
+    copy: "We buy the cloth before we design the print. Pure cotton, cotton zeen and cotton satin — three weaves we can name, source and stand behind, with no mystery blends and no filler.",
   },
   {
-    title: "Hands over machines",
-    copy: "Block printing, chikankari and zari work are done by artisans on piece rates we publish internally — no anonymous subcontracting.",
+    title: "Cut to the bed, not to a chart",
+    copy: "Standard sizes are a convenience, not a rule. If your mattress is deeper, your frame older or your drop longer, we cut to your measurements at no drama and no premium for being unusual.",
   },
   {
-    title: "Made to last a decade",
-    copy: "Colourfast dyes, generous seam allowances and a repair counter in every store, because a good kurta should outlive its season.",
+    title: "Made to survive the laundry",
+    copy: "Colourfast dyes, double-stitched hems and reinforced corners, because a bedsheet is judged on its twentieth wash and not its first.",
   },
 ];
 
@@ -37,18 +54,18 @@ export default function AboutPage() {
   return (
     <div className="pb-8">
       {/* Hero */}
-      <section className="relative h-[380px] w-full overflow-hidden bg-sand sm:h-[480px]">
+      <section className="relative h-[380px] w-full overflow-hidden bg-lilac sm:h-[480px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={img(IMG.editorialCraft, 1900)}
-          alt="Inside the AASHNA studio"
+          alt="Folded cotton on the cutting table"
           className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-ink/40" />
+        <div className="absolute inset-0 bg-aubergine/55" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           <span className="eyebrow text-white/80">Our Story</span>
           <h1 className="mt-4 max-w-2xl font-[family-name:var(--font-display)] text-[40px] leading-tight text-white sm:text-[54px]">
-            Printed, dyed and stitched in Karachi
+            Chosen, cut and finished by hand
           </h1>
         </div>
       </section>
@@ -56,31 +73,31 @@ export default function AboutPage() {
       {/* Opening statement */}
       <section className="mx-auto max-w-2xl px-6 py-16 text-center sm:py-24">
         <p className="font-[family-name:var(--font-display)] text-[22px] leading-relaxed text-ink sm:text-[26px]">
-          {BRAND.name} began with a question we still ask every season: what would it take to make
-          a lawn suit worth keeping?
+          {BRAND.name} {BRAND.suffix} began with a simple frustration: bedsheets that looked
+          beautiful in the shop and gave up after three washes.
         </p>
         <p className="mt-6 text-[14px] leading-[1.9] text-ink-soft">
-          Twelve years on, the answer hasn&apos;t changed much. Buy honest cloth. Print it slowly.
-          Pay the people who do the hand-work properly. Cut it generously enough that it still fits
-          three summers later. Everything else — the stores, the collections, the website you&apos;re
-          reading — is built around those four things.
+          So we started choosing our own fabric, cutting our own sizes, and finishing every seam
+          ourselves. What you get is a bedsheet that fits your bed properly, holds its colour, and
+          gets softer instead of thinner. No mystery blends, no filler — just cotton we would put
+          on our own beds.
         </p>
       </section>
 
       {/* Split image + values */}
-      <section className="border-y border-line bg-cream">
+      <section className="border-y border-line bg-frost">
         <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-12 px-6 py-16 lg:grid-cols-2 lg:gap-20 sm:py-24 xl:px-10">
-          <div className="relative aspect-[4/5] overflow-hidden bg-sand">
+          <div className="relative aspect-[4/5] overflow-hidden bg-lilac">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={img(IMG.storyFabric, 1100)}
-              alt="Fabric on the table"
+              alt="Cotton on the cutting table"
               className="h-full w-full object-cover object-center"
             />
           </div>
 
           <div className="flex flex-col justify-center">
-            <span className="eyebrow text-clay">What We Hold To</span>
+            <span className="eyebrow text-purple">What We Hold To</span>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-[32px] leading-tight text-ink sm:text-[40px]">
               Three rules we don&apos;t bend
             </h2>
@@ -111,7 +128,7 @@ export default function AboutPage() {
         <div className="mt-14 grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
           {MILESTONES.map((milestone) => (
             <div key={milestone.year} className="bg-white p-8">
-              <span className="font-[family-name:var(--font-display)] text-[34px] text-clay">
+              <span className="font-[family-name:var(--font-display)] text-[34px] text-purple">
                 {milestone.year}
               </span>
               <h3 className="mt-3 text-[14px] text-ink">{milestone.title}</h3>
@@ -126,27 +143,27 @@ export default function AboutPage() {
         <div className="relative h-[360px] w-full overflow-hidden sm:h-[440px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={img(IMG.editorialStitching, 1900)}
+            src={img(IMG.editorialFinish, 1900)}
             alt=""
             className="h-full w-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-ink/45" />
+          <div className="absolute inset-0 bg-aubergine/60" />
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
             <h2 className="max-w-xl font-[family-name:var(--font-display)] text-[32px] leading-tight text-white sm:text-[42px]">
-              Come see what came off the table this week
+              See what came off the table this week
             </h2>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 href="/shop?sort=newest"
-                className="label-track bg-white px-8 py-4 text-[11px] font-medium text-ink transition-colors hover:bg-clay hover:text-white"
+                className="label-track bg-white px-8 py-4 text-[11px] font-medium text-purple transition-colors hover:bg-ink hover:text-white"
               >
                 Shop New In
               </Link>
               <Link
-                href="/contact"
-                className="label-track border border-white/70 px-8 py-4 text-[11px] font-medium text-white transition-colors hover:bg-white hover:text-ink"
+                href="/custom"
+                className="label-track border border-white/70 px-8 py-4 text-[11px] font-medium text-white transition-colors hover:bg-white hover:text-purple"
               >
-                Visit a Store
+                Order a Custom Size
               </Link>
             </div>
           </div>

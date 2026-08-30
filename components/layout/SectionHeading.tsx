@@ -22,7 +22,7 @@ export function SectionHeading({
   if (align === "center") {
     return (
       <div className={`text-center ${className}`}>
-        {eyebrow && <span className="eyebrow block text-clay">{eyebrow}</span>}
+        {eyebrow && <span className="eyebrow block text-purple">{eyebrow}</span>}
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[38px]">
           {title}
         </h2>
@@ -32,7 +32,7 @@ export function SectionHeading({
         {action && (
           <Link
             href={action.href}
-            className="eyebrow link-underline mt-5 inline-block text-ink transition-colors hover:text-clay"
+            className="eyebrow link-underline mt-5 inline-block text-ink transition-colors hover:text-purple"
           >
             {action.label}
           </Link>
@@ -44,7 +44,7 @@ export function SectionHeading({
   return (
     <div className={`flex flex-wrap items-end justify-between gap-4 ${className}`}>
       <div>
-        {eyebrow && <span className="eyebrow block text-clay">{eyebrow}</span>}
+        {eyebrow && <span className="eyebrow block text-purple">{eyebrow}</span>}
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-[28px] leading-tight text-ink sm:text-[34px]">
           {title}
         </h2>
@@ -53,7 +53,7 @@ export function SectionHeading({
       {action && (
         <Link
           href={action.href}
-          className="eyebrow link-underline shrink-0 text-ink transition-colors hover:text-clay"
+          className="eyebrow link-underline shrink-0 text-ink transition-colors hover:text-purple"
         >
           {action.label}
         </Link>

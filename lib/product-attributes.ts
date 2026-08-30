@@ -1,24 +1,30 @@
 import type { Product } from "@/types/ecommerce";
-import { DEFAULT_SIZES, UNSTITCHED_SIZES } from "@/lib/constants";
+import { DEFAULT_SIZES, CUSTOM_SIZES } from "@/lib/constants";
 
 /**
- * The apparel columns are optional (see `clothing_seed.sql`). These helpers give
- * every product a sensible set of gallery shots, sizes and colourways whether or
- * not the migration has been applied, so the UI never renders half-empty.
+ * The bedding columns are optional (see `bedding_seed.sql`). These helpers give
+ * every product a sensible set of gallery shots, bed sizes and colourways
+ * whether or not the migration has been applied, so the UI never renders
+ * half-empty.
  */
 
-const FALLBACK_COLORS = ["Ivory", "Clay", "Indigo"];
+const FALLBACK_COLORS = ["White", "Lilac", "Charcoal"];
 
-/** True for unstitched fabric, which is sold by the suit rather than by size. */
-export function isUnstitched(product: Product): boolean {
-  const slug = product.category?.slug ?? "";
+/**
+ * True for sets we cut to the customer's own measurements rather than to a
+ * stocked size run — the Custom Demand service.
+ */
+export function isMadeToOrder(product: Product): boolean {
   const pieces = product.pieces?.toLowerCase() ?? "";
-  return slug === "fabrics" || pieces.includes("unstitched");
+  if (pieces.includes("made to order") || pieces.includes("custom")) return true;
+
+  const sizes = product.sizes ?? [];
+  return sizes.length > 0 && sizes.every((size) => size.toLowerCase().includes("custom"));
 }
 
 export function productSizes(product: Product): string[] {
   if (product.sizes?.length) return product.sizes;
-  if (isUnstitched(product)) return UNSTITCHED_SIZES;
+  if (isMadeToOrder(product)) return CUSTOM_SIZES;
   return DEFAULT_SIZES;
 }
 
@@ -41,7 +47,7 @@ export function hoverImage(product: Product): string | null {
   return images[1] ?? null;
 }
 
-/** Short descriptor under the product name, e.g. "Lawn · 3 Piece". */
+/** Short descriptor under the product name, e.g. "Pure Cotton · 3 Piece". */
 export function productSubtitle(product: Product): string {
   return [product.fabric, product.pieces].filter(Boolean).join(" · ");
 }

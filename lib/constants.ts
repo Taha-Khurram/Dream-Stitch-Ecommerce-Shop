@@ -1,16 +1,17 @@
 /**
- * Storefront-wide catalogue constants: the mega-menu tree, size runs and
- * colour swatches. Kept out of the database so the navigation can be
+ * Storefront-wide catalogue constants: the navigation tree, bed-size runs and
+ * colourway swatches. Kept out of the database so the navigation can be
  * restructured without a migration.
  */
 
 export const BRAND = {
-  name: "AASHNA",
-  tagline: "Pakistani Pret, Fabrics & Festive",
-  email: "care@aashna.pk",
-  phone: "+92 21 111 927 462",
-  address:
-    "18th Floor, Ocean Tower, Block 9, Clifton, Karachi, Pakistan",
+  name: "DREAM STITCH",
+  suffix: "By Sk",
+  tagline: "Premium Bedsheets, Made to Fit",
+  email: "care@dreamstitch.pk",
+  phone: "+92 21 111 373 848",
+  whatsapp: "+92 300 373 8480",
+  address: "Plot 42, Textile Avenue, S.I.T.E. Industrial Area, Karachi, Pakistan",
 } as const;
 
 export interface NavColumn {
@@ -29,183 +30,143 @@ export interface NavItem {
   accent?: boolean;
 }
 
+/**
+ * Two ways in, side by side: shoppers arrive either knowing the fabric they
+ * want or the bed they need to fit. Custom sizing stays top-level because it
+ * is the one thing the high-street cannot match.
+ */
 export const NAV_ITEMS: NavItem[] = [
   {
-    name: "New In",
-    href: "/shop?sort=newest",
+    name: "Shop",
+    href: "/shop",
     columns: [
       {
-        title: "Shop New",
-        href: "/shop?sort=newest",
-        links: [
-          { name: "Ready to Wear", href: "/shop?category=ready-to-wear&sort=newest" },
-          { name: "Unstitched Fabrics", href: "/shop?category=fabrics&sort=newest" },
-          { name: "Festive Edit", href: "/shop?category=festive&sort=newest" },
-          { name: "Everyday Kurtas", href: "/shop?search=kurta&sort=newest" },
-        ],
-      },
-      {
-        title: "Collections",
+        title: "By Material",
         href: "/shop",
         links: [
-          { name: "Sawan Lawn '26", href: "/shop?search=lawn" },
-          { name: "Chikankari Edit", href: "/shop?search=chikankari" },
-          { name: "Khaas Formals", href: "/shop?category=festive" },
-          { name: "Studio Basics", href: "/shop?search=cotton" },
+          { name: "Pure Cotton", href: "/shop?category=pure-cotton" },
+          { name: "Cotton Zeen", href: "/shop?category=cotton-zeen" },
+          { name: "Cotton Satin", href: "/shop?category=cotton-satin" },
+        ],
+      },
+      {
+        title: "Popular",
+        href: "/shop?sort=rating",
+        links: [
+          { name: "Printed Bedsheets", href: "/shop?search=printed" },
+          { name: "Plain & Solid", href: "/shop?search=solid" },
+          { name: "Embroidered", href: "/shop?search=embroidered" },
+          { name: "Bestsellers", href: "/shop?sort=rating" },
         ],
       },
     ],
     feature: {
-      label: "Just Landed",
-      title: "Sawan Lawn Vol. I",
-      href: "/shop?sort=newest",
+      label: "Softest We Make",
+      title: "Cotton Satin, New Colourways",
+      href: "/shop?category=cotton-satin",
       image:
-        "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&q=80",
+        "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=900&q=80&auto=format&fit=crop",
     },
   },
   {
-    name: "Ready to Wear",
-    href: "/shop?category=ready-to-wear",
+    name: "Shop by Size",
+    href: "/shop",
     columns: [
       {
-        title: "Essentials",
-        href: "/shop?category=ready-to-wear",
+        title: "Standard Sizes",
+        href: "/shop",
         links: [
-          { name: "1 Piece", href: "/shop?category=ready-to-wear&search=1 piece" },
-          { name: "2 Piece", href: "/shop?category=ready-to-wear&search=2 piece" },
-          { name: "3 Piece", href: "/shop?category=ready-to-wear&search=3 piece" },
-          { name: "Kurta", href: "/shop?category=ready-to-wear&search=kurta" },
+          { name: "King Size", href: "/shop?size=King%20Size" },
+          { name: "Single Bed", href: "/shop?size=Single" },
         ],
       },
       {
-        title: "Signature",
-        href: "/shop?category=ready-to-wear&sort=rating",
+        title: "Made to Order",
+        href: "/custom",
         links: [
-          { name: "Embroidered Kurta", href: "/shop?search=embroidered" },
-          { name: "Angrakha", href: "/shop?search=angrakha" },
-          { name: "Trousers & Pants", href: "/shop?search=trouser" },
-          { name: "Dupattas", href: "/shop?search=dupatta" },
-        ],
-      },
-      {
-        title: "Casuals",
-        href: "/shop?category=ready-to-wear",
-        links: [
-          { name: "Shirts", href: "/shop?search=shirt" },
-          { name: "Tunics", href: "/shop?search=tunic" },
-          { name: "Co-ord Sets", href: "/shop?search=co-ord" },
-          { name: "Shalwar", href: "/shop?search=shalwar" },
+          { name: "Order a Custom Size", href: "/custom#request" },
+          { name: "How It Works", href: "/custom#how-it-works" },
+          { name: "Measuring Guide", href: "/custom#measuring" },
         ],
       },
     ],
     feature: {
-      label: "Signature",
-      title: "Hand-worked Pret",
-      href: "/shop?category=ready-to-wear",
+      label: "Any Bed, Any Drop",
+      title: "Stitched to Your Measurements",
+      href: "/custom",
       image:
-        "https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=900&q=80",
+        "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=900&q=80&auto=format&fit=crop",
     },
   },
-  {
-    name: "Fabrics",
-    href: "/shop?category=fabrics",
-    columns: [
-      {
-        title: "Unstitched",
-        href: "/shop?category=fabrics",
-        links: [
-          { name: "1 Piece", href: "/shop?category=fabrics&search=1 piece" },
-          { name: "2 Piece", href: "/shop?category=fabrics&search=2 piece" },
-          { name: "3 Piece", href: "/shop?category=fabrics&search=3 piece" },
-        ],
-      },
-      {
-        title: "By Fabric",
-        href: "/shop?category=fabrics",
-        links: [
-          { name: "Lawn", href: "/shop?search=lawn" },
-          { name: "Cambric", href: "/shop?search=cambric" },
-          { name: "Khaddar", href: "/shop?search=khaddar" },
-          { name: "Silk & Organza", href: "/shop?search=silk" },
-        ],
-      },
-    ],
-    feature: {
-      label: "Unstitched",
-      title: "Printed Lawn 3 Piece",
-      href: "/shop?category=fabrics",
-      image:
-        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=900&q=80",
-    },
-  },
-  {
-    name: "Festive",
-    href: "/shop?category=festive",
-    columns: [
-      {
-        title: "Occasion",
-        href: "/shop?category=festive",
-        links: [
-          { name: "Eid Edit", href: "/shop?category=festive" },
-          { name: "Mehndi", href: "/shop?search=mehndi" },
-          { name: "Formal Nights", href: "/shop?search=formal" },
-          { name: "Bridal Adjacent", href: "/shop?search=zari" },
-        ],
-      },
-    ],
-    feature: {
-      label: "Khaas",
-      title: "Zari & Organza Formals",
-      href: "/shop?category=festive",
-      image:
-        "https://images.unsplash.com/photo-1617922001439-4a2e6562f328?w=900&q=80",
-    },
-  },
-  { name: "Menswear", href: "/shop?category=men" },
-  { name: "Kids", href: "/shop?category=kids" },
-  { name: "Home & Living", href: "/shop?category=home" },
-  { name: "Fragrances", href: "/shop?category=fragrances" },
-  { name: "Sale", href: "/shop?sort=price-asc", accent: true },
+  { name: "Custom Orders", href: "/custom" },
+  { name: "About", href: "/about" },
+  { name: "Contact", href: "/contact" },
+  { name: "Sale", href: "/shop?sale=true", accent: true },
 ];
 
-/** Falls back onto this run when a product carries no `sizes` array. */
-export const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+/** Bed sizes carried on every stocked set. */
+export const DEFAULT_SIZES = ["Single", "King Size"];
 
-/** Unstitched fabric is sold by the suit, not by body size. */
-export const UNSTITCHED_SIZES = ["Unstitched"];
+/** Made-to-order sets are cut to the customer's numbers, not to a size run. */
+export const CUSTOM_SIZES = ["Custom Size"];
+
+/** Sizes offered in the shop filter rail. */
+export const FILTER_SIZES = ["Single", "King Size", "Custom Size"];
+
+/** The three materials the house weaves. */
+export const FABRICS = ["Pure Cotton", "Cotton Zeen", "Cotton Satin"];
 
 export const COLOR_SWATCHES: Record<string, string> = {
-  Ivory: "#f2ece1",
-  Chalk: "#f7f5f1",
-  Sand: "#ded1bb",
-  Beige: "#d8c8ae",
-  Clay: "#97452f",
-  Rust: "#a8512c",
-  Maroon: "#6d2130",
-  Henna: "#6d2f3d",
-  Blush: "#e3bfc0",
-  Rose: "#c98a92",
-  Lilac: "#c3b3d4",
+  White: "#ffffff",
+  Ivory: "#f4efe6",
+  Pearl: "#f1eef5",
+  Lilac: "#cbb9e4",
+  Lavender: "#b39ddb",
+  Orchid: "#9a6fc4",
+  Plum: "#5e2b8a",
+  Aubergine: "#3d1c56",
+  Blush: "#e6c3cd",
+  Rose: "#c98a99",
+  Sage: "#a8b8a2",
+  Teal: "#3d6f72",
   Indigo: "#33406b",
   Navy: "#22304a",
-  Teal: "#2f6465",
-  Jade: "#3f6b57",
-  Olive: "#6a6a3f",
+  Slate: "#6f6b78",
+  Charcoal: "#39343f",
+  Graphite: "#2a1b33",
+  Sand: "#ddd0bd",
   Mustard: "#c9962f",
-  Black: "#1b1a18",
-  Charcoal: "#3a3835",
-  White: "#ffffff",
+  Terracotta: "#a8512c",
 };
 
 export function swatchHex(name: string): string {
-  return COLOR_SWATCHES[name] ?? "#d5cec3";
+  return COLOR_SWATCHES[name] ?? "#cfc6d8";
 }
 
+/**
+ * Finished sheet dimensions, not mattress dimensions — the drop is already
+ * included, which is the number people actually get wrong.
+ */
 export const SIZE_GUIDE = [
-  { size: "XS", bust: '34"', waist: '28"', hip: '36"', length: '40"' },
-  { size: "S", bust: '36"', waist: '30"', hip: '38"', length: '40.5"' },
-  { size: "M", bust: '38"', waist: '32"', hip: '40"', length: '41"' },
-  { size: "L", bust: '40"', waist: '34"', hip: '42"', length: '41.5"' },
-  { size: "XL", bust: '42"', waist: '36"', hip: '44"', length: '42"' },
-  { size: "XXL", bust: '44"', waist: '38"', hip: '46"', length: '42.5"' },
+  {
+    size: "Single",
+    sheet: '90" x 60"',
+    pillow: '30" x 20"',
+    fits: "Single mattress up to 42\" wide",
+    pieces: "1 sheet + 1 pillow cover",
+  },
+  {
+    size: "King Size",
+    sheet: '108" x 96"',
+    pillow: '30" x 20"',
+    fits: "King mattress up to 78\" wide",
+    pieces: "1 sheet + 2 pillow covers",
+  },
+  {
+    size: "Custom Size",
+    sheet: "Your measurements",
+    pillow: "Your measurements",
+    fits: "Any frame, any drop",
+    pieces: "Built to your order",
+  },
 ];

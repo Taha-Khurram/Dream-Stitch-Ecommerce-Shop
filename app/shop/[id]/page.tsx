@@ -11,7 +11,7 @@ import { SectionHeading } from "@/components/layout/SectionHeading";
 import { formatPrice, discountPercent } from "@/lib/format";
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
 import { BRAND } from "@/lib/constants";
-import { productImages, productSubtitle, isUnstitched } from "@/lib/product-attributes";
+import { productImages, productSubtitle, isMadeToOrder } from "@/lib/product-attributes";
 import { ChevronRight, Star, Truck, RotateCcw, Scissors } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     title: `${product.name} | ${BRAND.name}`,
     description:
       product.description ||
-      `Shop ${product.name} at ${BRAND.name}. Delivered nationwide with easy 14-day exchange.`,
+      `Shop ${product.name} at ${BRAND.name} ${BRAND.suffix}. Free delivery over PKR 5,000. Custom sizes made to order.`,
     openGraph: {
       title: product.name,
       description: product.description || undefined,
@@ -56,7 +56,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   const images = productImages(product);
   const subtitle = productSubtitle(product);
-  const unstitched = isUnstitched(product);
+  const madeToOrder = isMadeToOrder(product);
   const discount = discountPercent(Number(product.price), product.compare_at_price);
   const soldOut = product.stock <= 0;
   const lowStock = product.stock > 0 && product.stock <= 3;
@@ -98,7 +98,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
         {/* Buy box */}
         <div className="lg:max-w-md">
-          {subtitle && <span className="eyebrow text-clay">{subtitle}</span>}
+          {subtitle && <span className="eyebrow text-purple">{subtitle}</span>}
 
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[38px]">
             {product.name}
@@ -108,7 +108,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
             <span className="eyebrow text-faint">Art. {articleCode}</span>
             {product.rating !== undefined && product.rating !== null && (
               <span className="flex items-center gap-1.5 text-[12px] text-ink-soft">
-                <Star className="h-3.5 w-3.5 fill-clay text-clay" />
+                <Star className="h-3.5 w-3.5 fill-purple text-purple" />
                 {product.rating}
                 {product.reviews_count !== undefined && (
                   <span className="text-muted">({product.reviews_count} reviews)</span>
@@ -134,9 +134,9 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           </div>
 
           {(soldOut || lowStock) && (
-            <p className={`mt-5 text-[12px] ${soldOut ? "text-muted" : "text-clay"}`}>
+            <p className={`mt-5 text-[12px] ${soldOut ? "text-muted" : "text-purple"}`}>
               {soldOut
-                ? "Currently sold out — join the waitlist for the next run."
+                ? "Sold out for now — or have this cut to your size on order."
                 : `Only ${product.stock} left in this colourway.`}
             </p>
           )}
@@ -148,22 +148,22 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           {/* Service promises */}
           <ul className="mt-8 space-y-3 border-y border-line py-6 text-[12px] text-ink-soft">
             <li className="flex items-start gap-3">
-              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-clay" strokeWidth={1.3} />
+              <Truck className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
               <span>
                 Free nationwide delivery on orders above {formatPrice(FREE_SHIPPING_THRESHOLD)} ·
                 3–5 working days
               </span>
             </li>
             <li className="flex items-start gap-3">
-              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-clay" strokeWidth={1.3} />
-              <span>14-day exchange, online or at any {BRAND.name} store</span>
+              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
+              <span>7-day exchange — unused and in its original packing</span>
             </li>
             <li className="flex items-start gap-3">
-              <Scissors className="mt-0.5 h-4 w-4 shrink-0 text-clay" strokeWidth={1.3} />
+              <Scissors className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
               <span>
-                {unstitched
-                  ? "Stitching service available — add at checkout"
-                  : "Alterations available in-store within 30 days"}
+                {madeToOrder
+                  ? "Cut to your measurements — dispatched in 7–10 working days"
+                  : "Need a different size? We stitch this fabric to any bed"}
               </span>
             </li>
           </ul>
@@ -176,35 +176,33 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   body: (
                     <p>
                       {product.description ||
-                        "A considered everyday piece from the AASHNA studio, cut and finished by hand in Karachi."}
+                        "A considered everyday set from the Dream Stitch table — cut generously, hemmed twice and checked by hand before it is folded."}
                     </p>
                   ),
                 },
                 {
-                  title: "Fabric & Fit",
+                  title: "Fabric & Size",
                   body: (
                     <dl className="space-y-2.5">
                       <div className="flex justify-between gap-6">
                         <dt className="text-muted">Fabric</dt>
-                        <dd className="text-right text-ink">{product.fabric ?? "Cotton blend"}</dd>
+                        <dd className="text-right text-ink">{product.fabric ?? "Pure Cotton"}</dd>
                       </div>
                       <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Pieces</dt>
+                        <dt className="text-muted">Set includes</dt>
                         <dd className="text-right text-ink">
-                          {product.pieces ?? (unstitched ? "Unstitched suit" : "Single piece")}
+                          {product.pieces ?? "1 bedsheet + 2 pillow covers"}
                         </dd>
                       </div>
                       <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Fit</dt>
+                        <dt className="text-muted">Sizing</dt>
                         <dd className="text-right text-ink">
-                          {unstitched ? "Cut to your measurements" : "Relaxed AASHNA fit"}
+                          {madeToOrder ? "Cut to your measurements" : "King and single in stock"}
                         </dd>
                       </div>
                       <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Category</dt>
-                        <dd className="text-right text-ink">
-                          {product.category?.name ?? "Studio"}
-                        </dd>
+                        <dt className="text-muted">Custom sizing</dt>
+                        <dd className="text-right text-ink">Available on request</dd>
                       </div>
                     </dl>
                   ),
@@ -213,10 +211,10 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   title: "Care",
                   body: (
                     <ul className="list-inside list-disc space-y-1.5">
-                      <li>Dry clean recommended for embroidered and embellished panels</li>
-                      <li>Cold hand wash separately for the first two washes</li>
-                      <li>Do not bleach; dry in shade to protect the print</li>
-                      <li>Warm iron on the reverse, avoiding embellishment</li>
+                      <li>Machine wash cold with like colours, mild detergent, no bleach</li>
+                      <li>Tumble dry low, or line dry in shade — direct sun fades colour</li>
+                      <li>Warm iron if needed; satin weaves press best on the reverse</li>
+                      <li>Wash before first use to bring the cotton to its softest</li>
                     </ul>
                   ),
                 },
@@ -225,8 +223,9 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   body: (
                     <p>
                       Dispatched within 24 hours from Karachi. Delivery in 3–5 working days
-                      nationwide, free above {formatPrice(FREE_SHIPPING_THRESHOLD)}. Exchange within
-                      14 days with tags intact — sale pieces are exchange-only.
+                      nationwide, free above {formatPrice(FREE_SHIPPING_THRESHOLD)}. Exchange
+                      within 7 days, unused and in its original packing. Made-to-order sets are cut
+                      for one bed only, so they are not exchangeable.
                     </p>
                   ),
                 },
@@ -241,7 +240,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
         <section className="mx-auto mt-24 max-w-[1500px] px-6 xl:px-10">
           <SectionHeading
             align="between"
-            eyebrow="Complete the Look"
+            eyebrow="Pairs Well"
             title="You May Also Like"
             action={{
               label: "View Collection",

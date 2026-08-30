@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Jost, Cormorant_Garamond } from "next/font/google";
+import { Jost, Prata } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
@@ -27,55 +27,54 @@ const jost = Jost({
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
+const prata = Prata({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-cormorant",
+  weight: ["400"],
+  variable: "--font-prata",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: `${BRAND.name} | ${BRAND.tagline}`,
+  title: `${BRAND.name} ${BRAND.suffix} | ${BRAND.tagline}`,
   description:
-    "Shop unstitched lawn, ready-to-wear pret, festive formals, menswear and home textiles. Hand-finished in Pakistan, delivered nationwide.",
+    "Premium bedsheets in pure cotton, cotton zeen and cotton satin. King and single sets in stock, or made to your exact measurements. Delivered nationwide.",
 };
 
 const SERVICES = [
-  { icon: Truck, title: "Nationwide Delivery", copy: "Free above PKR 3,000" },
-  { icon: RotateCcw, title: "14-Day Exchange", copy: "In-store & online" },
-  { icon: Scissors, title: "Stitching Service", copy: "Made to your measurements" },
+  { icon: Truck, title: "Nationwide Delivery", copy: "Free above PKR 5,000" },
+  { icon: RotateCcw, title: "7-Day Exchange", copy: "Unused, in original packing" },
+  { icon: Scissors, title: "Any Size, Made to Order", copy: "Stitched to your measurements" },
   { icon: Headphones, title: "Customer Care", copy: "Mon–Sat, 9am – 9pm PKT" },
 ];
 
 const FOOTER_COLUMNS = [
   {
+    title: "Shop",
+    links: [
+      { name: "Pure Cotton", href: "/shop?category=pure-cotton" },
+      { name: "Cotton Zeen", href: "/shop?category=cotton-zeen" },
+      { name: "Cotton Satin", href: "/shop?category=cotton-satin" },
+      { name: "King Size", href: "/shop?size=King%20Size" },
+      { name: "Single Bed", href: "/shop?size=Single" },
+    ],
+  },
+  {
     title: "Help",
     links: [
+      { name: "Size Guide", href: "/custom" },
+      { name: "Fabric Care", href: "/contact" },
+      { name: "Delivery & Returns", href: "/contact" },
       { name: "Track Your Order", href: "/contact" },
-      { name: "Shipping & Delivery", href: "/contact" },
-      { name: "Exchange & Returns", href: "/contact" },
-      { name: "Size Guide", href: "/contact" },
       { name: "FAQs", href: "/contact" },
     ],
   },
   {
-    title: `More From ${BRAND.name}`,
+    title: "Dream Stitch",
     links: [
       { name: "Our Story", href: "/about" },
-      { name: "Store Locator", href: "/contact" },
-      { name: "Stitching Services", href: "/shop?category=ready-to-wear" },
-      { name: "Gift Cards", href: "/shop" },
-      { name: "Careers", href: "/about" },
-    ],
-  },
-  {
-    title: "Shop",
-    links: [
-      { name: "New In", href: "/shop?sort=newest" },
-      { name: "Ready to Wear", href: "/shop?category=ready-to-wear" },
-      { name: "Unstitched Fabrics", href: "/shop?category=fabrics" },
-      { name: "Festive", href: "/shop?category=festive" },
-      { name: "Sale", href: "/shop?sort=price-asc" },
+      { name: "Custom Orders", href: "/custom" },
+      { name: "Contact Us", href: "/contact" },
+      { name: "WhatsApp Us", href: "/contact" },
     ],
   },
 ];
@@ -86,7 +85,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jost.variable} ${cormorant.variable}`}>
+    <html lang="en" className={`${jost.variable} ${prata.variable}`}>
       <body className="flex min-h-screen flex-col bg-white text-ink antialiased">
         <CartProvider>
           <Header />
@@ -95,14 +94,14 @@ export default function RootLayout({
 
           <footer className="mt-20 border-t border-line">
             {/* Service promises */}
-            <div className="border-b border-line bg-cream">
+            <div className="border-b border-line bg-frost">
               <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-px bg-line px-0 lg:grid-cols-4">
                 {SERVICES.map(({ icon: Icon, title, copy }) => (
                   <div
                     key={title}
-                    className="flex flex-col items-center gap-2 bg-cream px-4 py-8 text-center"
+                    className="flex flex-col items-center gap-2 bg-frost px-4 py-8 text-center"
                   >
-                    <Icon className="h-5 w-5 text-clay" strokeWidth={1.3} />
+                    <Icon className="h-5 w-5 text-purple" strokeWidth={1.3} />
                     <h4 className="eyebrow mt-1 text-ink">{title}</h4>
                     <p className="text-[11px] text-muted">{copy}</p>
                   </div>
@@ -111,15 +110,15 @@ export default function RootLayout({
             </div>
 
             {/* Newsletter */}
-            <div className="border-b border-line bg-sand">
+            <div className="border-b border-line bg-lilac">
               <div className="mx-auto flex max-w-[1500px] flex-col items-center gap-6 px-6 py-14 text-center lg:flex-row lg:justify-between lg:gap-16 lg:text-left xl:px-10">
                 <div className="max-w-md">
                   <h3 className="font-[family-name:var(--font-display)] text-[26px] leading-tight text-ink">
-                    Join the {BRAND.name} list
+                    First look, before anyone else
                   </h3>
                   <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
-                    Be first to know when a new collection drops, and receive an invitation to
-                    private sale previews.
+                    New prints, restocks and the occasional quiet sale. One email, now and then —
+                    never a flood.
                   </p>
                 </div>
 
@@ -132,7 +131,7 @@ export default function RootLayout({
                   />
                   <button
                     type="submit"
-                    className="eyebrow flex shrink-0 cursor-pointer items-center gap-1.5 py-3 pl-4 text-ink transition-colors hover:text-clay"
+                    className="eyebrow flex shrink-0 cursor-pointer items-center gap-1.5 py-3 pl-4 text-ink transition-colors hover:text-purple"
                   >
                     Subscribe <ArrowRight className="h-3.5 w-3.5" />
                   </button>
@@ -146,22 +145,25 @@ export default function RootLayout({
                 <span className="font-[family-name:var(--font-display)] text-2xl tracking-[0.3em] text-ink">
                   {BRAND.name}
                 </span>
+                <span className="mt-1 block text-[11px] tracking-[0.28em] text-muted uppercase">
+                  {BRAND.suffix}
+                </span>
                 <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-ink-soft">
-                  {BRAND.tagline}. Woven, printed and hand-finished by artisans across Pakistan
-                  since 2014.
+                  Premium bedsheets in pure cotton, cotton zeen and cotton satin — cut, stitched
+                  and checked by hand in Karachi.
                 </p>
 
                 <ul className="mt-6 space-y-2.5 text-[12px] text-muted">
                   <li className="flex items-start gap-2.5">
-                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-clay" strokeWidth={1.4} />
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
                     <span className="max-w-[16rem]">{BRAND.address}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <Phone className="h-3.5 w-3.5 shrink-0 text-clay" strokeWidth={1.4} />
+                    <Phone className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
                     <span>{BRAND.phone}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <Mail className="h-3.5 w-3.5 shrink-0 text-clay" strokeWidth={1.4} />
+                    <Mail className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
                     <a href={`mailto:${BRAND.email}`} className="link-rule">
                       {BRAND.email}
                     </a>
@@ -190,7 +192,7 @@ export default function RootLayout({
                       <li key={link.name}>
                         <Link
                           href={link.href}
-                          className="text-[13px] text-ink-soft transition-colors hover:text-clay"
+                          className="text-[13px] text-ink-soft transition-colors hover:text-purple"
                         >
                           {link.name}
                         </Link>
@@ -202,10 +204,10 @@ export default function RootLayout({
             </div>
 
             {/* Legal bar */}
-            <div className="border-t border-line bg-cream">
+            <div className="border-t border-line bg-frost">
               <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-4 px-6 py-6 sm:flex-row xl:px-10">
                 <p className="text-[11px] text-muted">
-                  © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+                  © {new Date().getFullYear()} {BRAND.name} {BRAND.suffix}. All rights reserved.
                 </p>
                 <div className="flex items-center gap-4">
                   <span className="eyebrow text-faint">Secure payments</span>

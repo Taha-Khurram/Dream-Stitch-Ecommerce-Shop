@@ -22,27 +22,23 @@ interface ShopPageProps {
     color?: string;
     min?: string;
     max?: string;
+    sale?: string;
   }>;
 }
 
 const COLLECTION_BANNER: Record<string, { image: string; copy: string }> = {
-  "ready-to-wear": {
-    image: IMG.catReadyToWear,
-    copy: "Stitched kurtas, co-ords and separates in the relaxed AASHNA fit.",
+  "pure-cotton": {
+    image: IMG.catPureCotton,
+    copy: "Densely woven pure cotton that stays cool through summer and softens with every wash.",
   },
-  fabrics: {
-    image: IMG.catFabrics,
-    copy: "Unstitched lawn, cambric and khaddar — yours to cut as you like.",
+  "cotton-zeen": {
+    image: IMG.catCottonZeen,
+    copy: "Smooth, close-woven cotton zeen with a gentle drape and a forgiving, crease-resistant finish.",
   },
-  festive: {
-    image: IMG.catFestive,
-    copy: "Hand-worked formals for weddings, Eid and the long evenings between.",
+  "cotton-satin": {
+    image: IMG.catCottonSatin,
+    copy: "Cotton finished in a satin weave for a low sheen that catches the light without shouting.",
   },
-  men: { image: IMG.catMen, copy: "Kameez shalwar, waistcoats and kurtas for men." },
-  kids: { image: IMG.catKids, copy: "Small-scale versions of the pieces you already love." },
-  home: { image: IMG.catHome, copy: "Block-printed bedlinen, throws and table textiles." },
-  fragrances: { image: IMG.catFragrance, copy: "Body mists and eau de parfum, layered like fabric." },
-  accessories: { image: IMG.catAccessories, copy: "Dupattas, stoles, bags and everyday jewellery." },
 };
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
@@ -66,39 +62,50 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     getCategories(),
   ]);
 
-  // Size and colour live in optional array columns, so they are narrowed here
-  // rather than in the query — this keeps working before the migration runs.
+  // Size, colour and markdowns live in optional columns, so they are narrowed
+  // here rather than in the query — this keeps working before the migration runs.
+  const onSale = params.sale === "true";
   const products = fetched.filter((product) => {
     if (params.size && !productSizes(product).includes(params.size)) return false;
     if (params.color && !productColors(product).includes(params.color)) return false;
+    if (onSale && !(Number(product.compare_at_price ?? 0) > Number(product.price))) return false;
     return true;
   });
+
+  // Only offer colours the current selection can actually return, so no swatch
+  // is a dead end.
+  const availableColors = Array.from(
+    new Set(fetched.flatMap((product) => productColors(product)))
+  ).sort();
 
   const activeCategory = categories.find((c) => c.slug === categorySlug);
   const banner = categorySlug ? COLLECTION_BANNER[categorySlug] : undefined;
 
-  const heading = activeCategory
-    ? activeCategory.name
-    : searchQuery
-      ? `Search: ${searchQuery}`
-      : "All Products";
+  const heading = onSale
+    ? "Sale"
+    : activeCategory
+      ? activeCategory.name
+      : searchQuery
+        ? `Search: ${searchQuery}`
+        : "All Bedsheets";
 
-  const description =
-    banner?.copy ??
-    activeCategory?.description ??
-    "Every piece in the studio, from featherweight lawn to hand-embroidered formals.";
+  const description = onSale
+    ? "Sets currently reduced from their original price. Same cloth, same finish."
+    : (banner?.copy ??
+      activeCategory?.description ??
+      "Every set we make, in pure cotton, cotton zeen and cotton satin — king, single or cut to your own measurements.");
 
   return (
     <div className="pb-16">
       {/* Collection banner */}
-      <section className="relative h-[220px] w-full overflow-hidden bg-sand sm:h-[300px]">
+      <section className="relative h-[220px] w-full overflow-hidden bg-lilac sm:h-[300px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={activeCategory?.image_url ?? img(banner?.image ?? IMG.editorialCraft, 1900)}
           alt={heading}
           className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-ink/35" />
+        <div className="absolute inset-0 bg-aubergine/45" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
           <span className="eyebrow text-white/80">Collection</span>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[34px] leading-tight text-white sm:text-[46px]">
@@ -131,9 +138,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       <div className="mx-auto flex max-w-[1500px] gap-10 px-6 xl:px-10">
         {/* Desktop filter rail */}
         <aside className="hidden w-60 shrink-0 lg:block">
-          <div className="sticky top-[184px] max-h-[calc(100vh-200px)] overflow-y-auto pb-8 pr-2">
+          <div className="sticky top-[76px] max-h-[calc(100vh-92px)] overflow-y-auto pb-8 pr-2">
             <h2 className="eyebrow border-b border-ink pb-4 text-ink">Filter</h2>
-            <CategoryFilter categories={categories} />
+            <CategoryFilter categories={categories} colors={availableColors} />
           </div>
         </aside>
 
@@ -146,7 +153,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </p>
 
             <div className="flex items-center gap-4">
-              <MobileFilterSheet categories={categories} />
+              <MobileFilterSheet categories={categories} colors={availableColors} />
               <SortMenu />
             </div>
           </div>
@@ -157,12 +164,17 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                 Nothing here yet
               </h3>
               <p className="mx-auto mt-3 max-w-sm text-[13px] leading-relaxed text-ink-soft">
-                We couldn&apos;t find pieces matching these filters. Try widening your search or
-                browse the full collection.
+                No sets match these filters. Try widening your search, browse the full collection,
+                or have this made in your own size.
               </p>
-              <Link href="/shop" className="btn-ink mt-8">
-                View All Products
-              </Link>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link href="/shop" className="btn-primary">
+                  View All Bedsheets
+                </Link>
+                <Link href="/custom" className="btn-outline">
+                  Order a Custom Size
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-8 md:grid-cols-3 xl:grid-cols-4">

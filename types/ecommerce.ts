@@ -20,16 +20,16 @@ export interface Product {
   is_featured: boolean;
   rating?: number;
   reviews_count?: number;
-  /* ── Apparel attributes (optional: present once clothing_seed.sql has run) ── */
+  /* ── Bedding attributes (optional: present once bedding_seed.sql has run) ── */
   /** Additional gallery shots, in display order after `image_url`. */
   images?: string[] | null;
-  /** Body sizes for stitched pret; omit for unstitched fabric. */
+  /** Bed sizes, e.g. ["Single", "King Size"]; ["Custom Size"] for made-to-order. */
   sizes?: string[] | null;
   /** Colourway names — resolved to hex via `swatchHex()`. */
   colors?: string[] | null;
-  /** e.g. "Lawn", "Cambric", "Khaddar", "Organza". */
+  /** e.g. "Pure Cotton", "Cotton Zeen", "Cotton Satin". */
   fabric?: string | null;
-  /** e.g. "3 Piece", "Kurta", "Unstitched Suit". */
+  /** What the set contains, e.g. "1 bedsheet + 2 pillow covers". */
   pieces?: string | null;
   /** Original price, struck through when higher than `price`. */
   compare_at_price?: number | null;

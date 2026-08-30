@@ -84,7 +84,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           />
         </div>
 
-        <button type="submit" className="btn-ink w-full cursor-pointer">
+        <button type="submit" className="btn-primary w-full cursor-pointer">
           Create Account
         </button>
       </form>

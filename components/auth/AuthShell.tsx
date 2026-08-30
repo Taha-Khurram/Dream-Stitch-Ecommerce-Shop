@@ -28,7 +28,7 @@ export function AuthShell({
   return (
     <div className="grid min-h-[calc(100vh-190px)] grid-cols-1 lg:grid-cols-2">
       {/* Editorial panel */}
-      <div className="relative hidden overflow-hidden bg-sand lg:block">
+      <div className="relative hidden overflow-hidden bg-lilac lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={img(image, 1200)}
@@ -41,8 +41,8 @@ export function AuthShell({
             {BRAND.name}
           </span>
           <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-white/85">
-            Members get first access to every drop, private sale previews and free stitching on
-            their first unstitched order.
+            Members get first look at new prints, early access to restocks, and free delivery
+            on their first custom-size order.
           </p>
         </div>
       </div>
@@ -50,19 +50,19 @@ export function AuthShell({
       {/* Form panel */}
       <div className="flex items-center justify-center px-6 py-16 sm:px-12">
         <div className="w-full max-w-sm">
-          <span className="eyebrow text-clay">{eyebrow}</span>
+          <span className="eyebrow text-purple">{eyebrow}</span>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[32px] leading-tight text-ink">
             {title}
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{copy}</p>
 
           {error && (
-            <div className="mt-6 border-l-2 border-sale bg-cream px-4 py-3 text-[12px] text-ink-soft">
+            <div className="mt-6 border-l-2 border-sale bg-frost px-4 py-3 text-[12px] text-ink-soft">
               {error}
             </div>
           )}
           {message && (
-            <div className="mt-6 border-l-2 border-jade bg-cream px-4 py-3 text-[12px] text-ink-soft">
+            <div className="mt-6 border-l-2 border-jade bg-frost px-4 py-3 text-[12px] text-ink-soft">
               {message}
             </div>
           )}

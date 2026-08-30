@@ -3,12 +3,12 @@
 import React, { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/types/ecommerce";
-import { productSizes, productColors, isUnstitched } from "@/lib/product-attributes";
+import { productSizes, productColors, isMadeToOrder } from "@/lib/product-attributes";
 import { Check } from "lucide-react";
 
 /**
  * The bar that slides up over a product image on hover. One tap on a size adds
- * that size straight to the bag — the pattern shoppers expect on a pret grid.
+ * that size straight to the bag — the pattern shoppers expect on a product grid.
  */
 export function QuickAdd({ product }: { product: Product }) {
   const { addItem, quantityOfProduct } = useCart();
@@ -17,7 +17,7 @@ export function QuickAdd({ product }: { product: Product }) {
   const soldOut = product.stock <= 0;
   const maxed = !soldOut && quantityOfProduct(product.id) >= product.stock;
   const sizes = productSizes(product);
-  const unstitched = isUnstitched(product);
+  const madeToOrder = isMadeToOrder(product);
 
   if (soldOut) {
     return (
@@ -36,8 +36,8 @@ export function QuickAdd({ product }: { product: Product }) {
     setTimeout(() => setJustAdded(null), 1600);
   };
 
-  // Unstitched fabric has no size run — a single "Add to Bag" is enough
-  if (unstitched) {
+  // Made-to-order sets have no size run — a single "Add to Bag" is enough
+  if (madeToOrder) {
     return (
       <button
         onClick={(e) => add(e, sizes[0])}

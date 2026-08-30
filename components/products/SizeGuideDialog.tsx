@@ -38,9 +38,9 @@ export function SizeGuideDialog() {
           >
             <div className="flex items-start justify-between">
               <div>
-                <span className="eyebrow text-clay">Measurements</span>
+                <span className="eyebrow text-purple">Finished Dimensions</span>
                 <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl text-ink">
-                  Size Guide
+                  Bed Size Guide
                 </h3>
               </div>
               <button
@@ -56,7 +56,7 @@ export function SizeGuideDialog() {
               <table className="w-full text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink">
-                    {["Size", "Bust", "Waist", "Hip", "Length"].map((head) => (
+                    {["Size", "Bedsheet", "Pillow Cover", "Set", "Fits"].map((head) => (
                       <th key={head} className="eyebrow pb-3 text-ink">
                         {head}
                       </th>
@@ -67,10 +67,10 @@ export function SizeGuideDialog() {
                   {SIZE_GUIDE.map((row) => (
                     <tr key={row.size} className="border-b border-line-soft">
                       <td className="py-3 font-medium text-ink">{row.size}</td>
-                      <td className="py-3 text-ink-soft">{row.bust}</td>
-                      <td className="py-3 text-ink-soft">{row.waist}</td>
-                      <td className="py-3 text-ink-soft">{row.hip}</td>
-                      <td className="py-3 text-ink-soft">{row.length}</td>
+                      <td className="py-3 text-ink-soft">{row.sheet}</td>
+                      <td className="py-3 text-ink-soft">{row.pillow}</td>
+                      <td className="py-3 text-ink-soft">{row.pieces}</td>
+                      <td className="py-3 text-ink-soft">{row.fits}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -78,8 +78,9 @@ export function SizeGuideDialog() {
             </div>
 
             <p className="mt-5 text-[12px] leading-relaxed text-muted">
-              Measurements are of the garment, taken flat and doubled. Allow half an inch either
-              way for hand-finished pieces.
+              Dimensions are of the finished sheet, measured flat — the side drop is already
+              included. Allow an inch either way on hand-finished hems. Falling between two
+              sizes? We will cut it to your numbers.
             </p>
           </div>
         </div>

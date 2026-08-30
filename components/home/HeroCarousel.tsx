@@ -20,6 +20,15 @@ const AUTOPLAY_MS = 6500;
 export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   const go = useCallback(
     (next: number) => setIndex((next + slides.length) % slides.length),
@@ -27,16 +36,18 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   );
 
   useEffect(() => {
-    if (paused || slides.length < 2) return;
+    if (paused || reducedMotion || slides.length < 2) return;
     const timer = setTimeout(() => go(index + 1), AUTOPLAY_MS);
     return () => clearTimeout(timer);
-  }, [index, paused, go, slides.length]);
+  }, [index, paused, reducedMotion, go, slides.length]);
 
   return (
     <section
-      className="relative h-[78vh] max-h-[760px] min-h-[520px] w-full overflow-hidden bg-sand"
+      className="relative h-[78vh] max-h-[760px] min-h-[520px] w-full overflow-hidden bg-lilac"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
       aria-roledescription="carousel"
       aria-label="Featured collections"
     >
@@ -87,7 +98,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                   >
                     <Link
                       href={slide.cta.href}
-                      className="label-track bg-white px-8 py-4 text-[11px] font-medium text-ink transition-colors hover:bg-clay hover:text-white"
+                      className="label-track bg-white px-8 py-4 text-[11px] font-medium text-ink transition-colors hover:bg-purple hover:text-white"
                     >
                       {slide.cta.label}
                     </Link>

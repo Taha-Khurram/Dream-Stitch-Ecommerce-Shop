@@ -53,12 +53,12 @@ export function AddToCartButton({
     size === "sm" ? "px-4 py-2.5 text-[10px]" : "px-8 py-4 text-[11px]";
 
   const tone = isOutOfStock
-    ? "border border-line bg-sand text-faint cursor-not-allowed"
+    ? "border border-line bg-lilac text-faint cursor-not-allowed"
     : added
       ? "bg-jade text-white"
       : isMaxed
-        ? "border border-line bg-sand text-muted cursor-not-allowed"
-        : "bg-ink text-white hover:bg-clay cursor-pointer";
+        ? "border border-line bg-lilac text-muted cursor-not-allowed"
+        : "bg-ink text-white hover:bg-purple cursor-pointer";
 
   return (
     <div className={fullWidth ? "w-full" : ""}>

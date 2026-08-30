@@ -186,7 +186,7 @@ export function CartDrawer() {
                 <dd className="text-ink">{formatPrice(order.totalAmount)}</dd>
               </div>
             </dl>
-            <button onClick={close} className="btn-ink mt-8 w-full cursor-pointer">
+            <button onClick={close} className="btn-primary mt-8 w-full cursor-pointer">
               Continue Shopping
             </button>
           </div>
@@ -201,7 +201,7 @@ export function CartDrawer() {
             <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-ink-soft">
               Nothing here yet. Start with what&apos;s new in the studio this week.
             </p>
-            <Link href="/shop?sort=newest" onClick={close} className="btn-ink mt-8">
+            <Link href="/shop?sort=newest" onClick={close} className="btn-primary mt-8">
               Shop New In
             </Link>
           </div>
@@ -213,7 +213,7 @@ export function CartDrawer() {
             <div className="border-b border-line px-6 py-4">
               {remainingForFreeShipping > 0 ? (
                 <p className="text-[11px] text-ink-soft">
-                  <Truck className="mr-1.5 inline h-3.5 w-3.5 text-clay" strokeWidth={1.4} />
+                  <Truck className="mr-1.5 inline h-3.5 w-3.5 text-purple" strokeWidth={1.4} />
                   Add {formatPrice(remainingForFreeShipping)} more for free delivery
                 </p>
               ) : (
@@ -223,7 +223,7 @@ export function CartDrawer() {
               )}
               <div className="mt-2.5 h-[2px] w-full bg-line">
                 <div
-                  className="h-full bg-clay transition-all duration-500"
+                  className="h-full bg-purple transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -235,7 +235,7 @@ export function CartDrawer() {
                   <Link
                     href={`/shop/${item.productId}`}
                     onClick={close}
-                    className="block h-28 w-20 shrink-0 overflow-hidden bg-sand"
+                    className="block h-28 w-20 shrink-0 overflow-hidden bg-lilac"
                   >
                     {item.imageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -253,7 +253,7 @@ export function CartDrawer() {
                         <Link
                           href={`/shop/${item.productId}`}
                           onClick={close}
-                          className="block truncate text-[13px] text-ink transition-colors hover:text-clay"
+                          className="block truncate text-[13px] text-ink transition-colors hover:text-purple"
                         >
                           {item.name}
                         </Link>
@@ -333,7 +333,7 @@ export function CartDrawer() {
 
               <button
                 onClick={() => setStage("address")}
-                className="btn-ink mt-5 w-full cursor-pointer"
+                className="btn-primary mt-5 w-full cursor-pointer"
               >
                 Checkout
               </button>
@@ -352,7 +352,7 @@ export function CartDrawer() {
           <form onSubmit={submitOrder} className="flex flex-1 flex-col overflow-hidden">
             <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
               {errorMessage && (
-                <div className="flex items-start gap-2.5 border-l-2 border-sale bg-cream px-4 py-3 text-[12px] text-ink-soft">
+                <div className="flex items-start gap-2.5 border-l-2 border-sale bg-frost px-4 py-3 text-[12px] text-ink-soft">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sale" />
                   <span>{errorMessage}</span>
                 </div>
@@ -499,7 +499,7 @@ export function CartDrawer() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-ink mt-4 w-full cursor-pointer disabled:cursor-wait disabled:opacity-70"
+                className="btn-primary mt-4 w-full cursor-pointer disabled:cursor-wait disabled:opacity-70"
               >
                 {loading ? (
                   <>

@@ -26,7 +26,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       message={message}
       footer={
         <>
-          New to AASHNA?{" "}
+          New to Dream Stitch?{" "}
           <Link href="/signup" className="link-rule text-ink">
             Create an account
           </Link>
@@ -70,7 +70,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           />
         </div>
 
-        <button type="submit" className="btn-ink w-full cursor-pointer">
+        <button type="submit" className="btn-primary w-full cursor-pointer">
           Sign In
         </button>
       </form>

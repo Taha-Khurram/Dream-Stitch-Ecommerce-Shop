@@ -30,7 +30,7 @@ interface CartContextType {
   toggleCart: () => void;
 }
 
-const CART_STORAGE_KEY = "aashna_cart_v1";
+const CART_STORAGE_KEY = "dreamstitch_cart_v1";
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 

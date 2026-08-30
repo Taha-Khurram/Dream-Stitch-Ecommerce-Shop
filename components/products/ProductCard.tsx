@@ -23,7 +23,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
 
   return (
     <article className="group relative flex flex-col">
-      <div className="img-swap relative aspect-[3/4] overflow-hidden bg-sand">
+      <div className="img-swap relative aspect-[4/5] overflow-hidden bg-lilac">
         {product.image_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -31,7 +31,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
               src={product.image_url}
               alt={product.name}
               loading="lazy"
-              className="img-front absolute inset-0 h-full w-full object-cover object-top"
+              className="img-front absolute inset-0 h-full w-full object-cover object-center"
             />
             {secondary && (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -40,7 +40,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
                 alt=""
                 aria-hidden="true"
                 loading="lazy"
-                className="img-back absolute inset-0 h-full w-full object-cover object-top"
+                className="img-back absolute inset-0 h-full w-full object-cover object-center"
               />
             )}
           </>
@@ -75,7 +75,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
             </span>
           )}
           {!soldOut && lowStock && (
-            <span className="label-track bg-white/95 px-2.5 py-1 text-[9px] font-medium text-clay">
+            <span className="label-track bg-white/95 px-2.5 py-1 text-[9px] font-medium text-purple">
               Only {product.stock} Left
             </span>
           )}
@@ -101,7 +101,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
         >
           <Link
             href={`/shop/${product.id}`}
-            className="text-ink transition-colors hover:text-clay"
+            className="text-ink transition-colors hover:text-purple"
           >
             {product.name}
           </Link>

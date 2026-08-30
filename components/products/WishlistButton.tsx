@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 
-const STORAGE_KEY = "aashna_wishlist_v1";
+const STORAGE_KEY = "dreamstitch_wishlist_v1";
 
 function readWishlist(): string[] {
   try {
@@ -60,7 +60,7 @@ export function WishlistButton({
       className={`${box} flex cursor-pointer items-center justify-center border border-line bg-white/95 transition-colors hover:border-ink`}
     >
       <Heart
-        className={`${icon} transition-colors ${saved ? "fill-clay text-clay" : "text-ink"}`}
+        className={`${icon} transition-colors ${saved ? "fill-purple text-purple" : "text-ink"}`}
         strokeWidth={1.4}
       />
     </button>

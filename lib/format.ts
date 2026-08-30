@@ -6,7 +6,7 @@ const priceFormatter = new Intl.NumberFormat("en-PK", {
   maximumFractionDigits: 0,
 });
 
-/** `formatPrice(7000)` → `"PKR 7,000"` — the format used across pk.khaadi.com. */
+/** `formatPrice(7000)` → `"PKR 7,000"` — the format Pakistani retail expects. */
 export function formatPrice(value: number | string | null | undefined): string {
   const amount = Number(value ?? 0);
   if (!Number.isFinite(amount)) return `${CURRENCY} 0`;

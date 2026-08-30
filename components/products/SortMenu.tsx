@@ -43,7 +43,7 @@ function SortMenuInner() {
         onClick={() => setOpen(!open)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="eyebrow flex cursor-pointer items-center gap-2 text-ink transition-colors hover:text-clay"
+        className="eyebrow flex cursor-pointer items-center gap-2 text-ink transition-colors hover:text-purple"
       >
         Sort: <span className="text-muted">{activeLabel}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -60,12 +60,12 @@ function SortMenuInner() {
                 role="option"
                 aria-selected={active === option.key}
                 onClick={() => select(option.key)}
-                className={`flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-cream ${
+                className={`flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-frost ${
                   active === option.key ? "text-ink" : "text-ink-soft"
                 }`}
               >
                 {option.label}
-                {active === option.key && <Check className="h-3.5 w-3.5 text-clay" />}
+                {active === option.key && <Check className="h-3.5 w-3.5 text-purple" />}
               </button>
             </li>
           ))}

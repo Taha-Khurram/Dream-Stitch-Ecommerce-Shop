@@ -22,16 +22,16 @@ DOCS = ROOT / "docs"
 
 # Mirrors the @theme block in app/globals.css
 PALETTE = [
-    ("Ink", "#1b1a18"),
-    ("Ink Soft", "#55504a"),
-    ("Muted", "#8b847b"),
-    ("Line", "#e4ded4"),
-    ("Sand", "#f5f1ea"),
-    ("Cream", "#fbf9f6"),
-    ("Clay", "#97452f"),
-    ("Henna", "#6d2f3d"),
-    ("Sale", "#b02318"),
-    ("Jade", "#3f6b57"),
+    ("Ink", "#2a1b33"),
+    ("Ink Soft", "#5a4d66"),
+    ("Muted", "#786a85"),
+    ("Line", "#e5dcf0"),
+    ("Lilac", "#f4effa"),
+    ("Frost", "#faf7fd"),
+    ("Purple", "#5e2b8a"),
+    ("Aubergine", "#3d1c56"),
+    ("Sale", "#b3261e"),
+    ("Jade", "#2f6b4f"),
 ]
 
 SERIF = "C:/Windows/Fonts/georgia.ttf"

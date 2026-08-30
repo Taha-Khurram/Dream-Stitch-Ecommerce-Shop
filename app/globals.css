@@ -1,34 +1,38 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════════
-   AASHNA — Pakistani pret, fabrics & festive wear
-   Editorial storefront design tokens
+   DREAM STITCH By Sk — premium bedsheets
+   Storefront design tokens: white ground, purple signature.
+
+   Colour budget is roughly 85 / 10 / 5 — white and near-white
+   surfaces, plum ink for type, and true purple reserved for
+   things that actually do something.
    ══════════════════════════════════════════════════════════════ */
 @theme {
-  /* Ink & neutrals */
-  --color-ink: #1b1a18;
-  --color-ink-soft: #55504a;
-  --color-muted: #8b847b;
-  --color-faint: #b6afa5;
+  /* Plum-biased ink & neutrals — never pure black */
+  --color-ink: #2a1b33;
+  --color-ink-soft: #5a4d66;
+  --color-muted: #786a85;
+  --color-faint: #a99cb5;
 
-  /* Warm paper surfaces */
-  --color-cream: #fbf9f6;
-  --color-sand: #f5f1ea;
-  --color-linen: #ece5da;
-  --color-line: #e4ded4;
-  --color-line-soft: #efeae2;
+  /* Cool white surfaces */
+  --color-frost: #faf7fd;
+  --color-lilac: #f4effa;
+  --color-lilac-deep: #ebe2f6;
+  --color-line: #e5dcf0;
+  --color-line-soft: #f0eaf8;
 
-  /* Brand accents */
-  --color-clay: #97452f;
-  --color-clay-deep: #7b3423;
-  --color-henna: #6d2f3d;
-  --color-sale: #b02318;
-  --color-jade: #3f6b57;
+  /* Brand accents — spend these sparingly */
+  --color-purple: #5e2b8a;
+  --color-purple-deep: #4a2170;
+  --color-aubergine: #3d1c56;
+  --color-sale: #b3261e;
+  --color-jade: #2f6b4f;
 
-  --font-display: var(--font-cormorant), "Cormorant Garamond", "Times New Roman", serif;
+  --font-display: var(--font-prata), "Prata", "Hoefler Text", Georgia, serif;
   --font-sans: var(--font-jost), "Jost", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* Fashion retail = square corners; only pills stay round */
+  /* Textile retail = square corners; only pills stay round */
   --radius-card: 0px;
 }
 
@@ -56,7 +60,7 @@
   }
 
   ::selection {
-    background: var(--color-linen);
+    background: var(--color-lilac-deep);
     color: var(--color-ink);
   }
 }
@@ -77,12 +81,12 @@
   }
 
   /* Primary solid ink button */
-  .btn-ink {
+  .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: var(--color-ink);
+    background: var(--color-purple);
     color: #fff;
     font-size: 11px;
     font-weight: 500;
@@ -91,7 +95,7 @@
     padding: 0.95rem 2rem;
     transition: background-color 0.25s ease, color 0.25s ease;
   }
-  .btn-ink:hover { background: var(--color-clay); }
+  .btn-primary:hover { background: var(--color-purple-deep); }
 
   /* Outlined counterpart */
   .btn-outline {
@@ -99,8 +103,8 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border: 1px solid var(--color-ink);
-    color: var(--color-ink);
+    border: 1px solid var(--color-purple);
+    color: var(--color-purple);
     background: transparent;
     font-size: 11px;
     font-weight: 500;
@@ -109,7 +113,7 @@
     padding: 0.9rem 2rem;
     transition: background-color 0.25s ease, color 0.25s ease;
   }
-  .btn-outline:hover { background: var(--color-ink); color: #fff; }
+  .btn-outline:hover { background: var(--color-purple); color: #fff; }
 
   /* Thin animated underline for editorial text links */
   .link-rule {
@@ -174,12 +178,12 @@
     width: 1.5rem;
     height: 1.5rem;
     border-radius: 9999px;
-    border: 1px solid rgba(27, 26, 24, 0.16);
+    border: 1px solid rgba(42, 27, 51, 0.18);
     box-shadow: inset 0 0 0 2px #fff;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
   .swatch[data-active="true"] {
-    box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px var(--color-ink);
+    box-shadow: inset 0 0 0 2px #fff, 0 0 0 1.5px var(--color-purple);
   }
 }
 
@@ -202,6 +206,6 @@
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-sand); }
-::-webkit-scrollbar-thumb { background: #cfc7ba; }
+::-webkit-scrollbar-track { background: var(--color-lilac); }
+::-webkit-scrollbar-thumb { background: #d3c4e6; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
