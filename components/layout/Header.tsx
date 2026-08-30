@@ -7,7 +7,16 @@ import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { BRAND, NAV_ITEMS, type NavItem } from "@/lib/constants";
-import { Search, Heart, User as UserIcon, Menu, X, ChevronRight, LogOut } from "lucide-react";
+import {
+  Search,
+  Heart,
+  User as UserIcon,
+  Menu,
+  X,
+  ChevronRight,
+  LogOut,
+  LayoutDashboard,
+} from "lucide-react";
 
 /**
  * Sticky chrome is a single 56px row: wordmark left, page links centred,
@@ -226,10 +235,12 @@ function MegaPanel({ item, onNavigate }: { item: NavItem; onNavigate: () => void
 /* ── Account icon, with a sign-out menu once signed in ─────────────────── */
 function AccountMenu({
   user,
+  isAdmin,
   onSignOut,
   className,
 }: {
   user: User | null;
+  isAdmin?: boolean;
   onSignOut: () => void;
   className: string;
 }) {
@@ -279,13 +290,26 @@ function AccountMenu({
           className="animate-fade-up absolute right-0 top-full z-50 mt-2 w-52 border border-line bg-white p-4 shadow-[0_18px_34px_-26px_rgba(42,27,51,0.5)]"
         >
           <p className="truncate text-[12px] text-ink-soft">{user.email}</p>
+
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="eyebrow mt-4 flex items-center gap-2 border-t border-line pt-3 text-purple transition-colors hover:text-purple-deep"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={1.4} /> Admin Panel
+            </Link>
+          )}
+
           <button
             role="menuitem"
             onClick={() => {
               setOpen(false);
               onSignOut();
             }}
-            className="eyebrow mt-4 flex w-full cursor-pointer items-center gap-2 border-t border-line pt-3 text-ink transition-colors hover:text-purple"
+            className={`eyebrow flex w-full cursor-pointer items-center gap-2 pt-3 text-ink transition-colors hover:text-purple ${
+              isAdmin ? "mt-3" : "mt-4 border-t border-line"
+            }`}
           >
             <LogOut className="h-3.5 w-3.5" strokeWidth={1.4} /> Sign Out
           </button>
@@ -295,7 +319,13 @@ function AccountMenu({
   );
 }
 
-export function Header({ announcements }: { announcements?: string[] }) {
+export function Header({
+  announcements,
+  isAdmin,
+}: {
+  announcements?: string[];
+  isAdmin?: boolean;
+}) {
   const { totalItems, toggleCart } = useCart();
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -355,6 +385,24 @@ export function Header({ announcements }: { announcements?: string[] }) {
     "relative flex h-8 w-8 cursor-pointer items-center justify-center text-ink transition-colors duration-300 hover:text-purple";
 
   const activeItem = NAV_ITEMS.find((i) => i.name === openMenu);
+
+  /* Under /admin the shop nav, search, wishlist and cart all point away from
+     the work surface — the bar keeps the wordmark and nothing else. */
+  if (pathname?.startsWith("/admin")) {
+    return (
+      <header
+        className={`sticky top-0 z-50 border-b bg-white transition-shadow duration-500 ${
+          lifted
+            ? "border-line shadow-[0_10px_30px_-26px_rgba(42,27,51,0.55)]"
+            : "border-line-soft shadow-none"
+        }`}
+      >
+        <div className="mx-auto flex h-14 max-w-[1500px] items-center px-4 sm:px-6 xl:px-10">
+          <Wordmark />
+        </div>
+      </header>
+    );
+  }
 
   return (
     <>
@@ -429,7 +477,12 @@ export function Header({ announcements }: { announcements?: string[] }) {
               <Heart className="h-[17px] w-[17px]" strokeWidth={1.25} />
             </Link>
 
-            <AccountMenu user={user} onSignOut={handleSignOut} className={iconButton} />
+            <AccountMenu
+              user={user}
+              isAdmin={isAdmin}
+              onSignOut={handleSignOut}
+              className={iconButton}
+            />
 
             <button
               onClick={toggleCart}
@@ -532,9 +585,16 @@ export function Header({ announcements }: { announcements?: string[] }) {
 
             <div className="border-t border-line px-5 py-5">
               {user ? (
-                <button onClick={handleSignOut} className="btn-outline w-full cursor-pointer">
-                  <LogOut className="h-3.5 w-3.5" /> Sign Out
-                </button>
+                <div className="space-y-3">
+                  {isAdmin && (
+                    <Link href="/admin" className="btn-primary w-full">
+                      <LayoutDashboard className="h-3.5 w-3.5" /> Admin Panel
+                    </Link>
+                  )}
+                  <button onClick={handleSignOut} className="btn-outline w-full cursor-pointer">
+                    <LogOut className="h-3.5 w-3.5" /> Sign Out
+                  </button>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <Link href="/signin" className="btn-outline">

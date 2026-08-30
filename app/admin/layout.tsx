@@ -21,16 +21,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="mx-auto flex max-w-[1500px] flex-col gap-8 px-6 py-10 lg:flex-row lg:gap-12 xl:px-10">
       <aside className="shrink-0 lg:w-52">
         <div className="lg:sticky lg:top-24">
-          <Link href="/admin" className="block">
-            <span className="block font-[family-name:var(--font-script)] text-[28px] leading-none text-ink">
-              {BRAND.name}
-            </span>
-            <span className="mt-1.5 block text-[8px] font-medium uppercase tracking-[0.32em] text-purple">
-              Admin
-            </span>
+          {/* The wordmark lives in the site header a row above; the rail only
+              needs to say which surface you are on. */}
+          <Link
+            href="/admin"
+            className="block text-[9px] font-medium uppercase tracking-[0.32em] text-purple transition-colors hover:text-purple-deep"
+          >
+            Admin
           </Link>
 
-          <div className="mt-8 lg:mt-10">
+          <div className="mt-6">
             <AdminNav />
           </div>
 
