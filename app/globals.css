@@ -30,6 +30,7 @@
   --color-jade: #2f6b4f;
 
   --font-display: var(--font-prata), "Prata", "Hoefler Text", Georgia, serif;
+  --font-script: var(--font-great-vibes), "Great Vibes", "Segoe Script", cursive;
   --font-sans: var(--font-jost), "Jost", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Textile retail = square corners; only pills stay round */

@@ -1,24 +1,12 @@
 import type { Metadata } from "next";
-import { Jost, Prata } from "next/font/google";
+import { Jost, Prata, Great_Vibes } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
 import { BRAND } from "@/lib/constants";
-import {
-  Truck,
-  RotateCcw,
-  Scissors,
-  Headphones,
-  ArrowRight,
-  Instagram,
-  Facebook,
-  Youtube,
-  MapPin,
-  Phone,
-  Mail,
-} from "lucide-react";
+import { Instagram, Facebook, Youtube, MapPin, Phone, Mail } from "lucide-react";
 
 const jost = Jost({
   subsets: ["latin"],
@@ -34,18 +22,19 @@ const prata = Prata({
   display: "swap",
 });
 
+/* Wordmark only — never body or headings. */
+const greatVibes = Great_Vibes({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-great-vibes",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: `${BRAND.name} ${BRAND.suffix} | ${BRAND.tagline}`,
   description:
     "Premium bedsheets in pure cotton, cotton zeen and cotton satin. King and single sets in stock, or made to your exact measurements. Delivered nationwide.",
 };
-
-const SERVICES = [
-  { icon: Truck, title: "Nationwide Delivery", copy: "Free above PKR 5,000" },
-  { icon: RotateCcw, title: "7-Day Exchange", copy: "Unused, in original packing" },
-  { icon: Scissors, title: "Any Size, Made to Order", copy: "Stitched to your measurements" },
-  { icon: Headphones, title: "Customer Care", copy: "Mon–Sat, 9am – 9pm PKT" },
-];
 
 const FOOTER_COLUMNS = [
   {
@@ -85,67 +74,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jost.variable} ${prata.variable}`}>
+    <html lang="en" className={`${jost.variable} ${prata.variable} ${greatVibes.variable}`}>
       <body className="flex min-h-screen flex-col bg-white text-ink antialiased">
         <CartProvider>
           <Header />
           <main className="flex-1">{children}</main>
           <CartDrawer />
 
-          <footer className="mt-20 border-t border-line">
-            {/* Service promises */}
-            <div className="border-b border-line bg-frost">
-              <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-px bg-line px-0 lg:grid-cols-4">
-                {SERVICES.map(({ icon: Icon, title, copy }) => (
-                  <div
-                    key={title}
-                    className="flex flex-col items-center gap-2 bg-frost px-4 py-8 text-center"
-                  >
-                    <Icon className="h-5 w-5 text-purple" strokeWidth={1.3} />
-                    <h4 className="eyebrow mt-1 text-ink">{title}</h4>
-                    <p className="text-[11px] text-muted">{copy}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Newsletter */}
-            <div className="border-b border-line bg-lilac">
-              <div className="mx-auto flex max-w-[1500px] flex-col items-center gap-6 px-6 py-14 text-center lg:flex-row lg:justify-between lg:gap-16 lg:text-left xl:px-10">
-                <div className="max-w-md">
-                  <h3 className="font-[family-name:var(--font-display)] text-[26px] leading-tight text-ink">
-                    First look, before anyone else
-                  </h3>
-                  <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
-                    New prints, restocks and the occasional quiet sale. One email, now and then —
-                    never a flood.
-                  </p>
-                </div>
-
-                <form className="flex w-full max-w-md items-center border-b border-ink" action="#">
-                  <input
-                    type="email"
-                    placeholder="Your email address"
-                    aria-label="Email address"
-                    className="w-full bg-transparent py-3 text-[13px] text-ink placeholder-muted focus:outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="eyebrow flex shrink-0 cursor-pointer items-center gap-1.5 py-3 pl-4 text-ink transition-colors hover:text-purple"
-                  >
-                    Subscribe <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </form>
-              </div>
-            </div>
-
+          <footer className="border-t border-line">
             {/* Link columns */}
             <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-x-8 gap-y-10 px-6 py-14 md:grid-cols-4 lg:grid-cols-5 xl:px-10">
               <div className="col-span-2 lg:col-span-2">
-                <span className="font-[family-name:var(--font-display)] text-2xl tracking-[0.3em] text-ink">
+                <span className="block font-[family-name:var(--font-script)] text-[38px] leading-[1.15] text-ink">
                   {BRAND.name}
                 </span>
-                <span className="mt-1 block text-[11px] tracking-[0.28em] text-muted uppercase">
+                <span className="mt-0.5 block text-[10px] uppercase tracking-[0.28em] text-muted">
                   {BRAND.suffix}
                 </span>
                 <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-ink-soft">

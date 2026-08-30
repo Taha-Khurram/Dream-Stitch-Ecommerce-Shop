@@ -6,13 +6,7 @@ import { CategoryFilter } from "./CategoryFilter";
 import { SlidersHorizontal, X } from "lucide-react";
 
 /** Wraps the shared filter rail in a slide-over for narrow viewports. */
-export function MobileFilterSheet({
-  categories,
-  colors,
-}: {
-  categories: Category[];
-  colors?: string[];
-}) {
+export function MobileFilterSheet({ categories }: { categories: Category[] }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -48,11 +42,7 @@ export function MobileFilterSheet({
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-8">
-              <CategoryFilter
-                categories={categories}
-                colors={colors}
-                onNavigate={() => setOpen(false)}
-              />
+              <CategoryFilter categories={categories} onNavigate={() => setOpen(false)} />
             </div>
 
             <div className="border-t border-line p-5">

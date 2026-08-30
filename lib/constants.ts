@@ -5,7 +5,7 @@
  */
 
 export const BRAND = {
-  name: "DREAM STITCH",
+  name: "Dream Stitch",
   suffix: "By Sk",
   tagline: "Premium Bedsheets, Made to Fit",
   email: "care@dreamstitch.pk",
@@ -31,9 +31,9 @@ export interface NavItem {
 }
 
 /**
- * Two ways in, side by side: shoppers arrive either knowing the fabric they
- * want or the bed they need to fit. Custom sizing stays top-level because it
- * is the one thing the high-street cannot match.
+ * Four destinations, nothing more. Everything that used to sit at the top level
+ * — bed sizes, the sale — now lives inside the Shop panel, so the bar stays
+ * short without stranding any route.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -50,13 +50,23 @@ export const NAV_ITEMS: NavItem[] = [
         ],
       },
       {
+        title: "By Bed Size",
+        href: "/shop",
+        links: [
+          { name: "King Size", href: "/shop?size=King%20Size" },
+          { name: "Single Bed", href: "/shop?size=Single" },
+          { name: "Custom Size", href: "/custom" },
+        ],
+      },
+      {
         title: "Popular",
         href: "/shop?sort=rating",
         links: [
+          { name: "Bestsellers", href: "/shop?sort=rating" },
           { name: "Printed Bedsheets", href: "/shop?search=printed" },
           { name: "Plain & Solid", href: "/shop?search=solid" },
           { name: "Embroidered", href: "/shop?search=embroidered" },
-          { name: "Bestsellers", href: "/shop?sort=rating" },
+          { name: "Sale", href: "/shop?sale=true" },
         ],
       },
     ],
@@ -68,40 +78,9 @@ export const NAV_ITEMS: NavItem[] = [
         "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=900&q=80&auto=format&fit=crop",
     },
   },
-  {
-    name: "Shop by Size",
-    href: "/shop",
-    columns: [
-      {
-        title: "Standard Sizes",
-        href: "/shop",
-        links: [
-          { name: "King Size", href: "/shop?size=King%20Size" },
-          { name: "Single Bed", href: "/shop?size=Single" },
-        ],
-      },
-      {
-        title: "Made to Order",
-        href: "/custom",
-        links: [
-          { name: "Order a Custom Size", href: "/custom#request" },
-          { name: "How It Works", href: "/custom#how-it-works" },
-          { name: "Measuring Guide", href: "/custom#measuring" },
-        ],
-      },
-    ],
-    feature: {
-      label: "Any Bed, Any Drop",
-      title: "Stitched to Your Measurements",
-      href: "/custom",
-      image:
-        "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=900&q=80&auto=format&fit=crop",
-    },
-  },
   { name: "Custom Orders", href: "/custom" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
-  { name: "Sale", href: "/shop?sale=true", accent: true },
 ];
 
 /** Bed sizes carried on every stocked set. */

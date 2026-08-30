@@ -1,21 +1,15 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category } from "@/types/ecommerce";
-import { FILTER_SIZES, COLOR_SWATCHES, swatchHex } from "@/lib/constants";
+import { FILTER_SIZES } from "@/lib/constants";
 import { CURRENCY } from "@/lib/format";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface CategoryFilterProps {
   categories: Category[];
-  /**
-   * Colourways present in the current result set. Passed in by the shop page so
-   * the rail never offers a swatch that returns nothing; falls back to the full
-   * house palette if omitted.
-   */
-  colors?: string[];
   /** Rendered inside the mobile filter sheet, which supplies its own chrome. */
   onNavigate?: () => void;
 }
@@ -27,46 +21,30 @@ const PRICE_BANDS = [
   { label: `${CURRENCY} 12,000 & above`, min: 12000, max: null as number | null },
 ];
 
-function Accordion({
-  title,
-  children,
-  defaultOpen = true,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+/**
+ * Groups are always open. With three or four options apiece there was nothing
+ * to collapse — the accordions only added a chevron, a click, and the chance of
+ * hiding a filter from someone who needed it.
+ */
+function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-line py-5">
-      <button
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="eyebrow flex w-full cursor-pointer items-center justify-between text-ink"
-      >
-        {title}
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && <div className="mt-4">{children}</div>}
+    <div className="border-b border-line py-5 last:border-b-0">
+      <span className="eyebrow text-ink">{title}</span>
+      <div className="mt-3.5">{children}</div>
     </div>
   );
 }
 
-function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
+function FilterRail({ categories, onNavigate }: CategoryFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const activeCategory = searchParams.get("category") ?? "all";
   const activeSize = searchParams.get("size");
-  const activeColor = searchParams.get("color");
   const activeMin = searchParams.get("min");
   const activeMax = searchParams.get("max");
   const activeSearch = searchParams.get("search");
   const activeSale = searchParams.get("sale") === "true";
-
-  const swatchNames = colors?.length ? colors : Object.keys(COLOR_SWATCHES);
 
   /** Rebuild the query string, dropping any param set back to null. */
   const buildHref = (patch: Record<string, string | null>) => {
@@ -91,8 +69,7 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
   }
   if (activeSale) activeChips.push({ label: "On sale", clear: { sale: null } });
   if (activeSearch) activeChips.push({ label: `“${activeSearch}”`, clear: { search: null } });
-  if (activeSize) activeChips.push({ label: `Size ${activeSize}`, clear: { size: null } });
-  if (activeColor) activeChips.push({ label: activeColor, clear: { color: null } });
+  if (activeSize) activeChips.push({ label: activeSize, clear: { size: null } });
   if (activeMin || activeMax) {
     const band = PRICE_BANDS.find(
       (b) => String(b.min) === activeMin && String(b.max ?? "") === (activeMax ?? "")
@@ -103,13 +80,18 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
     });
   }
 
+  const listLink = (selected: boolean) =>
+    `text-left transition-colors hover:text-purple ${
+      selected ? "text-ink underline underline-offset-4" : "text-ink-soft"
+    }`;
+
   return (
     <div className="text-[13px]">
       {activeChips.length > 0 && (
         <div className="border-b border-line pb-5">
           <div className="flex items-center justify-between">
             <span className="eyebrow text-muted">Applied</span>
-            <Link href="/shop" onClick={onNavigate} className="eyebrow text-purple link-underline">
+            <Link href="/shop" onClick={onNavigate} className="eyebrow link-underline text-purple">
               Clear All
             </Link>
           </div>
@@ -118,7 +100,7 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
               <button
                 key={chip.label}
                 onClick={() => push(chip.clear)}
-                className="flex cursor-pointer items-center gap-1.5 border border-line bg-frost px-2.5 py-1.5 text-[11px] text-ink transition-colors hover:border-ink"
+                className="flex cursor-pointer items-center gap-1.5 border border-line bg-lilac px-2.5 py-1.5 text-[11px] text-ink transition-colors hover:border-purple"
               >
                 {chip.label}
                 <X className="h-3 w-3 text-muted" />
@@ -128,15 +110,13 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
         </div>
       )}
 
-      <Accordion title="Fabric">
+      <FilterGroup title="Fabric">
         <ul className="space-y-2.5">
           <li>
             <Link
               href={buildHref({ category: null })}
               onClick={onNavigate}
-              className={`transition-colors hover:text-purple ${
-                activeCategory === "all" ? "text-ink underline underline-offset-4" : "text-ink-soft"
-              }`}
+              className={listLink(activeCategory === "all")}
             >
               All Fabrics
             </Link>
@@ -146,20 +126,16 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
               <Link
                 href={buildHref({ category: cat.slug })}
                 onClick={onNavigate}
-                className={`transition-colors hover:text-purple ${
-                  activeCategory === cat.slug
-                    ? "text-ink underline underline-offset-4"
-                    : "text-ink-soft"
-                }`}
+                className={listLink(activeCategory === cat.slug)}
               >
                 {cat.name}
               </Link>
             </li>
           ))}
         </ul>
-      </Accordion>
+      </FilterGroup>
 
-      <Accordion title="Bed Size">
+      <FilterGroup title="Bed Size">
         <div className="flex flex-wrap gap-2">
           {FILTER_SIZES.map((size) => {
             const selected = activeSize === size;
@@ -168,7 +144,7 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
                 key={size}
                 onClick={() => push({ size: selected ? null : size })}
                 aria-pressed={selected}
-                className={`h-9 min-w-10 cursor-pointer border px-2 text-[11px] font-medium tracking-wider transition-colors ${
+                className={`h-9 cursor-pointer border px-3 text-[11px] font-medium tracking-wider transition-colors ${
                   selected
                     ? "border-purple bg-purple text-white"
                     : "border-line text-ink-soft hover:border-purple"
@@ -179,36 +155,9 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
             );
           })}
         </div>
-      </Accordion>
+      </FilterGroup>
 
-      <Accordion title="Colour">
-        <ul className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-          {swatchNames.map((color) => {
-            const selected = activeColor === color;
-            return (
-              <li key={color}>
-                <button
-                  aria-pressed={selected}
-                  onClick={() => push({ color: selected ? null : color })}
-                  className={`flex w-full cursor-pointer items-center gap-2 text-left text-[12px] transition-colors hover:text-purple ${
-                    selected ? "text-ink" : "text-ink-soft"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    data-active={selected}
-                    className="swatch h-4 w-4 shrink-0"
-                    style={{ backgroundColor: swatchHex(color) }}
-                  />
-                  <span className={selected ? "underline underline-offset-4" : ""}>{color}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </Accordion>
-
-      <Accordion title="Price">
+      <FilterGroup title="Price">
         <ul className="space-y-2.5">
           {PRICE_BANDS.map((band) => {
             const selected =
@@ -223,9 +172,7 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
                         : { min: String(band.min), max: band.max ? String(band.max) : null }
                     )
                   }
-                  className={`cursor-pointer transition-colors hover:text-purple ${
-                    selected ? "text-ink underline underline-offset-4" : "text-ink-soft"
-                  }`}
+                  className={`cursor-pointer ${listLink(selected)}`}
                 >
                   {band.label}
                 </button>
@@ -233,7 +180,7 @@ function FilterRail({ categories, colors, onNavigate }: CategoryFilterProps) {
             );
           })}
         </ul>
-      </Accordion>
+      </FilterGroup>
     </div>
   );
 }

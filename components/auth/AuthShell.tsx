@@ -37,7 +37,7 @@ export function AuthShell({
         />
         <div className="absolute inset-0 bg-ink/35" />
         <div className="absolute inset-x-0 bottom-0 p-12">
-          <span className="font-[family-name:var(--font-display)] text-2xl tracking-[0.3em] text-white">
+          <span className="block font-[family-name:var(--font-script)] text-[38px] leading-[1.15] text-white">
             {BRAND.name}
           </span>
           <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-white/85">

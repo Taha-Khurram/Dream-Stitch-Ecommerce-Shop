@@ -5,7 +5,7 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { CategoryFilter } from "@/components/products/CategoryFilter";
 import { MobileFilterSheet } from "@/components/products/MobileFilterSheet";
 import { SortMenu } from "@/components/products/SortMenu";
-import { productSizes, productColors } from "@/lib/product-attributes";
+import { productSizes } from "@/lib/product-attributes";
 import { IMG, img } from "@/lib/imagery";
 import { ChevronRight } from "lucide-react";
 
@@ -19,7 +19,6 @@ interface ShopPageProps {
     search?: string;
     sort?: SortKey;
     size?: string;
-    color?: string;
     min?: string;
     max?: string;
     sale?: string;
@@ -67,16 +66,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const onSale = params.sale === "true";
   const products = fetched.filter((product) => {
     if (params.size && !productSizes(product).includes(params.size)) return false;
-    if (params.color && !productColors(product).includes(params.color)) return false;
     if (onSale && !(Number(product.compare_at_price ?? 0) > Number(product.price))) return false;
     return true;
   });
-
-  // Only offer colours the current selection can actually return, so no swatch
-  // is a dead end.
-  const availableColors = Array.from(
-    new Set(fetched.flatMap((product) => productColors(product)))
-  ).sort();
 
   const activeCategory = categories.find((c) => c.slug === categorySlug);
   const banner = categorySlug ? COLLECTION_BANNER[categorySlug] : undefined;
@@ -140,7 +132,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         <aside className="hidden w-60 shrink-0 lg:block">
           <div className="sticky top-[76px] max-h-[calc(100vh-92px)] overflow-y-auto pb-8 pr-2">
             <h2 className="eyebrow border-b border-ink pb-4 text-ink">Filter</h2>
-            <CategoryFilter categories={categories} colors={availableColors} />
+            <CategoryFilter categories={categories} />
           </div>
         </aside>
 
@@ -153,7 +145,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </p>
 
             <div className="flex items-center gap-4">
-              <MobileFilterSheet categories={categories} colors={availableColors} />
+              <MobileFilterSheet categories={categories} />
               <SortMenu />
             </div>
           </div>

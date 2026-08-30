@@ -30,14 +30,14 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="group inline-flex flex-col items-start leading-none">
       <span
-        className={`font-[family-name:var(--font-display)] tracking-[0.34em] text-ink transition-colors duration-300 group-hover:text-purple ${
-          compact ? "text-[15px]" : "text-[16px] sm:text-[19px]"
+        className={`font-[family-name:var(--font-script)] leading-[1.15] text-ink transition-colors duration-300 group-hover:text-purple ${
+          compact ? "text-[22px]" : "text-[25px] sm:text-[28px]"
         }`}
       >
         {BRAND.name}
       </span>
       {!compact && (
-        <span className="mt-[6px] text-[7px] font-medium uppercase tracking-[0.42em] text-muted">
+        <span className="mt-[3px] text-[7px] font-medium uppercase tracking-[0.42em] text-muted">
           {BRAND.suffix}
         </span>
       )}
