@@ -5,9 +5,19 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 
+/**
+ * Only same-origin relative paths are honoured, so a crafted
+ * `?next=https://evil.example` cannot turn sign-in into an open redirect.
+ */
+function safeNext(value: FormDataEntryValue | null): string {
+  const path = String(value ?? '');
+  return path.startsWith('/') && !path.startsWith('//') ? path : '/';
+}
+
 export async function signIn(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  const next = safeNext(formData.get('next'));
   const supabase = await createClient();
 
   if (!email || !password) {
@@ -24,7 +34,7 @@ export async function signIn(formData: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  redirect(next);
 }
 
 export async function signUp(formData: FormData) {

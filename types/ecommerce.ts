@@ -1,3 +1,27 @@
+export interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: "customer" | "admin";
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Single-row configuration table. Mirrors `store_settings` in
+ * `admin_schema.sql`; `lib/api/settings.ts` falls back to the compiled-in
+ * constants when the migration has not been applied.
+ */
+export interface StoreSettings {
+  brand_email: string | null;
+  brand_phone: string | null;
+  brand_whatsapp: string | null;
+  brand_address: string | null;
+  free_shipping_threshold: number;
+  shipping_fee: number;
+  announcements: string[];
+}
+
 export interface Category {
   id: string;
   name: string;

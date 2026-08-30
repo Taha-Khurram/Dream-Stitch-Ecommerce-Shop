@@ -10,11 +10,11 @@ import {
 import { IMG } from "@/lib/imagery";
 
 interface SignInPageProps {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const { error, message } = await searchParams;
+  const { error, message, next } = await searchParams;
 
   return (
     <AuthShell
@@ -40,6 +40,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       <OrDivider label="Or with email" />
 
       <form action={signIn} className="space-y-6">
+        {next && <input type="hidden" name="next" value={next} />}
+
         <div>
           <label htmlFor="email" className="eyebrow text-muted">
             Email Address

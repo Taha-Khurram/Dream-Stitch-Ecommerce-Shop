@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
+import { getSettings } from "@/lib/api/settings";
 import { z } from "zod";
 
 export async function POST(request: Request) {
@@ -124,7 +125,11 @@ export async function POST(request: Request) {
 
     // Order maths live in lib/pricing so the cart and this route always agree
     const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
-    const totalAmount = calcTotal(subtotal, totalItemCount);
+    const settings = await getSettings();
+    const totalAmount = calcTotal(subtotal, totalItemCount, {
+      freeShippingThreshold: settings.free_shipping_threshold,
+      shippingFee: settings.shipping_fee,
+    });
 
     // 4. Create Order in Supabase
     const { data: newOrder, error: orderInsertError } = await supabase

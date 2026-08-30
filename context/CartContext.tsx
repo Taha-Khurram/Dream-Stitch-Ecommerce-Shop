@@ -2,7 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import type { CartItem, Product } from "@/types/ecommerce";
-import { calcTax, calcShipping, calcTotal } from "@/lib/pricing";
+import {
+  calcTax,
+  calcShipping,
+  calcTotal,
+  DEFAULT_RATES,
+  type DeliveryRates,
+} from "@/lib/pricing";
 
 export interface VariantOptions {
   size?: string | null;
@@ -24,6 +30,8 @@ interface CartContextType {
   tax: number;
   shipping: number;
   totalPrice: number;
+  /** Live delivery rates, configurable from the admin panel. */
+  rates: DeliveryRates;
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
@@ -39,7 +47,13 @@ function lineIdFor(productId: string, variant?: VariantOptions): string {
   return `${productId}::${variant?.size ?? ""}::${variant?.color ?? ""}`;
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({
+  children,
+  rates = DEFAULT_RATES,
+}: {
+  children: React.ReactNode;
+  rates?: DeliveryRates;
+}) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
@@ -178,12 +192,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const tax = useMemo(() => calcTax(subtotal), [subtotal]);
   const shipping = useMemo(
-    () => calcShipping(subtotal, totalItems),
-    [subtotal, totalItems]
+    () => calcShipping(subtotal, totalItems, rates),
+    [subtotal, totalItems, rates]
   );
   const totalPrice = useMemo(
-    () => calcTotal(subtotal, totalItems),
-    [subtotal, totalItems]
+    () => calcTotal(subtotal, totalItems, rates),
+    [subtotal, totalItems, rates]
   );
 
   const contextValue = useMemo<CartContextType>(
@@ -199,6 +213,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       tax,
       shipping,
       totalPrice,
+      rates,
       isOpen,
       openCart,
       closeCart,
@@ -216,6 +231,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       tax,
       shipping,
       totalPrice,
+      rates,
       isOpen,
       openCart,
       closeCart,

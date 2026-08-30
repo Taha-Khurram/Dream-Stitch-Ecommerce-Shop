@@ -6,6 +6,7 @@ import { CartProvider } from "@/context/CartContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
 import { BRAND } from "@/lib/constants";
+import { getSettings } from "@/lib/api/settings";
 import { Instagram, Facebook, Youtube, MapPin, Phone, Mail } from "lucide-react";
 
 const jost = Jost({
@@ -68,16 +69,23 @@ const FOOTER_COLUMNS = [
   },
 ];
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSettings();
+
   return (
     <html lang="en" className={`${jost.variable} ${prata.variable} ${greatVibes.variable}`}>
       <body className="flex min-h-screen flex-col bg-white text-ink antialiased">
-        <CartProvider>
-          <Header />
+        <CartProvider
+          rates={{
+            freeShippingThreshold: settings.free_shipping_threshold,
+            shippingFee: settings.shipping_fee,
+          }}
+        >
+          <Header announcements={settings.announcements} />
           <main className="flex-1">{children}</main>
           <CartDrawer />
 
@@ -99,16 +107,16 @@ export default function RootLayout({
                 <ul className="mt-6 space-y-2.5 text-[12px] text-muted">
                   <li className="flex items-start gap-2.5">
                     <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
-                    <span className="max-w-[16rem]">{BRAND.address}</span>
+                    <span className="max-w-[16rem]">{settings.brand_address}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Phone className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
-                    <span>{BRAND.phone}</span>
+                    <span>{settings.brand_phone}</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Mail className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
-                    <a href={`mailto:${BRAND.email}`} className="link-rule">
-                      {BRAND.email}
+                    <a href={`mailto:${settings.brand_email}`} className="link-rule">
+                      {settings.brand_email}
                     </a>
                   </li>
                 </ul>

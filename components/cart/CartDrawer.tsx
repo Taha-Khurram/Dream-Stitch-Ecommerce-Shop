@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
-import { amountToFreeShipping, FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
+import { amountToFreeShipping } from "@/lib/pricing";
 import { swatchHex, BRAND } from "@/lib/constants";
 import {
   X,
@@ -40,6 +40,7 @@ export function CartDrawer() {
     subtotal,
     shipping,
     totalPrice,
+    rates,
     isOpen,
     closeCart,
   } = useCart();
@@ -119,8 +120,12 @@ export function CartDrawer() {
 
   if (!isOpen) return null;
 
-  const remainingForFreeShipping = amountToFreeShipping(subtotal);
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
+  const remainingForFreeShipping = amountToFreeShipping(subtotal, rates);
+  // A zero threshold means everything ships free, so the bar is already full.
+  const progress =
+    rates.freeShippingThreshold > 0
+      ? Math.min(100, (subtotal / rates.freeShippingThreshold) * 100)
+      : 100;
 
   const inputClass =
     "w-full border-b border-line bg-transparent py-2.5 text-[13px] text-ink placeholder-faint transition-colors focus:border-ink focus:outline-none";

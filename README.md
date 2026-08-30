@@ -34,16 +34,16 @@ cut to the customer's own measurements.
 
 ## The store
 
-Bedsheet shoppers arrive knowing one of two things: the fabric they want, or
-the bed they need to fit. The navigation answers both side by side — **Shop by
-Fabric** and **Shop by Size** — and *Custom Orders* sits top-level rather than
-buried in a dropdown, because made-to-measure is the one thing the high street
-cannot match.
+Four destinations — **Shop · Custom Orders · About · Contact** — in a single
+56px bar. Everything else (fabrics, bed sizes, the sale) lives in the Shop
+dropdown, so the bar stays short without stranding a route. *Custom Orders*
+earns its top-level slot because made-to-measure is the one thing the high
+street cannot match.
 
 | | |
 | :-- | :-- |
-| **Home** | Hero carousel, three fabric tiles, New In, split editorial panels, Bestsellers, custom-demand band, house promises, community grid |
-| **Collection** | `/shop` — banner, breadcrumb, sticky filter rail (fabric · bed size · colour · price), mobile slide-over, sort menu, 4-up grid |
+| **Home** | Hero carousel, three fabric tiles, New In, Bestsellers, custom-demand band, house promises, service strip, newsletter |
+| **Collection** | `/shop` — banner, breadcrumb, sticky filter rail (fabric · bed size · price), mobile slide-over, sort menu, 4-up grid |
 | **Product** | `/shop/[id]` — thumbnail gallery, colourway and bed-size selection, size-guide dialog, service promises, detail accordions |
 | **Custom** | `/custom` — how it works, measuring guide, standard-size table, measurement request form |
 | **Bag** | Slide-over with a free-delivery progress bar and an inline delivery-details step |
@@ -96,6 +96,43 @@ and re-run it. The `.sql` file is generated output.
 
 ---
 
+## Admin panel
+
+`/admin` — catalogue, orders and store settings. Run
+[`admin_schema.sql`](admin_schema.sql) in the **Supabase SQL editor** after the
+seed, then promote yourself:
+
+```sql
+-- register through /signup first, then:
+UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+No signup path grants admin, and there is no service-role key in the app.
+
+| | |
+| :-- | :-- |
+| **Dashboard** | Open orders, revenue, product count, low-stock alerts, recent orders |
+| **Products** | Search, create, edit, delete. Price, compare-at, stock, sizes, colourways, gallery |
+| **Categories** | Inline editing of the three fabrics, with a product count per category |
+| **Orders** | Filter by status, view line items and delivery address, move an order through its states |
+| **Settings** | Contact details, free-delivery threshold, delivery fee, announcement bar copy |
+
+**Security.** RLS is the enforcement point, not the UI. `admin_schema.sql` adds
+an `is_admin()` helper (`SECURITY DEFINER`, so the role lookup is not itself
+subject to RLS) and gates every catalogue write and order read behind it.
+`requireAdmin()` in [`lib/auth/admin.ts`](lib/auth/admin.ts) only buys a clean
+redirect — a forged session that slipped past it would still be refused by
+Postgres. Mutations run as the signed-in user through server actions in
+[`app/admin/actions.ts`](app/admin/actions.ts), so there is one security model
+to audit.
+
+**What settings actually drive.** Saving is not cosmetic: the delivery
+threshold and fee feed the cart's progress bar, the product-page promise and
+the total recorded by `app/api/checkout/route.ts`; contact details render in the
+footer; announcement lines feed the strip above the header.
+
+---
+
 ## Design system
 
 All tokens live in [`app/globals.css`](app/globals.css).
@@ -130,7 +167,9 @@ Utility classes worth knowing: `.link-rule` (underline wipes in on hover),
 
 ```
 app/
-  page.tsx              home — hero, fabrics, New In, editorial, bestsellers
+  page.tsx              home — hero, fabrics, New In, bestsellers, promises
+  admin/                the panel: dashboard, products, categories,
+                        orders, settings, and the server actions behind them
   shop/page.tsx         collection listing with filters and sort
   shop/[id]/page.tsx    product detail
   custom/page.tsx       made-to-measure service and measurement request
@@ -138,14 +177,19 @@ app/
   signin/  signup/      auth, over Supabase
   api/checkout/         order placement, price-verified server-side
 components/
-  layout/               Header (mega-menu, search overlay), SectionHeading
-  home/                 HeroCarousel
+  layout/               Header (one-row bar, mega panel, search overlay),
+                        Section (vertical rhythm), SectionHeading
+  home/                 HeroCarousel, HomeClosing
+  admin/                ActionForm, ProductForm, CategoryEditor,
+                        OrderStatusControl, StatusPill, AdminNav
   products/             ProductCard, QuickAdd, ProductGallery, ProductOptions,
                         CategoryFilter, SortMenu, SizeGuideDialog, …
   cart/CartDrawer.tsx   bag + delivery details + confirmation
   auth/AuthShell.tsx    split editorial layout shared by sign in / register
 lib/
   constants.ts          brand, navigation tree, bed sizes, colour swatches
+  auth/admin.ts         admin gate for the panel
+  api/settings.ts       store settings, falling back to the constants
   format.ts             currency formatting
   pricing.ts            delivery thresholds and order totals
   imagery.ts            verified editorial photography ids

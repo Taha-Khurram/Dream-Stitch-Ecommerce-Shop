@@ -9,7 +9,7 @@ import { ProductAccordions } from "@/components/products/ProductAccordions";
 import { ProductCard } from "@/components/products/ProductCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { formatPrice, discountPercent } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/pricing";
+import { getSettings } from "@/lib/api/settings";
 import { BRAND } from "@/lib/constants";
 import { productImages, productSubtitle, isMadeToOrder } from "@/lib/product-attributes";
 import { ChevronRight, Star, Truck, RotateCcw, Scissors } from "lucide-react";
@@ -48,6 +48,8 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
   if (!product) {
     notFound();
   }
+
+  const settings = await getSettings();
 
   const related = await getProducts({
     categorySlug: product.category?.slug,
@@ -150,7 +152,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
             <li className="flex items-start gap-3">
               <Truck className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
               <span>
-                Free nationwide delivery on orders above {formatPrice(FREE_SHIPPING_THRESHOLD)} ·
+                Free nationwide delivery on orders above {formatPrice(settings.free_shipping_threshold)} ·
                 3–5 working days
               </span>
             </li>
@@ -223,7 +225,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   body: (
                     <p>
                       Dispatched within 24 hours from Karachi. Delivery in 3–5 working days
-                      nationwide, free above {formatPrice(FREE_SHIPPING_THRESHOLD)}. Exchange
+                      nationwide, free above {formatPrice(settings.free_shipping_threshold)}. Exchange
                       within 7 days, unused and in its original packing. Made-to-order sets are cut
                       for one bed only, so they are not exchangeable.
                     </p>

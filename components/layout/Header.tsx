@@ -18,6 +18,7 @@ import { Search, Heart, User as UserIcon, Menu, X, ChevronRight, LogOut } from "
  */
 const ANNOUNCEMENT_MS = 5200;
 
+/** Fallback only — the live list comes from `store_settings` via the layout. */
 const ANNOUNCEMENTS = [
   "Free delivery on orders above PKR 5,000",
   "Custom sizes made to order — any bed, any drop",
@@ -46,7 +47,7 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
 }
 
 /* ── Announcement strip ────────────────────────────────────────────────── */
-function AnnouncementBar() {
+function AnnouncementBar({ messages }: { messages: string[] }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -56,15 +57,15 @@ function AnnouncementBar() {
     if (reduced) return;
 
     const timer = setInterval(
-      () => setIndex((i) => (i + 1) % ANNOUNCEMENTS.length),
+      () => setIndex((i) => (i + 1) % messages.length),
       ANNOUNCEMENT_MS
     );
     return () => clearInterval(timer);
-  }, []);
+  }, [messages.length]);
 
   return (
     <div className="relative h-8 overflow-hidden bg-aubergine text-white">
-      {ANNOUNCEMENTS.map((message, i) => (
+      {messages.map((message, i) => (
         <p
           key={message}
           aria-hidden={i !== index}
@@ -294,7 +295,7 @@ function AccountMenu({
   );
 }
 
-export function Header() {
+export function Header({ announcements }: { announcements?: string[] }) {
   const { totalItems, toggleCart } = useCart();
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -357,7 +358,7 @@ export function Header() {
 
   return (
     <>
-      <AnnouncementBar />
+      <AnnouncementBar messages={announcements?.length ? announcements : ANNOUNCEMENTS} />
 
       <header
         onMouseLeave={scheduleClose}

@@ -30,7 +30,18 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh auth token
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // The admin layout re-checks the role and RLS enforces every write; this
+  // only spares anonymous visitors a pointless round trip to a gated page.
+  if (!user && request.nextUrl.pathname.startsWith("/admin")) {
+    const signIn = request.nextUrl.clone();
+    signIn.pathname = "/signin";
+    signIn.search = `?next=${encodeURIComponent(request.nextUrl.pathname)}`;
+    return NextResponse.redirect(signIn);
+  }
 
   return supabaseResponse;
 }
