@@ -90,6 +90,46 @@
     text-transform: uppercase;
   }
 
+  /* ── Admin surfaces ──────────────────────────────────────────
+     The shop is editorial; the admin is a tool someone reads for
+     an hour at a stretch. It keeps the palette and the square
+     corners but drops the 10px / 0.22em tracked caps, which are a
+     display device and are genuinely hard to read as form labels
+     and table headers. */
+  .admin-label {
+    display: block;
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--color-ink-soft);
+  }
+
+  .admin-hint {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-muted);
+  }
+
+  /* Section titles inside a form — the rung between the page h1 and a field. */
+  .admin-section-title {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    color: var(--color-ink);
+  }
+
+  /* Table headers: still caps, but sized and tracked to be scannable. */
+  .admin-th {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
   .label-track {
     letter-spacing: 0.14em;
     text-transform: uppercase;

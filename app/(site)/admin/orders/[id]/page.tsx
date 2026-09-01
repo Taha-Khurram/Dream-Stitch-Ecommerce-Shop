@@ -58,7 +58,7 @@ export default async function AdminOrderDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h2 className="eyebrow text-ink">Items</h2>
+          <h2 className="admin-section-title">Items</h2>
           <ul className="mt-4 divide-y divide-line border-y border-line">
             {items.map((item) => (
               <li key={item.id ?? item.product_id} className="flex items-center gap-4 py-4">
@@ -73,21 +73,21 @@ export default async function AdminOrderDetailPage({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] text-ink">
+                  <p className="truncate text-sm text-ink">
                     {item.product?.name ?? "Product removed"}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-muted">
+                  <p className="mt-0.5 text-[12px] text-muted">
                     {item.product?.fabric} · {formatPrice(item.unit_price)} × {item.quantity}
                   </p>
                 </div>
-                <span className="shrink-0 text-[13px] tabular-nums text-ink">
+                <span className="shrink-0 text-sm tabular-nums text-ink">
                   {formatPrice(Number(item.unit_price) * item.quantity)}
                 </span>
               </li>
             ))}
           </ul>
 
-          <dl className="mt-6 ml-auto max-w-xs space-y-2 text-[13px]">
+          <dl className="mt-6 ml-auto max-w-xs space-y-2 text-sm">
             <div className="flex justify-between gap-6">
               <dt className="text-muted">Items</dt>
               <dd className="tabular-nums text-ink">{formatPrice(itemsTotal)}</dd>
@@ -109,7 +109,7 @@ export default async function AdminOrderDetailPage({
 
         <div className="space-y-8">
           <section>
-            <h2 className="eyebrow text-ink">Status</h2>
+            <h2 className="admin-section-title">Status</h2>
             <div className="mt-3">
               <StatusPill status={order.status} />
             </div>
@@ -119,9 +119,9 @@ export default async function AdminOrderDetailPage({
           </section>
 
           <section>
-            <h2 className="eyebrow text-ink">Deliver to</h2>
+            <h2 className="admin-section-title">Deliver to</h2>
             {address ? (
-              <address className="mt-3 space-y-1 text-[13px] not-italic leading-relaxed text-ink-soft">
+              <address className="mt-3 space-y-1 text-sm not-italic leading-relaxed text-ink-soft">
                 <p className="text-ink">{address.fullName}</p>
                 <p>{address.streetAddress}</p>
                 <p>
@@ -137,7 +137,7 @@ export default async function AdminOrderDetailPage({
                 )}
               </address>
             ) : (
-              <p className="mt-3 text-[13px] text-muted">No address recorded.</p>
+              <p className="mt-3 text-sm text-muted">No address recorded.</p>
             )}
           </section>
         </div>

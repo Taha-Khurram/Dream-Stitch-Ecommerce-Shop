@@ -28,13 +28,13 @@ export function AdminNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-2.5 px-3 py-2.5 text-[12px] font-medium tracking-[0.08em] uppercase transition-colors ${
+            className={`flex shrink-0 items-center gap-3 px-3 py-2.5 text-[13px] font-medium transition-colors ${
               active
                 ? "bg-purple text-white"
                 : "text-ink-soft hover:bg-lilac hover:text-purple"
             }`}
           >
-            <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+            <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
             {name}
           </Link>
         );

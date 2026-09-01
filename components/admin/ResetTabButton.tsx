@@ -37,12 +37,12 @@ export function ResetTabButton({
             else setError(result.message);
           });
         }}
-        className="flex shrink-0 cursor-pointer items-center gap-1.5 border border-line px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted transition-colors hover:border-purple hover:text-purple disabled:opacity-50"
+        className="flex shrink-0 cursor-pointer items-center gap-1.5 border border-line px-3 py-2 text-[13px] font-medium text-muted transition-colors hover:border-sale hover:bg-sale/5 hover:text-sale disabled:opacity-50"
       >
         <RotateCcw className="h-3.5 w-3.5" />
         {pending ? "Restoring…" : "Restore defaults"}
       </button>
-      {error && <p className="max-w-xs text-right text-[11px] text-sale">{error}</p>}
+      {error && <p className="max-w-xs text-right text-[12px] text-sale">{error}</p>}
     </div>
   );
 }

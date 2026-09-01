@@ -97,7 +97,7 @@ export function CategoryEditor({
                   <h2 className="font-[family-name:var(--font-display)] text-lg text-ink">
                     {category.name}
                   </h2>
-                  <p className="text-[11px] text-muted">
+                  <p className="admin-hint">
                     /{category.slug} · {count} product{count === 1 ? "" : "s"}
                   </p>
                 </div>
@@ -107,7 +107,7 @@ export function CategoryEditor({
                 <button
                   type="button"
                   onClick={() => setOpenId(open ? null : category.id)}
-                  className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-purple"
+                  className="cursor-pointer border border-line px-3 py-2 text-[12px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
                 >
                   {open ? "Close" : "Edit"}
                 </button>
@@ -132,7 +132,7 @@ export function CategoryEditor({
       {adding ? (
         <div className="border border-purple bg-white p-5">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="eyebrow text-purple">New category</h2>
+            <h2 className="admin-section-title text-purple">New category</h2>
             <button
               type="button"
               onClick={() => setAdding(false)}
@@ -150,7 +150,7 @@ export function CategoryEditor({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 border border-dashed border-line py-5 text-[12px] font-medium uppercase tracking-[0.12em] text-muted transition-colors hover:border-purple hover:text-purple"
+          className="flex w-full cursor-pointer items-center justify-center gap-2 border border-dashed border-line py-5 text-[13px] font-medium text-muted transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
         >
           <Plus className="h-4 w-4" /> Add category
         </button>

@@ -40,24 +40,40 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         }
       />
 
-      <form className="mt-6 flex items-center gap-3 border-b border-line pb-4" action="/admin/products">
-        <Search className="h-4 w-4 shrink-0 text-muted" strokeWidth={1.5} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder="Search by name…"
-          aria-label="Search products"
-          className="w-full max-w-sm bg-transparent text-[13px] text-ink placeholder-faint focus:outline-none"
-        />
-        <button type="submit" className="eyebrow link-underline cursor-pointer text-purple">
+      <form className="mt-6 flex flex-wrap items-center gap-3" action="/admin/products">
+        <div className="relative w-full max-w-sm">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+            strokeWidth={1.5}
+          />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search by name…"
+            aria-label="Search products"
+            className="w-full border border-line bg-white py-2.5 pl-9 pr-3 text-sm text-ink transition-colors placeholder-faint hover:border-faint focus:border-purple focus:ring-2 focus:ring-purple/15 focus:outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          className="cursor-pointer border border-line px-4 py-2.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
+        >
           Search
         </button>
+        {q?.trim() && (
+          <Link href="/admin/products" className="text-[13px] text-muted hover:text-purple">
+            Clear
+          </Link>
+        )}
+        <p className="admin-hint ml-auto">
+          {products.length} {products.length === 1 ? "product" : "products"}
+        </p>
       </form>
 
       {products.length === 0 ? (
         <div className="mt-10 border border-line bg-white p-12 text-center">
-          <p className="text-[13px] text-muted">
+          <p className="text-sm text-muted">
             {q ? `Nothing matches “${q}”.` : "No products yet."}
           </p>
           <Link href="/admin/products/new" className="btn-primary mt-6">
@@ -66,12 +82,12 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[46rem] border-collapse text-left text-[13px]">
+          <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-ink">
                 {["Product", "Category", "Price", "Stock", ""].map((head) => (
-                  <th key={head} className="eyebrow pb-3 text-ink">
-                    {head}
+                  <th key={head} className="admin-th pb-3">
+                    {head === "" ? <span className="sr-only">Actions</span> : head}
                   </th>
                 ))}
               </tr>
@@ -82,7 +98,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                 const low = product.stock > 0 && product.stock <= 5;
 
                 return (
-                  <tr key={product.id} className="border-b border-line align-middle">
+                  <tr key={product.id} className="border-b border-line align-middle transition-colors hover:bg-frost">
                     <td className="py-3">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-10 shrink-0 overflow-hidden bg-lilac">
@@ -102,7 +118,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                           >
                             {product.name}
                           </Link>
-                          <span className="text-[11px] text-faint">{product.fabric}</span>
+                          <span className="text-[12px] text-muted">{product.fabric}</span>
                         </div>
                       </div>
                     </td>
@@ -111,7 +127,7 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
                       {formatPrice(product.price)}
                       {product.compare_at_price &&
                         Number(product.compare_at_price) > Number(product.price) && (
-                          <span className="ml-2 text-[11px] text-faint line-through">
+                          <span className="ml-2 text-[12px] text-muted line-through">
                             {formatPrice(product.compare_at_price)}
                           </span>
                         )}

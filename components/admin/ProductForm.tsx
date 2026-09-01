@@ -169,15 +169,17 @@ export function ProductForm({
         />
       </Field>
 
-      <label className="flex cursor-pointer items-center gap-3">
+      <label className="flex cursor-pointer items-start gap-3 border border-line bg-frost p-4">
         <input
           type="checkbox"
           name="is_featured"
           defaultChecked={product?.is_featured ?? false}
-          className="h-4 w-4 accent-[color:var(--color-purple)]"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--color-purple)]"
         />
-        <span className="text-[13px] text-ink">Featured</span>
-        <span className="text-[11px] text-muted">Eligible for the homepage rails</span>
+        <span>
+          <span className="block text-sm font-medium text-ink">Featured</span>
+          <span className="admin-hint">Eligible for the homepage rails</span>
+        </span>
       </label>
     </ActionForm>
   );

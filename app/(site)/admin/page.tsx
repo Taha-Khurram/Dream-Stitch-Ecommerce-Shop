@@ -26,7 +26,7 @@ function Stat({
     <div
       className={`border p-5 ${tone === "alert" ? "border-sale/40 bg-sale/5" : "border-line bg-white"}`}
     >
-      <span className="eyebrow text-muted">{label}</span>
+      <span className="admin-label">{label}</span>
       <p
         className={`mt-3 font-[family-name:var(--font-display)] text-[30px] leading-none tabular-nums ${
           tone === "alert" ? "text-sale" : "text-ink"
@@ -34,7 +34,7 @@ function Stat({
       >
         {value}
       </p>
-      {note && <p className="mt-2 text-[11px] text-muted">{note}</p>}
+      {note && <p className="admin-hint mt-2">{note}</p>}
     </div>
   );
 }
@@ -92,19 +92,19 @@ export default async function AdminDashboard() {
         <section className="mt-12">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-sale" strokeWidth={1.5} />
-            <h2 className="eyebrow text-ink">Running low</h2>
+            <h2 className="admin-section-title">Running low</h2>
           </div>
           <ul className="mt-4 divide-y divide-line border-y border-line">
             {lowStock.map((product) => (
               <li key={product.id} className="flex items-center justify-between gap-4 py-3">
                 <Link
                   href={`/admin/products/${product.id}`}
-                  className="truncate text-[13px] text-ink transition-colors hover:text-purple"
+                  className="truncate text-sm text-ink transition-colors hover:text-purple"
                 >
                   {product.name}
                 </Link>
                 <span
-                  className={`shrink-0 text-[12px] tabular-nums ${
+                  className={`shrink-0 text-[13px] tabular-nums ${
                     product.stock === 0 ? "text-sale" : "text-muted"
                   }`}
                 >
@@ -118,26 +118,26 @@ export default async function AdminDashboard() {
 
       <section className="mt-12">
         <div className="flex items-end justify-between gap-4">
-          <h2 className="eyebrow text-ink">Recent orders</h2>
+          <h2 className="admin-section-title">Recent orders</h2>
           <Link
             href="/admin/orders"
-            className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-purple"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:text-purple"
           >
             All orders <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
 
         {orders.length === 0 ? (
-          <p className="mt-6 border border-line bg-white p-8 text-center text-[13px] text-muted">
+          <p className="mt-6 border border-line bg-white p-8 text-center text-sm text-muted">
             No orders yet. They will appear here the moment one is placed.
           </p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-left text-[13px]">
+            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-ink">
                   {["Order", "Placed", "Status", "Total"].map((head) => (
-                    <th key={head} className="eyebrow pb-3 text-ink">
+                    <th key={head} className="admin-th pb-3">
                       {head}
                     </th>
                   ))}
@@ -145,7 +145,7 @@ export default async function AdminDashboard() {
               </thead>
               <tbody>
                 {orders.slice(0, 8).map((order) => (
-                  <tr key={order.id} className="border-b border-line">
+                  <tr key={order.id} className="border-b border-line transition-colors hover:bg-frost">
                     <td className="py-3.5">
                       <Link
                         href={`/admin/orders/${order.id}`}

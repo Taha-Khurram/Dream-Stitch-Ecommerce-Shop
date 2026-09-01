@@ -20,6 +20,10 @@ const TABS = [{ key: "general", label: "General" }, ...CONTENT_TABS.map((tab) =>
   label: tab.label,
 }))];
 
+function tabHref(key: string) {
+  return key === "general" ? "/admin/settings" : `/admin/settings?tab=${key}`;
+}
+
 export default async function AdminSettingsPage({
   searchParams,
 }: {
@@ -37,30 +41,45 @@ export default async function AdminSettingsPage({
         copy="Everything the storefront reads at render time — contact details, delivery rates, and the copy, imagery and switches behind each page. Saving takes effect on the next page load, no deploy."
       />
 
-      <nav className="mt-6 flex flex-wrap gap-1 border-b border-line pb-px">
-        {TABS.map((tab) => {
-          const current = tab.key === active;
-          return (
-            <Link
-              key={tab.key}
-              href={tab.key === "general" ? "/admin/settings" : `/admin/settings?tab=${tab.key}`}
-              aria-current={current ? "page" : undefined}
-              className={`-mb-px border-b-2 px-3 py-2.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
-                current
-                  ? "border-purple text-purple"
-                  : "border-transparent text-muted hover:text-ink"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      {/* Eight tabs read as one undifferentiated row, so they are grouped by
+          what they actually change: the store's own details, versus the copy
+          on one storefront page. */}
+      <nav aria-label="Settings sections" className="mt-6 border-b border-line">
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-2 pb-px">
+          <span className="admin-th mr-2 py-2.5">Store</span>
+          <TabLink tab={TABS[0]} active={active} />
+
+          <span aria-hidden className="mx-3 hidden h-5 w-px bg-line sm:block" />
+
+          <span className="admin-th mr-2 py-2.5">Page content</span>
+          {TABS.slice(1).map((tab) => (
+            <TabLink key={tab.key} tab={tab} active={active} />
+          ))}
+        </div>
       </nav>
 
       <div className="mt-8 max-w-3xl">
         {active === "general" ? <GeneralSettings /> : <ContentSettings tabKey={active} />}
       </div>
     </div>
+  );
+}
+
+function TabLink({ tab, active }: { tab: { key: string; label: string }; active: string }) {
+  const current = tab.key === active;
+
+  return (
+    <Link
+      href={tabHref(tab.key)}
+      aria-current={current ? "page" : undefined}
+      className={`-mb-px border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors ${
+        current
+          ? "border-purple text-purple"
+          : "border-transparent text-ink-soft hover:border-line hover:text-ink"
+      }`}
+    >
+      {tab.label}
+    </Link>
   );
 }
 
@@ -72,8 +91,8 @@ async function GeneralSettings() {
   return (
     <ActionForm action={saveSettings} submitLabel="Save Settings">
       <section>
-        <h2 className="eyebrow border-b border-line pb-3 text-ink">Contact</h2>
-        <p className="mt-2 text-[12px] text-muted">
+        <h2 className="admin-section-title border-b border-line pb-3">Contact</h2>
+        <p className="admin-hint mt-2">
           Shown in the footer and on the contact page.
         </p>
 
@@ -114,8 +133,8 @@ async function GeneralSettings() {
       </section>
 
       <section>
-        <h2 className="eyebrow border-b border-line pb-3 text-ink">Delivery</h2>
-        <p className="mt-2 text-[12px] text-muted">
+        <h2 className="admin-section-title border-b border-line pb-3">Delivery</h2>
+        <p className="admin-hint mt-2">
           These drive the cart&apos;s free-delivery progress bar, the product page promise and
           the total recorded at checkout.
         </p>
@@ -146,8 +165,8 @@ async function GeneralSettings() {
       </section>
 
       <section>
-        <h2 className="eyebrow border-b border-line pb-3 text-ink">Announcement bar</h2>
-        <p className="mt-2 text-[12px] text-muted">
+        <h2 className="admin-section-title border-b border-line pb-3">Announcement bar</h2>
+        <p className="admin-hint mt-2">
           The strip above the header. Lines cross-fade one at a time, and hold still for
           visitors who prefer reduced motion. Hide the strip itself from the Header tab.
         </p>
@@ -178,7 +197,7 @@ async function ContentSettings({ tabKey }: { tabKey: string }) {
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <p className="max-w-lg text-[13px] text-ink-soft">{tab.copy}</p>
+        <p className="max-w-xl text-sm leading-relaxed text-ink-soft">{tab.copy}</p>
         <ResetTabButton tabKey={tab.key} label={tab.label} onReset={resetContent} />
       </div>
 

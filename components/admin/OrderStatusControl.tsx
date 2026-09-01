@@ -30,10 +30,10 @@ export function OrderStatusControl({ id, current }: { id: string; current: strin
             type="button"
             disabled={pending || status === current}
             onClick={() => move(status)}
-            className={`cursor-pointer border px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] transition-colors disabled:cursor-default ${
+            className={`cursor-pointer border px-3 py-2.5 text-[13px] font-medium capitalize transition-colors disabled:cursor-default ${
               status === current
                 ? "border-purple bg-purple text-white"
-                : "border-line text-ink-soft hover:border-purple hover:text-purple disabled:opacity-50"
+                : "border-line text-ink-soft hover:border-purple hover:bg-lilac hover:text-purple disabled:opacity-50"
             }`}
           >
             {status}
@@ -42,7 +42,7 @@ export function OrderStatusControl({ id, current }: { id: string; current: strin
       </div>
 
       {pending && (
-        <p className="flex items-center gap-2 text-[12px] text-muted">
+        <p className="flex items-center gap-2 text-[13px] text-muted">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
         </p>
       )}
@@ -50,7 +50,7 @@ export function OrderStatusControl({ id, current }: { id: string; current: strin
       {result && !pending && (
         <p
           role="status"
-          className={`flex items-center gap-2 text-[12px] ${result.ok ? "text-jade" : "text-sale"}`}
+          className={`flex items-center gap-2 text-[13px] ${result.ok ? "text-jade" : "text-sale"}`}
         >
           {result.ok ? (
             <Check className="h-3.5 w-3.5 shrink-0" />

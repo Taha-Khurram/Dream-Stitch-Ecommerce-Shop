@@ -11,7 +11,7 @@ import type { SiteContent } from "@/lib/content/defaults";
  */
 export function ContentEditor({ tab, content }: { tab: TabSpec; content: SiteContent }) {
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
       {tab.sections.map((section, index) => (
         <ContentSection key={`${section.path}-${index}`} section={section} content={content} />
       ))}
@@ -32,8 +32,8 @@ function ContentSection({
     <section>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-3">
         <div>
-          <h2 className="eyebrow text-ink">{section.title}</h2>
-          {section.copy && <p className="mt-2 text-[12px] text-muted">{section.copy}</p>}
+          <h2 className="admin-section-title">{section.title}</h2>
+          {section.copy && <p className="admin-hint mt-2">{section.copy}</p>}
         </div>
 
         {section.toggle && (
@@ -46,7 +46,7 @@ function ContentSection({
       </div>
 
       {section.toggleHint && (
-        <p className="mt-2 text-[11px] text-faint">{section.toggleHint}</p>
+        <p className="admin-hint mt-2">{section.toggleHint}</p>
       )}
 
       <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
@@ -76,7 +76,7 @@ function ContentField({
     return (
       <div className={field.hint ? "sm:col-span-2" : ""}>
         <Switch name={name} checked={Boolean(value)} label={field.label} />
-        {field.hint && <p className="mt-1.5 text-[11px] text-faint">{field.hint}</p>}
+        {field.hint && <p className="admin-hint mt-1.5">{field.hint}</p>}
       </div>
     );
   }
@@ -85,11 +85,11 @@ function ContentField({
 
   return (
     <div className={wide ? "sm:col-span-2" : ""}>
-      <label htmlFor={name} className="eyebrow text-muted">
+      <label htmlFor={name} className="admin-label font-medium text-ink">
         {field.label}
       </label>
 
-      <div className="mt-2">
+      <div className="mt-1.5">
         {field.kind === "list" ? (
           <Repeater
             name={name}
@@ -125,7 +125,7 @@ function ContentField({
         )}
       </div>
 
-      {field.hint && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{field.hint}</p>}
+      {field.hint && <p className="admin-hint mt-1.5">{field.hint}</p>}
     </div>
   );
 }
@@ -163,9 +163,7 @@ function Switch({
       <input type="hidden" name={name} value="off" />
       <input type="checkbox" name={name} value="on" defaultChecked={checked} className="peer sr-only" />
       <span className="relative block h-5 w-9 shrink-0 border border-line bg-white transition-colors after:absolute after:left-[3px] after:top-1/2 after:h-3 after:w-3 after:-translate-y-1/2 after:bg-line after:transition-transform peer-checked:border-purple peer-checked:bg-purple peer-checked:after:translate-x-4 peer-checked:after:bg-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-purple" />
-      <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft">
-        {label}
-      </span>
+      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
     </label>
   );
 }

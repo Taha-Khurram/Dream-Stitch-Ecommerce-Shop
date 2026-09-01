@@ -39,10 +39,10 @@ export default async function AdminOrdersPage({
           <Link
             key={filter}
             href={filter === "all" ? "/admin/orders" : `/admin/orders?status=${filter}`}
-            className={`px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+            className={`px-3.5 py-2 text-[13px] font-medium capitalize transition-colors ${
               active === filter
                 ? "bg-purple text-white"
-                : "border border-line text-ink-soft hover:border-purple hover:text-purple"
+                : "border border-line text-ink-soft hover:border-purple hover:bg-lilac hover:text-purple"
             }`}
           >
             {filter}
@@ -51,16 +51,16 @@ export default async function AdminOrdersPage({
       </div>
 
       {orders.length === 0 ? (
-        <p className="mt-10 border border-line bg-white p-12 text-center text-[13px] text-muted">
+        <p className="mt-10 border border-line bg-white p-12 text-center text-sm text-muted">
           {active === "all" ? "No orders yet." : `No ${active} orders.`}
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[44rem] border-collapse text-left text-[13px]">
+          <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-ink">
                 {["Order", "Customer", "Placed", "Status", "Total"].map((head) => (
-                  <th key={head} className="eyebrow pb-3 text-ink">
+                  <th key={head} className="admin-th pb-3">
                     {head}
                   </th>
                 ))}
@@ -68,7 +68,7 @@ export default async function AdminOrdersPage({
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} className="border-b border-line">
+                <tr key={order.id} className="border-b border-line transition-colors hover:bg-frost">
                   <td className="py-3.5">
                     <Link
                       href={`/admin/orders/${order.id}`}

@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               needs to say which surface you are on. */}
           <Link
             href="/admin"
-            className="block text-[9px] font-medium uppercase tracking-[0.32em] text-purple transition-colors hover:text-purple-deep"
+            className="admin-th block text-purple transition-colors hover:text-purple-deep"
           >
             Admin
           </Link>
@@ -38,12 +38,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
 
           <div className="mt-8 border-t border-line pt-5 lg:mt-10">
-            <p className="truncate text-[11px] text-muted" title={profile.email ?? undefined}>
+            <p className="truncate text-[12px] text-muted" title={profile.email ?? undefined}>
               {profile.email}
             </p>
             <Link
               href="/"
-              className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-purple"
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:text-purple"
             >
               View store <ArrowUpRight className="h-3 w-3" />
             </Link>

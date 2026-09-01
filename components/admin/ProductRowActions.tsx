@@ -10,7 +10,7 @@ export function ProductRowActions({ id, name }: { id: string; name: string }) {
     <div className="flex items-center justify-end gap-3">
       <Link
         href={`/admin/products/${id}`}
-        className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft transition-colors hover:text-purple"
+        className="border border-line px-3 py-2 text-[12px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
       >
         Edit
       </Link>
