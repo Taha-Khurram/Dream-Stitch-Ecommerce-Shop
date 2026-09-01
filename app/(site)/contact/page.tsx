@@ -2,28 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { BRAND } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
-import { Mail, Phone, MessageCircle, MapPin, Plus, Minus, Check } from "lucide-react";
-
-/* Placeholder locations — replace with your real showroom and stockists. */
-const STORES = [
-  {
-    city: "Karachi — The Studio",
-    address: "Plot 42, Textile Avenue, S.I.T.E. Industrial Area",
-    hours: "10am – 7pm",
-  },
-  {
-    city: "Karachi — Showroom",
-    address: "Shop 14, Badar Commercial, DHA Phase V",
-    hours: "12pm – 9pm",
-  },
-  {
-    city: "Lahore — Stockist",
-    address: "Shop 8, Y Block Commercial, DHA Phase III",
-    hours: "12pm – 9pm",
-  },
-];
+import { Plus, Minus, Check } from "lucide-react";
 
 const FAQS = [
   {
@@ -78,36 +58,14 @@ export default function ContactPage() {
             Customer Care
           </h1>
           <p className="mt-3 max-w-md text-[13px] leading-relaxed text-white/85">
-            Monday to Saturday, 9am – 9pm PKT. We answer most messages within a few hours.
+            We are available 24/7 online for your concerns — send a message any time and we
+            answer within a few hours.
           </p>
         </div>
       </section>
 
-      {/* Contact channels */}
-      <section className="border-b border-line">
-        <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-px bg-line sm:grid-cols-3">
-          {[
-            { icon: Phone, label: "Call Us", value: BRAND.phone, href: `tel:${BRAND.phone.replace(/\s/g, "")}` },
-            { icon: Mail, label: "Email", value: BRAND.email, href: `mailto:${BRAND.email}` },
-            { icon: MessageCircle, label: "WhatsApp", value: BRAND.whatsapp, href: "#" },
-          ].map(({ icon: Icon, label, value, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="group flex flex-col items-center gap-2 bg-white px-6 py-10 text-center transition-colors hover:bg-frost"
-            >
-              <Icon className="h-5 w-5 text-purple" strokeWidth={1.3} />
-              <span className="eyebrow mt-1 text-ink">{label}</span>
-              <span className="text-[13px] text-ink-soft transition-colors group-hover:text-purple">
-                {value}
-              </span>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Form + stores */}
-      <section className="mx-auto grid max-w-[1500px] grid-cols-1 gap-16 px-6 py-16 lg:grid-cols-2 sm:py-20 xl:px-10">
+      {/* Form */}
+      <section className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
         <div>
           <span className="eyebrow text-purple">Write to Us</span>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink">
@@ -203,31 +161,6 @@ export default function ContactPage() {
             </form>
           )}
         </div>
-
-        <div>
-          <span className="eyebrow text-purple">Visit Us</span>
-          <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink">
-            Where to find us
-          </h2>
-
-          <div className="mt-8 divide-y divide-line border-y border-line">
-            {STORES.map((store) => (
-              <div key={store.city} className="flex items-start gap-4 py-5">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.4} />
-                <div>
-                  <h3 className="text-[14px] text-ink">{store.city}</h3>
-                  <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">{store.address}</p>
-                  <p className="mt-1 text-[11px] text-muted">Open daily · {store.hours}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 bg-frost p-6">
-            <span className="eyebrow text-muted">Head Office</span>
-            <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">{BRAND.address}</p>
-          </div>
-        </div>
       </section>
 
       {/* FAQs */}
@@ -270,7 +203,7 @@ export default function ContactPage() {
             <Link href="/custom" className="link-rule text-ink">
               Start a custom order
             </Link>{" "}
-            or call us — a person picks up.
+            or write to us above — a person always replies.
           </p>
         </div>
       </section>

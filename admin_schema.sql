@@ -100,7 +100,7 @@ INSERT INTO public.store_settings (
 ) VALUES (
     1,
     'care@dreamstitch.pk',
-    '+92 21 111 373 848',
+    '03331166929',
     '+92 300 373 8480',
     'Plot 42, Textile Avenue, S.I.T.E. Industrial Area, Karachi, Pakistan',
     5000,

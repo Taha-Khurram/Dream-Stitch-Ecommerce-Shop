@@ -9,7 +9,7 @@ export const BRAND = {
   suffix: "By Sk",
   tagline: "Premium Bedsheets, Made to Fit",
   email: "care@dreamstitch.pk",
-  phone: "+92 21 111 373 848",
+  phone: "03331166929",
   whatsapp: "+92 300 373 8480",
   address: "Plot 42, Textile Avenue, S.I.T.E. Industrial Area, Karachi, Pakistan",
 } as const;
