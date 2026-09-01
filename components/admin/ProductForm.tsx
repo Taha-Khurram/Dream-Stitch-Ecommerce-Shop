@@ -1,5 +1,6 @@
 import React from "react";
 import { ActionForm, Field } from "./ActionForm";
+import { MediaListField } from "./MediaField";
 import { inputClass } from "./field-styles";
 import { saveProduct } from "@/app/(site)/admin/actions";
 import { CURRENCY } from "@/lib/format";
@@ -18,6 +19,9 @@ export function ProductForm({
   categories: Category[];
 }) {
   const editing = Boolean(product);
+  // Only needs to be unique, not readable back: uploads for a product
+  // that has no id yet still need a folder of their own.
+  const draftId = `draft-${Date.now().toString(36)}`;
 
   return (
     <ActionForm
@@ -157,15 +161,15 @@ export function ProductForm({
       <Field
         label="Images"
         name="images"
-        hint="One URL per line. The first becomes the main shot; the second drives the hover cross-fade on product cards."
+        hint="Drop files to upload, or paste a URL. Reorder with the arrows."
       >
-        <textarea
-          id="images"
+        {/* A draft folder keeps a new product's uploads together: the real
+            product id does not exist until the form is saved. */}
+        <MediaListField
+          key={(product?.images ?? []).join("|")}
           name="images"
-          rows={4}
-          defaultValue={(product?.images ?? []).join("\n")}
-          placeholder={"https://…/front.jpg\nhttps://…/detail.jpg"}
-          className={`${inputClass} resize-y font-[family-name:var(--font-sans)] text-[12px]`}
+          value={product?.images ?? []}
+          folder={`products/${product?.id ?? draftId}`}
         />
       </Field>
 

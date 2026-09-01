@@ -14,12 +14,15 @@
  *     fingerprint cached in localStorage. A dropped connection resumes from
  *     the last completed chunk instead of restarting a 90 MB clip, and the
  *     same file re-dropped after a reload picks up where it stopped.
+ *     tus-js-client is ~85 kB, and most uploads are a 2 MB photograph that
+ *     never touches it, so it is imported on demand rather than bundled into
+ *     every admin page that can accept a file.
  *
  * Neither path transforms the bytes. The file object handed in is the file
  * object written to the bucket.
  */
 
-import * as tus from "tus-js-client";
+import type { Upload as TusUpload } from "tus-js-client";
 import {
   MEDIA_CACHE_SECONDS,
   PRODUCT_MEDIA_BUCKET,
@@ -130,7 +133,7 @@ function uploadResumable({
   accessToken,
   onProgress,
 }: UploadRequest): UploadHandle {
-  let upload: tus.Upload | undefined;
+  let upload: TusUpload | undefined;
   let cancelled = false;
   // tus's `abort()` stops the upload without emitting onError, so cancelling
   // has to settle the promise itself.
@@ -139,48 +142,54 @@ function uploadResumable({
   const done = new Promise<void>((resolve, reject) => {
     settleCancelled = () => reject(new UploadCancelledError());
 
-    upload = new tus.Upload(file, {
-      endpoint: storageResumableEndpoint(),
-      // Back off through a network blip rather than failing the file.
-      retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        apikey: anonKey(),
-        "x-upsert": "false",
-      },
-      // Supabase requires exactly this chunk size.
-      chunkSize: RESUMABLE_CHUNK_SIZE,
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      // Key the resume record on the object key, not on tus's default of
-      // name+size+mtime. Otherwise re-uploading the same file under a new key
-      // would resume the *old* upload URL and write the bytes to the old key,
-      // leaving the caller recording a path nothing was written to.
-      fingerprint: async () => `tus-${PRODUCT_MEDIA_BUCKET}-${path}`,
-      metadata: {
-        bucketName: PRODUCT_MEDIA_BUCKET,
-        objectName: path,
-        contentType: file.type,
-        cacheControl: MEDIA_CACHE_SECONDS,
-      },
-      onProgress: (loaded, total) => onProgress?.(loaded, total),
-      onSuccess: () => resolve(),
-      onError: (error) =>
-        reject(cancelled ? new UploadCancelledError() : error),
-    });
+    void import("tus-js-client")
+      .then(async (tus) => {
+        if (cancelled) return;
 
-    // A file re-dropped after a reload resumes instead of restarting.
-    const started = upload;
-    started
-      .findPreviousUploads()
-      .then((previous) => {
-        if (previous.length > 0) started.resumeFromPreviousUpload(previous[0]);
-        if (!cancelled) started.start();
+        const instance = new tus.Upload(file, {
+          endpoint: storageResumableEndpoint(),
+          // Back off through a network blip rather than failing the file.
+          retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+            apikey: anonKey(),
+            "x-upsert": "false",
+          },
+          // Supabase requires exactly this chunk size.
+          chunkSize: RESUMABLE_CHUNK_SIZE,
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          // Key the resume record on the object key, not on tus's default of
+          // name+size+mtime. Otherwise re-uploading the same file under a new key
+          // would resume the *old* upload URL and write the bytes to the old key,
+          // leaving the caller recording a path nothing was written to.
+          fingerprint: async () => `tus-${PRODUCT_MEDIA_BUCKET}-${path}`,
+          metadata: {
+            bucketName: PRODUCT_MEDIA_BUCKET,
+            objectName: path,
+            contentType: file.type,
+            cacheControl: MEDIA_CACHE_SECONDS,
+          },
+          onProgress: (loaded, total) => onProgress?.(loaded, total),
+          onSuccess: () => resolve(),
+          onError: (error) =>
+            reject(cancelled ? new UploadCancelledError() : error),
+        });
+        upload = instance;
+
+        // A file re-dropped after a reload resumes instead of restarting.
+        try {
+          const previous = await instance.findPreviousUploads();
+          if (previous.length > 0) instance.resumeFromPreviousUpload(previous[0]);
+        } catch {
+          // No fingerprint store (private mode, storage disabled) — just start.
+        }
+
+        if (!cancelled) instance.start();
       })
-      .catch(() => {
-        // No fingerprint store (private mode, storage disabled) — just start.
-        if (!cancelled) started.start();
-      });
+      .catch((cause) =>
+        reject(cause instanceof Error ? cause : new Error("Upload failed to start"))
+      );
   });
 
   return {

@@ -489,10 +489,12 @@ export function ProductMediaUploader({
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium tracking-wide text-ink uppercase">
-            Product media
+            Media library
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Originals are stored uncompressed. Up to {formatBytes(MAX_MEDIA_BYTES)} per
+            Video and full-resolution masters, tracked in <code>product_media</code>.
+            The storefront gallery renders the <strong>Images</strong> list above; this
+            is where footage and originals live. Up to {formatBytes(MAX_MEDIA_BYTES)} per
             file — JPEG, PNG, WebP, AVIF, MP4, WebM, MOV.
           </p>
         </div>

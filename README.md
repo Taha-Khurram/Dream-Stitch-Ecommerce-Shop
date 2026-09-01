@@ -163,20 +163,27 @@ rendering for an image, the master for a video.
 | | |
 | :-- | :-- |
 | **Bucket** | 100 MB ceiling and a MIME allow-list enforced by storage-api itself — jpeg, png, webp, avif; mp4, webm, mov |
-| **Keys** | `products/{product-id}/{timestamp}-{name}`, so an object is immutable — a replaced shot is a new key, which makes a year-long cache header safe |
-| **Transport** | one XHR request up to 6 MB; TUS in 6 MB chunks above it and for all video, fingerprinted in `localStorage` so a dropped connection resumes instead of restarting a 90 MB clip. Four files in flight at once |
+| **Keys** | `products/{product-id}/{timestamp}-{name}` for product shots, `site/{field}/…` for storefront chrome. Both shapes are pinned by the storage policy, and an object key is immutable — a replaced shot is a new key, which makes a year-long cache header safe |
+| **Transport** | one XHR request up to 6 MB; TUS in 6 MB chunks above it and for all video, fingerprinted on the object key so a dropped connection resumes instead of restarting a 90 MB clip. Four files in flight at once in the media library. tus-js-client loads on demand, not into every admin page |
 | **Atomicity** | a `product_media` row is written only once its object commits, and a failed insert deletes the object rather than orphan it in the bucket |
 | **Primary shot** | a partial unique index permits one per product, and a trigger demotes the incumbent — so "set as primary" stays a single `UPDATE` |
-| **Writes** | RLS on both `storage.objects` and `product_media`, through `can_manage_product_media()`, which already accepts a future `seller` role. The upload path is pinned to `products/<id>/` by the policy itself |
+| **Writes** | RLS on both `storage.objects` and `product_media`, through `can_manage_product_media()`, which already accepts a future `seller` role |
 
 Image transformations are a paid-plan feature — on the free tier the render URL
 returns 400 — which is why `productMediaSrc()` takes a `transform` flag that can
 be switched off project-wide from one place.
 
-> **Where it is mounted.** `ProductMediaUploader` sits below the form on
-> `/admin/products/[id]` — an edit page, because a product id has to exist
-> before media can hang off it. The storefront gallery still reads the `images`
-> text array the seed fills in; pointing it at `product_media` is the next step.
+**Where uploading lives.** Two controls, because the storefront reads two
+different things:
+
+| | |
+| :-- | :-- |
+| **Every image field** | The settings tabs (`kind: "image"` fields and repeater image columns), the category editor, and the product form's *Images* list. [`MediaField`](components/admin/MediaField.tsx) keeps the URL box — paste still works — and adds click-or-drop upload with a thumbnail and progress. Images only: these values end up in `<img>` tags, and an `.mp4` there is a broken tile |
+| **Media library** | [`ProductMediaUploader`](components/admin/ProductMediaUploader.tsx) below the product form on `/admin/products/[id]`: multi-file, video, resumable, per-file progress, cancel/retry, writing `product_media` rows. This is where footage and full-resolution masters go |
+
+The storefront gallery still renders the `images` text array, so an uploaded
+image shows up there immediately; pointing the gallery at `product_media` — and
+with it video on the product page — is the next step.
 
 ---
 

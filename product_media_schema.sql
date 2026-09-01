@@ -95,9 +95,12 @@ ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
     bucket_id = 'product-media'
     AND public.can_manage_product_media()
-    -- Everything must land under products/<product-id>/<file>, so a future
-    -- seller role can never write into a path outside that shape.
-    AND (storage.foldername(name))[1] = 'products'
+    -- Two folder shapes, both exactly two levels deep, so a future seller role
+    -- can never write anywhere else in the bucket:
+    --   products/<product-id>/<file>  product photography and video
+    --   site/<field>/<file>           storefront chrome — hero backgrounds,
+    --                                 category tiles, section imagery
+    AND (storage.foldername(name))[1] IN ('products', 'site')
     AND array_length(storage.foldername(name), 1) = 2
 );
 
@@ -210,9 +213,27 @@ USING (public.can_manage_product_media());
 --    invisible and sweepable while a stray row renders as a hole in the
 --    gallery. Sweep whatever slips through with:
 --
---        SELECT name FROM storage.objects o
+--        SELECT o.name FROM storage.objects o
 --         WHERE o.bucket_id = 'product-media'
 --           AND NOT EXISTS (
 --               SELECT 1 FROM public.product_media m WHERE m.file_path = o.name
+--           )
+--           -- The admin forms store uploads as URLs in these three places
+--           -- rather than as product_media rows. Check them before deleting
+--           -- anything, or a swept object is a hole in the storefront.
+--           AND NOT EXISTS (
+--               SELECT 1 FROM public.products p
+--                WHERE p.image_url LIKE '%' || o.name
+--                   OR EXISTS (
+--                       SELECT 1 FROM unnest(coalesce(p.images, '{}')) u
+--                        WHERE u LIKE '%' || o.name
+--                   )
+--           )
+--           AND NOT EXISTS (
+--               SELECT 1 FROM public.categories c WHERE c.image_url LIKE '%' || o.name
+--           )
+--           AND NOT EXISTS (
+--               SELECT 1 FROM public.store_settings s
+--                WHERE s.content::text LIKE '%' || o.name || '%'
 --           );
 -- ============================================================================

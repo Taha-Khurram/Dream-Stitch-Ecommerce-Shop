@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { ActionForm, DeleteButton, Field } from "./ActionForm";
 import { inputClass } from "./field-styles";
+import { MediaField } from "./MediaField";
+import { siteFolder } from "@/lib/supabase/storage";
 import { saveCategory, deleteCategory } from "@/app/(site)/admin/actions";
 import type { Category } from "@/types/ecommerce";
 import { Plus, X } from "lucide-react";
@@ -48,15 +50,16 @@ function CategoryFields({ category }: { category?: Category }) {
       </Field>
 
       <Field
-        label="Image URL"
+        label="Image"
         name={`image-${category?.id ?? "new"}`}
-        hint="Used for the homepage tile and the shop banner."
+        hint="The homepage tile and the shop banner. Click the thumbnail to upload one."
       >
-        <input
+        <MediaField
+          key={`${category?.id ?? "new"}:${category?.image_url ?? ""}`}
           name="image_url"
-          defaultValue={category?.image_url ?? ""}
-          placeholder="https://…"
-          className={`${inputClass} text-[12px]`}
+          value={category?.image_url ?? ""}
+          folder={siteFolder(`category-${category?.slug ?? "new"}`)}
+          compact
         />
       </Field>
     </>

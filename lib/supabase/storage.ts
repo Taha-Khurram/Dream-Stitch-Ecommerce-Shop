@@ -89,8 +89,15 @@ export type MediaValidation =
  * Front-line validation. Deliberately duplicated by the bucket's own
  * allow-list: this one produces a sentence for a human, that one is the
  * security boundary.
+ *
+ * `allow` narrows it further for fields that can only render one kind — a
+ * storefront `<img>` pointed at an .mp4 is a broken tile, so the field that
+ * feeds it refuses video up front rather than storing something unusable.
  */
-export function validateMediaFile(file: File): MediaValidation {
+export function validateMediaFile(
+  file: File,
+  allow: readonly MediaType[] = ["image", "video"]
+): MediaValidation {
   const mediaType = mediaTypeFor(file.type);
 
   if (!mediaType) {
@@ -99,6 +106,15 @@ export function validateMediaFile(file: File): MediaValidation {
       reason: file.type
         ? `${file.type} is not an accepted format`
         : "Unrecognised file type",
+    };
+  }
+
+  if (!allow.includes(mediaType)) {
+    return {
+      ok: false,
+      reason: allow.includes("image")
+        ? "This field takes an image, not a video"
+        : "This field takes a video",
     };
   }
 
@@ -143,13 +159,36 @@ export function sanitizeFileName(name: string): string {
 }
 
 /**
- * `products/{product_id}/{timestamp}-{sanitized}` — the product id partitions
- * the bucket, and the timestamp makes a collision require two uploads of the
- * same filename inside the same millisecond. Uploads are non-upsert, so even
- * that fails loudly rather than overwriting a master.
+ * `{folder}/{timestamp}-{sanitized}` — the folder partitions the bucket, and
+ * the timestamp makes a collision require two uploads of the same filename
+ * inside the same millisecond. Uploads are non-upsert, so even that fails
+ * loudly rather than overwriting a master.
+ *
+ * The storage policy admits exactly two folder shapes, so `folder` must be
+ * either `products/<product-id>` or `site/<slug>`.
  */
+export function buildUploadPath(folder: string, file: File): string {
+  const clean = folder.replace(/^\/+|\/+$/g, "");
+  return `${clean}/${Date.now()}-${sanitizeFileName(file.name)}`;
+}
+
 export function buildMediaPath(productId: string, file: File): string {
-  return `products/${productId}/${Date.now()}-${sanitizeFileName(file.name)}`;
+  return buildUploadPath(`products/${productId}`, file);
+}
+
+/**
+ * Folder for a storefront asset that is not a product shot — a hero
+ * background, a category tile. Keyed by the field it belongs to, so the bucket
+ * stays browsable: `site/home-hero-image`.
+ */
+export function siteFolder(fieldName: string): string {
+  const slug =
+    fieldName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "misc";
+  return `site/${slug}`;
 }
 
 /** Percent-encode each segment; the separators have to survive. */

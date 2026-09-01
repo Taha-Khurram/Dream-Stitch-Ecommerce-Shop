@@ -1,13 +1,16 @@
 import React from "react";
 import { inputClass } from "@/components/admin/field-styles";
 import { Repeater } from "@/components/admin/Repeater";
+import { MediaField } from "@/components/admin/MediaField";
 import type { FieldSpec, SectionSpec, TabSpec } from "@/lib/content/fields";
+import { siteFolder } from "@/lib/supabase/storage";
 import type { SiteContent } from "@/lib/content/defaults";
 
 /**
  * Renders one tab of the content editor from its spec. Everything except the
- * repeaters is plain HTML — the switches are CSS-only — so a tab of forty
- * fields ships no client JavaScript beyond the lists that genuinely need it.
+ * repeaters and the image fields is plain HTML — the switches are CSS-only —
+ * so a tab of forty fields ships client JavaScript only for the controls that
+ * genuinely need it: reorderable lists, and anything that uploads.
  */
 export function ContentEditor({ tab, content }: { tab: TabSpec; content: SiteContent }) {
   return (
@@ -114,7 +117,12 @@ function ContentField({
             className={`${inputClass} resize-y`}
           />
         ) : field.kind === "image" ? (
-          <ImageField name={name} value={String(value ?? "")} />
+          <MediaField
+            key={`${name}:${String(value ?? "")}`}
+            name={name}
+            value={String(value ?? "")}
+            folder={siteFolder(name)}
+          />
         ) : (
           <input
             id={name}
@@ -126,21 +134,6 @@ function ContentField({
       </div>
 
       {field.hint && <p className="admin-hint mt-1.5">{field.hint}</p>}
-    </div>
-  );
-}
-
-/** A URL box with the picture it currently points at, so a typo is obvious. */
-function ImageField({ name, value }: { name: string; value: string }) {
-  return (
-    <div className="flex items-start gap-4">
-      <div className="h-16 w-24 shrink-0 overflow-hidden border border-line bg-lilac">
-        {value && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={value} alt="" className="h-full w-full object-cover object-center" />
-        )}
-      </div>
-      <input id={name} name={name} defaultValue={value} className={inputClass} />
     </div>
   );
 }
