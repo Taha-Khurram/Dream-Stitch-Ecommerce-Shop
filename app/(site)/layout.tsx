@@ -4,6 +4,7 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { StorefrontOnly } from "@/components/layout/StorefrontOnly";
 import { getSettings } from "@/lib/api/settings";
 import { isAdmin } from "@/lib/auth/admin";
 import { BackToTop } from "@/components/motion/BackToTop";
@@ -23,7 +24,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <Header announcements={settings.announcements} isAdmin={admin} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
-        <SiteFooter settings={settings} />
+        <StorefrontOnly>
+          <SiteFooter settings={settings} />
+        </StorefrontOnly>
         <BackToTop />
       </WishlistProvider>
     </CartProvider>
