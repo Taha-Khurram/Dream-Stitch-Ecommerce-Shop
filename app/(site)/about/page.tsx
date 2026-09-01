@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { SectionHeading } from "@/components/layout/SectionHeading";
 import { BRAND } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
 
@@ -10,30 +9,6 @@ export const metadata: Metadata = {
   description:
     "How Dream Stitch By Sk chooses its cloth, cuts every set to size and hand-finishes premium bedsheets in pure cotton, cotton zeen and cotton satin.",
 };
-
-/* Placeholder dates — swap for the real founding years before launch. */
-const MILESTONES = [
-  {
-    year: "2018",
-    title: "One table, one bolt of cotton",
-    copy: "A single order of pure cotton, cut into forty sets and sold to neighbours who kept asking for more.",
-  },
-  {
-    year: "2020",
-    title: "The custom order that started it",
-    copy: "A customer with an old wooden frame no standard sheet would fit. We cut to her numbers, and never stopped.",
-  },
-  {
-    year: "2023",
-    title: "Three fabrics, one standard",
-    copy: "Cotton zeen and cotton satin join pure cotton — each chosen on the roll, not from a catalogue.",
-  },
-  {
-    year: "2026",
-    title: "Made to order, nationwide",
-    copy: "Custom sizing shipped to every city in Pakistan, still cut and checked by the same hands.",
-  },
-];
 
 const VALUES = [
   {
@@ -118,27 +93,6 @@ export default function AboutPage() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Timeline */}
-      <section className="mx-auto max-w-[1500px] px-6 py-16 sm:py-24 xl:px-10">
-        <SectionHeading eyebrow="Milestones" title="How we got here" />
-
-        <div
-          className="mt-14 grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-4"
-          data-reveal-stagger
-          suppressHydrationWarning
-        >
-          {MILESTONES.map((milestone) => (
-            <div key={milestone.year} className="bg-white p-8">
-              <span className="font-[family-name:var(--font-display)] text-[34px] text-purple">
-                {milestone.year}
-              </span>
-              <h3 className="mt-3 text-[14px] text-ink">{milestone.title}</h3>
-              <p className="mt-2 text-[12px] leading-relaxed text-ink-soft">{milestone.copy}</p>
-            </div>
-          ))}
         </div>
       </section>
 
