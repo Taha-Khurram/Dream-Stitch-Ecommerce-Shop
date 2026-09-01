@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface HeroSlide {
   eyebrow: string;
@@ -44,8 +43,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   return (
     <section
       className="relative h-[78vh] max-h-[760px] min-h-[520px] w-full overflow-hidden bg-lilac"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
       aria-roledescription="carousel"
@@ -119,36 +116,19 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       })}
 
       {slides.length > 1 && (
-        <>
-          <button
-            onClick={() => go(index - 1)}
-            aria-label="Previous slide"
-            className="absolute left-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center border border-white/50 text-white transition-colors hover:bg-white hover:text-ink sm:flex"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => go(index + 1)}
-            aria-label="Next slide"
-            className="absolute right-4 top-1/2 hidden h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center border border-white/50 text-white transition-colors hover:bg-white hover:text-ink sm:flex"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-
-          <div className="absolute bottom-7 left-1/2 flex -translate-x-1/2 items-center gap-2.5">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.title}
-                onClick={() => go(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                aria-current={i === index}
-                className={`h-[2px] cursor-pointer transition-all duration-500 ${
-                  i === index ? "w-10 bg-white" : "w-5 bg-white/45 hover:bg-white/70"
-                }`}
-              />
-            ))}
-          </div>
-        </>
+        <div className="absolute bottom-7 left-1/2 flex -translate-x-1/2 items-center gap-2.5">
+          {slides.map((slide, i) => (
+            <button
+              key={slide.title}
+              onClick={() => go(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === index}
+              className={`h-[2px] cursor-pointer transition-all duration-500 ${
+                i === index ? "w-10 bg-white" : "w-5 bg-white/45 hover:bg-white/70"
+              }`}
+            />
+          ))}
+        </div>
       )}
     </section>
   );
