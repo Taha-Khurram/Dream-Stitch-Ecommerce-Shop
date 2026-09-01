@@ -6,6 +6,7 @@ import { HeroCarousel, type HeroSlide } from "@/components/home/HeroCarousel";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Section, HEADING_GAP, GRID_GAP } from "@/components/layout/Section";
 import { HomeClosing } from "@/components/home/HomeClosing";
+import { FabricCarousel, type FabricTile } from "@/components/home/FabricCarousel";
 import { IMG, img } from "@/lib/imagery";
 import { Ruler, Droplets, Layers, Hand } from "lucide-react";
 
@@ -45,6 +46,10 @@ const CATEGORY_TILES = [
   { name: "Cotton Zeen", slug: "cotton-zeen", image: IMG.catCottonZeen },
   { name: "Cotton Satin", slug: "cotton-satin", image: IMG.catCottonSatin },
 ];
+
+/* The rail is the fabric story, in weave order — not whatever the categories
+   table happens to sort to. Anything unrecognised is left to the shop filter. */
+const FABRIC_ORDER = CATEGORY_TILES.map((tile) => tile.slug);
 
 const CATEGORY_IMAGE_BY_SLUG: Record<string, string> = {
   "pure-cotton": IMG.catPureCotton,
@@ -93,14 +98,23 @@ export default async function HomePage() {
   const newInIds = new Set(newIn.map((product) => product.id));
   const topSellers = bestsellers.filter((product) => !newInIds.has(product.id)).slice(0, 4);
 
-  const tiles = categories.length
-    ? categories.slice(0, 3).map((c) => ({
+  const fabrics = categories
+    .filter((c) => FABRIC_ORDER.includes(c.slug))
+    .sort((a, b) => FABRIC_ORDER.indexOf(a.slug) - FABRIC_ORDER.indexOf(b.slug));
+
+  const tiles: FabricTile[] = fabrics.length
+    ? fabrics.map((c) => ({
         name: c.name,
         slug: c.slug,
         image: CATEGORY_IMAGE_BY_SLUG[c.slug] ?? IMG.catPureCotton,
         imageUrl: c.image_url,
+        blurb: CATEGORY_BLURBS[c.slug] ?? "Woven to last.",
       }))
-    : CATEGORY_TILES.map((t) => ({ ...t, imageUrl: null }));
+    : CATEGORY_TILES.map((t) => ({
+        ...t,
+        imageUrl: null,
+        blurb: CATEGORY_BLURBS[t.slug] ?? "Woven to last.",
+      }));
 
   return (
     <>
@@ -114,27 +128,8 @@ export default async function HomePage() {
           copy="Three weaves, one standard. Photographed on the same bed, in the same light, so the cloth is the only thing that changes."
         />
 
-        <div className={`${HEADING_GAP} grid grid-cols-1 ${GRID_GAP} sm:grid-cols-3`}>
-          {tiles.map((tile) => (
-            <Link key={tile.slug} href={`/shop?category=${tile.slug}`} className="group text-center">
-              <div className="relative aspect-[4/5] overflow-hidden bg-lilac">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={tile.imageUrl ?? img(tile.image, 800)}
-                  alt={tile.name}
-                  loading="lazy"
-                  className="h-full w-full object-cover object-center transition-transform duration-[1400ms] group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-aubergine/0 transition-colors duration-500 group-hover:bg-aubergine/10" />
-              </div>
-              <h3 className="mt-6 font-[family-name:var(--font-display)] text-xl text-ink transition-colors group-hover:text-purple">
-                {tile.name}
-              </h3>
-              <p className="mt-2 text-[13px] text-muted">
-                {CATEGORY_BLURBS[tile.slug] ?? "Woven to last."}
-              </p>
-            </Link>
-          ))}
+        <div className={HEADING_GAP}>
+          <FabricCarousel tiles={tiles} />
         </div>
       </Section>
 

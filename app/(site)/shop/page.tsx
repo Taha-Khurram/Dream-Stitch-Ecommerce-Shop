@@ -2,8 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getProducts, getCategories } from "@/lib/api/products";
 import { ProductCard } from "@/components/products/ProductCard";
-import { CategoryFilter } from "@/components/products/CategoryFilter";
-import { MobileFilterSheet } from "@/components/products/MobileFilterSheet";
+import { FilterSheet } from "@/components/products/FilterSheet";
 import { SortMenu } from "@/components/products/SortMenu";
 import { productSizes } from "@/lib/product-attributes";
 import { IMG, img } from "@/lib/imagery";
@@ -127,16 +126,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         )}
       </nav>
 
-      <div className="mx-auto flex max-w-[1500px] gap-10 px-6 xl:px-10">
-        {/* Desktop filter rail */}
-        <aside className="hidden w-60 shrink-0 lg:block">
-          <div className="sticky top-[76px] max-h-[calc(100vh-92px)] overflow-y-auto pb-8 pr-2">
-            <h2 className="eyebrow border-b border-ink pb-4 text-ink">Filter</h2>
-            <CategoryFilter categories={categories} />
-          </div>
-        </aside>
-
-        <div className="min-w-0 flex-1">
+      <div className="mx-auto max-w-[1500px] px-6 xl:px-10">
+        <div className="min-w-0">
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
             <p className="text-[12px] text-muted">
@@ -145,7 +136,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             </p>
 
             <div className="flex items-center gap-4">
-              <MobileFilterSheet categories={categories} />
+              <FilterSheet categories={categories} />
               <SortMenu />
             </div>
           </div>
@@ -169,7 +160,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-8 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

@@ -1,0 +1,85 @@
+"use client";
+
+import React, { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import type { Category } from "@/types/ecommerce";
+import { FilterPanel, countActiveFilters } from "./FilterPanel";
+import { SlidersHorizontal, X } from "lucide-react";
+
+/**
+ * The filter rail lives behind this button at every width — the shop grid gets
+ * the full page, and filters are only on screen while someone is choosing them.
+ */
+function FilterSheetInner({ categories }: { categories: Category[] }) {
+  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const activeCount = countActiveFilters(new URLSearchParams(searchParams.toString()));
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="eyebrow flex cursor-pointer items-center gap-2 text-ink transition-colors hover:text-purple"
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        Filter
+        {activeCount > 0 && (
+          <span className="flex h-4 min-w-4 items-center justify-center bg-purple px-1 text-[10px] leading-none text-white">
+            {activeCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[70]">
+          <div className="absolute inset-0 bg-aubergine/45" onClick={() => setOpen(false)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filters"
+            className="absolute inset-y-0 right-0 flex w-[88%] max-w-sm flex-col bg-white"
+          >
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <span className="eyebrow text-ink">Filter</span>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close filters"
+                className="cursor-pointer text-muted hover:text-ink"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <FilterPanel categories={categories} onApplied={() => setOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function FilterSheet({ categories }: { categories: Category[] }) {
+  return (
+    <Suspense fallback={<span className="eyebrow text-muted">Filter</span>}>
+      <FilterSheetInner categories={categories} />
+    </Suspense>
+  );
+}
