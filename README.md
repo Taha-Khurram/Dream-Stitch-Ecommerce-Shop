@@ -88,6 +88,12 @@ empty, then run [`bedding_seed.sql`](bedding_seed.sql) — both in the
 
 It is idempotent — re-running refreshes the catalogue in place.
 
+> **Already have a catalogue you want to keep?** Run
+> [`products_bedding_columns.sql`](products_bedding_columns.sql) instead. It is
+> step 1 above on its own — the columns, no delete-and-reinsert. Skipping it is
+> what produces `Could not find the 'compare_at_price' column of 'products' in
+> the schema cache` when saving a product in `/admin`.
+
 > **Before the seed runs the site still works.** Every bedding field is
 > optional, and `lib/product-attributes.ts` fills in sensible defaults — a
 > standard bed-size run, placeholder colourways — for any product missing them.
