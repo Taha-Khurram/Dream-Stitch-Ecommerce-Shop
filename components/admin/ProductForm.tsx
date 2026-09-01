@@ -1,6 +1,6 @@
 import React from "react";
 import { ActionForm, Field, inputClass } from "./ActionForm";
-import { saveProduct } from "@/app/admin/actions";
+import { saveProduct } from "@/app/(site)/admin/actions";
 import { CURRENCY } from "@/lib/format";
 import { FILTER_SIZES } from "@/lib/constants";
 import type { Category, Product } from "@/types/ecommerce";

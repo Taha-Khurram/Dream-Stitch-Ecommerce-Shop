@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateOrderStatus } from "@/app/admin/actions";
+import { updateOrderStatus } from "@/app/(site)/admin/actions";
 import { Check, AlertCircle, Loader2 } from "lucide-react";
 
 const STATUSES = ["pending", "processing", "completed", "cancelled"] as const;

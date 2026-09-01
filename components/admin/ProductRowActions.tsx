@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { DeleteButton } from "./ActionForm";
-import { deleteProduct } from "@/app/admin/actions";
+import { deleteProduct } from "@/app/(site)/admin/actions";
 
 export function ProductRowActions({ id, name }: { id: string; name: string }) {
   return (

@@ -1,7 +1,7 @@
 import React from "react";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { ActionForm, Field, inputClass } from "@/components/admin/ActionForm";
-import { saveSettings } from "@/app/admin/actions";
+import { saveSettings } from "@/app/(site)/admin/actions";
 import { getSettings } from "@/lib/api/settings";
 import { CURRENCY } from "@/lib/format";
 

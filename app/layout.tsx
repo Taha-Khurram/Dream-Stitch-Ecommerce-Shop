@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { Jost, Prata, Great_Vibes } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/context/CartContext";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { Header } from "@/components/layout/Header";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { BRAND } from "@/lib/constants";
-import { getSettings } from "@/lib/api/settings";
-import { isAdmin } from "@/lib/auth/admin";
 
 const jost = Jost({
   subsets: ["latin"],
@@ -37,27 +31,19 @@ export const metadata: Metadata = {
     "Premium bedsheets in pure cotton, cotton zeen and cotton satin. King and single sets in stock, or made to your exact measurements. Delivered nationwide.",
 };
 
-export default async function RootLayout({
+/**
+ * Only the document shell lives here. Site chrome (header, cart, footer) is
+ * owned by the (site) group so the (auth) group can render a bare page.
+ */
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, admin] = await Promise.all([getSettings(), isAdmin()]);
-
   return (
     <html lang="en" className={`${jost.variable} ${prata.variable} ${greatVibes.variable}`}>
       <body className="flex min-h-screen flex-col bg-white text-ink antialiased">
-        <CartProvider
-          rates={{
-            freeShippingThreshold: settings.free_shipping_threshold,
-            shippingFee: settings.shipping_fee,
-          }}
-        >
-          <Header announcements={settings.announcements} isAdmin={admin} />
-          <main className="flex-1">{children}</main>
-          <CartDrawer />
-          <SiteFooter settings={settings} />
-        </CartProvider>
+        {children}
       </body>
     </html>
   );

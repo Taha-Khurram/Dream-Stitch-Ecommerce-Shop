@@ -6,14 +6,13 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { BRAND, NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { BRAND, NAV_ITEMS } from "@/lib/constants";
 import {
   Search,
   Heart,
   User as UserIcon,
   Menu,
   X,
-  ChevronRight,
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
@@ -176,62 +175,6 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-/* ── Mega panel for one nav item ───────────────────────────────────────── */
-function MegaPanel({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
-  if (!item.columns?.length) return null;
-
-  return (
-    <div className="absolute inset-x-0 top-full z-50 border-t border-line bg-white shadow-[0_24px_40px_-32px_rgba(42,27,51,0.45)]">
-      <div className="mx-auto grid max-w-[1500px] grid-cols-12 gap-10 px-6 py-10 xl:px-10">
-        <div className="col-span-12 grid grid-cols-2 gap-x-10 gap-y-8 md:grid-cols-3 lg:col-span-8 lg:grid-cols-4">
-          {item.columns.map((column) => (
-            <div key={column.title}>
-              <Link
-                href={column.href}
-                onClick={onNavigate}
-                className="eyebrow text-ink transition-colors hover:text-purple"
-              >
-                {column.title}
-              </Link>
-              <ul className="mt-4 space-y-2.5">
-                {column.links.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      onClick={onNavigate}
-                      className="text-[13px] text-ink-soft transition-colors hover:text-purple"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {item.feature && (
-          <Link href={item.feature.href} onClick={onNavigate} className="group col-span-12 lg:col-span-4">
-            <div className="relative aspect-[4/3] overflow-hidden bg-lilac">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.feature.image}
-                alt={item.feature.title}
-                className="h-full w-full object-cover transition-transform duration-[1200ms] group-hover:scale-105"
-              />
-            </div>
-            <span className="eyebrow mt-4 block text-purple">{item.feature.label}</span>
-            <p className="mt-1.5 font-[family-name:var(--font-display)] text-xl text-ink">
-              {item.feature.title}
-            </p>
-            <span className="eyebrow link-underline mt-2 inline-block text-ink">Shop Now</span>
-          </Link>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── Account icon, with a sign-out menu once signed in ─────────────────── */
 function AccountMenu({
   user,
@@ -328,14 +271,11 @@ export function Header({
 }) {
   const { totalItems, toggleCart } = useCart();
   const pathname = usePathname();
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileSection, setMobileSection] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [lifted, setLifted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [supabase] = useState(() => createClient());
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -347,7 +287,6 @@ export function Header({
 
   // Close every transient surface on navigation
   useEffect(() => {
-    setOpenMenu(null);
     setMobileOpen(false);
     setSearchOpen(false);
   }, [pathname]);
@@ -373,18 +312,8 @@ export function Header({
     window.location.href = "/";
   };
 
-  // Grace period so the pointer can travel from the trigger into the panel
-  const scheduleClose = () => {
-    closeTimer.current = setTimeout(() => setOpenMenu(null), 120);
-  };
-  const cancelClose = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  };
-
   const iconButton =
     "relative flex h-8 w-8 cursor-pointer items-center justify-center text-ink transition-colors duration-300 hover:text-purple";
-
-  const activeItem = NAV_ITEMS.find((i) => i.name === openMenu);
 
   /* Under /admin the shop nav, search, wishlist and cart all point away from
      the work surface — the bar keeps the wordmark and nothing else. */
@@ -409,7 +338,6 @@ export function Header({
       <AnnouncementBar messages={announcements?.length ? announcements : ANNOUNCEMENTS} />
 
       <header
-        onMouseLeave={scheduleClose}
         className={`sticky top-0 z-50 border-b bg-white transition-shadow duration-500 ${
           lifted
             ? "border-line shadow-[0_10px_30px_-26px_rgba(42,27,51,0.55)]"
@@ -432,31 +360,18 @@ export function Header({
           <nav className="hidden h-full flex-1 items-stretch justify-center lg:flex">
             <ul className="flex items-stretch">
               {NAV_ITEMS.map((item) => (
-                <li
-                  key={item.name}
-                  className="flex"
-                  onMouseEnter={() => {
-                    cancelClose();
-                    setOpenMenu(item.columns ? item.name : null);
-                  }}
-                >
+                <li key={item.name} className="flex">
                   <Link
                     href={item.href}
                     className={`group relative flex items-center px-3.5 text-[10px] font-medium uppercase tracking-[0.18em] transition-colors duration-300 xl:px-4 ${
-                      item.accent
-                        ? "text-sale hover:text-purple-deep"
-                        : openMenu === item.name
-                          ? "text-purple"
-                          : "text-ink hover:text-purple"
+                      item.accent ? "text-sale hover:text-purple-deep" : "text-ink hover:text-purple"
                     }`}
                   >
                     {item.name}
-                    {/* Hairline that wipes in from the centre on hover or open */}
+                    {/* Hairline that wipes in from the centre on hover */}
                     <span
                       aria-hidden="true"
-                      className={`pointer-events-none absolute inset-x-3.5 bottom-0 h-px origin-center bg-purple transition-transform duration-300 group-hover:scale-x-100 xl:inset-x-4 ${
-                        openMenu === item.name ? "scale-x-100" : "scale-x-0"
-                      }`}
+                      className="pointer-events-none absolute inset-x-3.5 bottom-0 h-px origin-center scale-x-0 bg-purple transition-transform duration-300 group-hover:scale-x-100 xl:inset-x-4"
                     />
                   </Link>
                 </li>
@@ -498,13 +413,6 @@ export function Header({
             </button>
           </div>
         </div>
-
-        {/* Mega panel hangs off the header, so it spans the full width */}
-        {activeItem && (
-          <div onMouseEnter={cancelClose}>
-            <MegaPanel item={activeItem} onNavigate={() => setOpenMenu(null)} />
-          </div>
-        )}
       </header>
 
       <Suspense fallback={null}>
@@ -528,59 +436,18 @@ export function Header({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {NAV_ITEMS.map((item) => {
-                const expanded = mobileSection === item.name;
-                return (
-                  <div key={item.name} className="border-b border-line-soft">
-                    <div className="flex items-center">
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex-1 px-5 py-4 text-[11px] font-medium uppercase tracking-[0.18em] ${
-                          item.accent ? "text-sale" : "text-ink"
-                        }`}
-                      >
-                        {item.name}
-                      </Link>
-                      {item.columns && (
-                        <button
-                          onClick={() => setMobileSection(expanded ? null : item.name)}
-                          aria-label={`Toggle ${item.name}`}
-                          aria-expanded={expanded}
-                          className="cursor-pointer px-5 py-4 text-muted"
-                        >
-                          <ChevronRight
-                            className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`}
-                          />
-                        </button>
-                      )}
-                    </div>
-
-                    {expanded && item.columns && (
-                      <div className="space-y-5 bg-frost px-5 pb-5 pt-1">
-                        {item.columns.map((column) => (
-                          <div key={column.title}>
-                            <span className="eyebrow text-muted">{column.title}</span>
-                            <ul className="mt-3 space-y-2.5">
-                              {column.links.map((link) => (
-                                <li key={link.name}>
-                                  <Link
-                                    href={link.href}
-                                    onClick={() => setMobileOpen(false)}
-                                    className="text-[13px] text-ink-soft"
-                                  >
-                                    {link.name}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block border-b border-line-soft px-5 py-4 text-[11px] font-medium uppercase tracking-[0.18em] ${
+                    item.accent ? "text-sale" : "text-ink"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </div>
 
             <div className="border-t border-line px-5 py-5">

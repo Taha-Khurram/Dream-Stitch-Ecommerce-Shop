@@ -1,12 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { signIn, signInWithGoogle } from "@/app/auth/actions";
-import {
-  AuthShell,
-  GoogleButton,
-  OrDivider,
-  authInputClass,
-} from "@/components/auth/AuthShell";
+import { AuthShell, OrDivider, authInputClass } from "@/components/auth/AuthShell";
+import { AuthForm, GoogleForm } from "@/components/auth/AuthForm";
 import { IMG } from "@/lib/imagery";
 
 interface SignInPageProps {
@@ -33,13 +29,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </>
       }
     >
-      <form action={signInWithGoogle}>
-        <GoogleButton label="Continue with Google" />
-      </form>
+      <GoogleForm action={signInWithGoogle} label="Continue with Google" />
 
       <OrDivider label="Or with email" />
 
-      <form action={signIn} className="space-y-6">
+      <AuthForm action={signIn} submitLabel="Sign In" pendingLabel="Signing you in…">
         {next && <input type="hidden" name="next" value={next} />}
 
         <div>
@@ -71,11 +65,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             className={authInputClass}
           />
         </div>
-
-        <button type="submit" className="btn-primary w-full cursor-pointer">
-          Sign In
-        </button>
-      </form>
+      </AuthForm>
     </AuthShell>
   );
 }

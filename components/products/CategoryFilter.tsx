@@ -158,6 +158,17 @@ function FilterRail({ categories, onNavigate }: CategoryFilterProps) {
       </FilterGroup>
 
       <FilterGroup title="Price">
+        {/* The Shop dropdown used to be the only way to reach ?sale=true. */}
+        <label className="mb-3.5 flex cursor-pointer items-center gap-2.5 border-b border-line-soft pb-3.5">
+          <input
+            type="checkbox"
+            checked={activeSale}
+            onChange={() => push({ sale: activeSale ? null : "true" })}
+            className="h-3.5 w-3.5 cursor-pointer accent-[color:var(--color-purple)]"
+          />
+          <span className={activeSale ? "text-ink" : "text-ink-soft"}>Reduced items only</span>
+        </label>
+
         <ul className="space-y-2.5">
           {PRICE_BANDS.map((band) => {
             const selected =

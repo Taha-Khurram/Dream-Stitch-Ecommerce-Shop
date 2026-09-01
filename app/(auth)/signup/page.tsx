@@ -1,12 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { signUp, signInWithGoogle } from "@/app/auth/actions";
-import {
-  AuthShell,
-  GoogleButton,
-  OrDivider,
-  authInputClass,
-} from "@/components/auth/AuthShell";
+import { AuthShell, OrDivider, authInputClass } from "@/components/auth/AuthShell";
+import { AuthForm, GoogleForm } from "@/components/auth/AuthForm";
 import { IMG } from "@/lib/imagery";
 
 interface SignUpPageProps {
@@ -33,13 +29,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         </>
       }
     >
-      <form action={signInWithGoogle}>
-        <GoogleButton label="Sign up with Google" />
-      </form>
+      <GoogleForm action={signInWithGoogle} label="Sign up with Google" />
 
       <OrDivider label="Or with email" />
 
-      <form action={signUp} className="space-y-6">
+      <AuthForm action={signUp} submitLabel="Create Account" pendingLabel="Creating your account…">
         <div>
           <label htmlFor="fullName" className="eyebrow text-muted">
             Full Name
@@ -83,11 +77,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             className={authInputClass}
           />
         </div>
-
-        <button type="submit" className="btn-primary w-full cursor-pointer">
-          Create Account
-        </button>
-      </form>
+      </AuthForm>
     </AuthShell>
   );
 }

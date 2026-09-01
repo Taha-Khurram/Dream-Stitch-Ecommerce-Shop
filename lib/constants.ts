@@ -14,70 +14,19 @@ export const BRAND = {
   address: "Plot 42, Textile Avenue, S.I.T.E. Industrial Area, Karachi, Pakistan",
 } as const;
 
-export interface NavColumn {
-  title: string;
-  href: string;
-  links: { name: string; href: string }[];
-}
-
 export interface NavItem {
   name: string;
   href: string;
-  /** Rendered as a full-width mega panel on hover. */
-  columns?: NavColumn[];
-  /** Editorial tile pinned to the right of the mega panel. */
-  feature?: { label: string; title: string; href: string; image: string };
   accent?: boolean;
 }
 
 /**
- * Four destinations, nothing more. Everything that used to sit at the top level
- * — bed sizes, the sale — now lives inside the Shop panel, so the bar stays
- * short without stranding any route.
+ * Four plain links, no dropdowns. Fabrics and bed sizes are reachable from the
+ * shop filter rail and the footer, so nothing here needs a mega panel to be
+ * findable.
  */
 export const NAV_ITEMS: NavItem[] = [
-  {
-    name: "Shop",
-    href: "/shop",
-    columns: [
-      {
-        title: "By Material",
-        href: "/shop",
-        links: [
-          { name: "Pure Cotton", href: "/shop?category=pure-cotton" },
-          { name: "Cotton Zeen", href: "/shop?category=cotton-zeen" },
-          { name: "Cotton Satin", href: "/shop?category=cotton-satin" },
-        ],
-      },
-      {
-        title: "By Bed Size",
-        href: "/shop",
-        links: [
-          { name: "King Size", href: "/shop?size=King%20Size" },
-          { name: "Single Bed", href: "/shop?size=Single" },
-          { name: "Custom Size", href: "/custom" },
-        ],
-      },
-      {
-        title: "Popular",
-        href: "/shop?sort=rating",
-        links: [
-          { name: "Bestsellers", href: "/shop?sort=rating" },
-          { name: "Printed Bedsheets", href: "/shop?search=printed" },
-          { name: "Plain & Solid", href: "/shop?search=solid" },
-          { name: "Embroidered", href: "/shop?search=embroidered" },
-          { name: "Sale", href: "/shop?sale=true" },
-        ],
-      },
-    ],
-    feature: {
-      label: "Softest We Make",
-      title: "Cotton Satin, New Colourways",
-      href: "/shop?category=cotton-satin",
-      image:
-        "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=900&q=80&auto=format&fit=crop",
-    },
-  },
+  { name: "Shop", href: "/shop" },
   { name: "Custom Orders", href: "/custom" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
