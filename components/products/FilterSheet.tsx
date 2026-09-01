@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import type { Category } from "@/types/ecommerce";
 import { FilterPanel, countActiveFilters } from "./FilterPanel";
 import { SlidersHorizontal, X } from "lucide-react";
+import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 
 /**
  * The filter rail lives behind this button at every width — the shop grid gets
@@ -14,13 +15,9 @@ function FilterSheetInner({ categories }: { categories: Category[] }) {
   const [open, setOpen] = useState(false);
   const searchParams = useSearchParams();
   const activeCount = countActiveFilters(new URLSearchParams(searchParams.toString()));
+  const { mounted, state } = usePresence(open);
 
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
@@ -48,14 +45,19 @@ function FilterSheetInner({ categories }: { categories: Category[] }) {
         )}
       </button>
 
-      {open && (
+      {mounted && (
         <div className="fixed inset-0 z-[70]">
-          <div className="absolute inset-0 bg-aubergine/45" onClick={() => setOpen(false)} />
+          <div
+            className="veil absolute inset-0 bg-aubergine/45"
+            data-state={state}
+            onClick={() => setOpen(false)}
+          />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Filters"
-            className="absolute inset-y-0 right-0 flex w-[88%] max-w-sm flex-col bg-white"
+            data-state={state}
+            className="sheet-right absolute inset-y-0 right-0 flex w-[88%] max-w-sm flex-col bg-white shadow-[0_0_60px_-15px_rgba(42,27,51,0.45)]"
           >
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <span className="eyebrow text-ink">Filter</span>

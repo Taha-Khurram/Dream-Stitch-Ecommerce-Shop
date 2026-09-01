@@ -3,6 +3,8 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Check } from "lucide-react";
+import { usePresence } from "@/components/motion/usePresence";
+import { startRouteProgress } from "@/components/motion/RouteProgress";
 
 const OPTIONS = [
   { key: "newest", label: "Newest First" },
@@ -15,6 +17,7 @@ function SortMenuInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const { mounted, state } = usePresence(open, 180);
   const ref = useRef<HTMLDivElement>(null);
 
   const active = searchParams.get("sort") ?? "newest";
@@ -34,6 +37,8 @@ function SortMenuInner() {
     else next.set("sort", key);
     const qs = next.toString();
     setOpen(false);
+    // Sorting refetches the whole grid on the server; say so immediately.
+    startRouteProgress();
     router.push(`/shop${qs ? `?${qs}` : ""}`);
   };
 
@@ -46,13 +51,18 @@ function SortMenuInner() {
         className="eyebrow flex cursor-pointer items-center gap-2 text-ink transition-colors hover:text-purple"
       >
         Sort: <span className="text-muted">{activeLabel}</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform duration-[var(--duration-base)] ease-[var(--ease-out-quint)] ${
+            open ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
-      {open && (
+      {mounted && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full z-40 mt-3 w-56 border border-line bg-white py-2 shadow-[0_20px_40px_-30px_rgba(27,26,24,0.6)]"
+          data-state={state}
+          className="sheet-top absolute right-0 top-full z-40 mt-3 w-56 border border-line bg-white py-2 shadow-[0_20px_40px_-30px_rgba(27,26,24,0.6)]"
         >
           {OPTIONS.map((option) => (
             <li key={option.key}>

@@ -96,10 +96,12 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
       <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-10 px-6 lg:grid-cols-2 lg:gap-16 xl:px-10">
         {/* Gallery */}
-        <ProductGallery images={images} alt={product.name} />
+        <div data-reveal="left" suppressHydrationWarning>
+          <ProductGallery images={images} alt={product.name} />
+        </div>
 
         {/* Buy box */}
-        <div className="lg:max-w-md">
+        <div className="lg:max-w-md" data-reveal="right" suppressHydrationWarning>
           {subtitle && <span className="eyebrow text-purple">{subtitle}</span>}
 
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[38px]">
@@ -239,7 +241,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
       {/* You may also like */}
       {related.length > 0 && (
-        <section className="mx-auto mt-24 max-w-[1500px] px-6 xl:px-10">
+        <section className="cv-auto mx-auto mt-24 max-w-[1500px] px-6 xl:px-10">
           <SectionHeading
             align="between"
             eyebrow="Pairs Well"
@@ -249,7 +251,11 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
               href: `/shop?category=${product.category?.slug ?? ""}`,
             }}
           />
-          <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+          <div
+            className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4"
+            data-reveal-stagger
+            suppressHydrationWarning
+          >
             {related.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}

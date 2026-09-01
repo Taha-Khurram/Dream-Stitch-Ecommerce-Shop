@@ -7,6 +7,8 @@ import { useCart } from "@/context/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { BRAND, NAV_ITEMS } from "@/lib/constants";
+import { usePresence, useScrollLock } from "@/components/motion/usePresence";
+import { startRouteProgress } from "@/components/motion/RouteProgress";
 import {
   Search,
   Heart,
@@ -94,6 +96,7 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
   const searchParams = useSearchParams();
   const [term, setTerm] = useState(searchParams.get("search") ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { mounted, state } = usePresence(open, 200);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -107,11 +110,14 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     onClose();
+    // A programmatic push bypasses the anchor-click listener, so start the
+    // progress bar by hand or the search would navigate with no feedback.
+    startRouteProgress();
     router.push(term.trim() ? `/shop?search=${encodeURIComponent(term.trim())}` : "/shop");
   };
 
@@ -124,9 +130,14 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
   ];
 
   return (
-    <div className="fixed inset-0 z-[60] bg-aubergine/25 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="fixed inset-0 z-[60]" onClick={onClose}>
       <div
-        className="animate-fade-up border-b border-line bg-white px-6 py-10 sm:py-14"
+        className="veil absolute inset-0 bg-aubergine/25 backdrop-blur-[2px]"
+        data-state={state}
+      />
+      <div
+        className="sheet-top relative border-b border-line bg-white px-6 py-10 sm:py-14"
+        data-state={state}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto max-w-3xl">
@@ -188,6 +199,7 @@ function AccountMenu({
   className: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { mounted: menuMounted, state: menuState } = usePresence(open, 180);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -227,10 +239,11 @@ function AccountMenu({
         <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-purple" />
       </button>
 
-      {open && (
+      {menuMounted && (
         <div
           role="menu"
-          className="animate-fade-up absolute right-0 top-full z-50 mt-2 w-52 border border-line bg-white p-4 shadow-[0_18px_34px_-26px_rgba(42,27,51,0.5)]"
+          data-state={menuState}
+          className="sheet-top absolute right-0 top-full z-50 mt-2 w-52 border border-line bg-white p-4 shadow-[0_18px_34px_-26px_rgba(42,27,51,0.5)]"
         >
           <p className="truncate text-[12px] text-ink-soft">{user.email}</p>
 
@@ -273,6 +286,7 @@ export function Header({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { mounted: drawerMounted, state: drawerState } = usePresence(mobileOpen);
   const [lifted, setLifted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [supabase] = useState(() => createClient());
@@ -291,19 +305,28 @@ export function Header({
     setSearchOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
+  useScrollLock(mobileOpen);
 
-  // A hairline shadow once the page moves, so the bar reads as a layer above it
+  // A hairline shadow once the page moves, so the bar reads as a layer above
+  // it. Scroll fires far more often than the screen paints, so the read is
+  // coalesced to one per frame — this listener is on every page, all the time.
   useEffect(() => {
-    const onScroll = () => setLifted(window.scrollY > 4);
+    let frame = 0;
+
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setLifted(window.scrollY > 4);
+      });
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -420,10 +443,17 @@ export function Header({
       </Suspense>
 
       {/* Mobile drawer */}
-      {mobileOpen && (
+      {drawerMounted && (
         <div className="fixed inset-0 z-[70] lg:hidden">
-          <div className="absolute inset-0 bg-aubergine/45" onClick={() => setMobileOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col bg-white">
+          <div
+            className="veil absolute inset-0 bg-aubergine/45"
+            data-state={drawerState}
+            onClick={() => setMobileOpen(false)}
+          />
+          <div
+            className="sheet-left absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col bg-white shadow-[0_0_60px_-15px_rgba(42,27,51,0.45)]"
+            data-state={drawerState}
+          >
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <Wordmark compact />
               <button
@@ -435,7 +465,7 @@ export function Header({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="scroll-area flex-1 overflow-y-auto">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.name}

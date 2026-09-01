@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { getSettings } from "@/lib/api/settings";
 import { isAdmin } from "@/lib/auth/admin";
+import { BackToTop } from "@/components/motion/BackToTop";
 
 /** Storefront chrome. The (auth) group deliberately opts out of all of it. */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <main className="flex-1">{children}</main>
       <CartDrawer />
       <SiteFooter settings={settings} />
+      <BackToTop />
     </CartProvider>
   );
 }

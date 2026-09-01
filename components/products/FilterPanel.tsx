@@ -6,6 +6,7 @@ import type { Category } from "@/types/ecommerce";
 import { FILTER_SIZES } from "@/lib/constants";
 import { CURRENCY } from "@/lib/format";
 import { X } from "lucide-react";
+import { startRouteProgress } from "@/components/motion/RouteProgress";
 
 const PRICE_BANDS = [
   { label: `Under ${CURRENCY} 3,000`, min: 0, max: 3000 },
@@ -105,6 +106,9 @@ export function FilterPanel({ categories, onApplied }: FilterPanelProps) {
     write("sale", draft.sale ? "true" : null);
 
     const query = next.toString();
+    // Applying filters refetches the grid on the server; show the bar now
+    // rather than leaving the sheet closing over an unchanged page.
+    startRouteProgress();
     router.push(`/shop${query ? `?${query}` : ""}`);
     onApplied?.();
   };

@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import { amountToFreeShipping } from "@/lib/pricing";
 import { swatchHex, BRAND } from "@/lib/constants";
+import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import {
   X,
   Plus,
@@ -18,6 +19,9 @@ import {
 } from "lucide-react";
 
 type Stage = "bag" | "address" | "done";
+
+/** Keep in step with --duration-panel / .sheet-right in globals.css. */
+const EXIT_MS = 460;
 
 const EMPTY_ADDRESS = {
   fullName: "",
@@ -51,12 +55,9 @@ export function CartDrawer() {
   const [order, setOrder] = useState<{ orderId: string; totalAmount: number } | null>(null);
   const [address, setAddress] = useState(EMPTY_ADDRESS);
 
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
+  // Stays mounted through the slide-out so the panel can animate away.
+  const { mounted, state } = usePresence(isOpen, EXIT_MS);
+  useScrollLock(isOpen);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,10 +116,10 @@ export function CartDrawer() {
       setStage("bag");
       setOrder(null);
       setErrorMessage(null);
-    }, 300);
+    }, EXIT_MS);
   };
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const remainingForFreeShipping = amountToFreeShipping(subtotal, rates);
   // A zero threshold means everything ships free, so the bar is already full.
@@ -132,9 +133,12 @@ export function CartDrawer() {
 
   return (
     <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Shopping bag">
-      <div className="absolute inset-0 bg-ink/40" onClick={close} />
+      <div className="veil absolute inset-0 bg-ink/40" data-state={state} onClick={close} />
 
-      <div className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white">
+      <div
+        className="sheet-right absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-[0_0_60px_-15px_rgba(42,27,51,0.45)]"
+        data-state={state}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line px-6 py-5">
           <div className="flex items-center gap-3">
@@ -234,7 +238,7 @@ export function CartDrawer() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6">
+            <div className="scroll-area flex-1 overflow-y-auto px-6">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-4 border-b border-line-soft py-5">
                   <Link
@@ -355,7 +359,7 @@ export function CartDrawer() {
         {/* ── Delivery details ────────────────────────────────────────── */}
         {stage === "address" && items.length > 0 && (
           <form onSubmit={submitOrder} className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
+            <div className="scroll-area flex-1 space-y-5 overflow-y-auto px-6 py-6">
               {errorMessage && (
                 <div className="flex items-start gap-2.5 border-l-2 border-sale bg-frost px-4 py-3 text-[12px] text-ink-soft">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sale" />

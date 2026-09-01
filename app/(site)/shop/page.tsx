@@ -107,7 +107,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           className="h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-aubergine/45" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+          data-reveal="up"
+          suppressHydrationWarning
+        >
           <span className="eyebrow text-white/80">Collection</span>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-[34px] leading-tight text-white sm:text-[46px]">
             {heading}
@@ -170,7 +174,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 pt-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div
+              className="grid grid-cols-2 gap-x-4 gap-y-10 pt-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+              data-reveal-stagger
+              suppressHydrationWarning
+            >
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -180,8 +188,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       </div>
 
       {/* ── New in ──────────────────────────────────── tint ── */}
+      {/* Both rails sit well below the fold on every viewport, so the browser
+          is allowed to skip their layout work until they are scrolled near. */}
       {newIn.length > 0 && (
-        <Section surface="tint">
+        <Section surface="tint" className="cv-auto">
           <SectionHeading
             align="between"
             eyebrow="Just Landed"
@@ -192,6 +202,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
           <div
             className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
+            data-reveal-stagger
+            suppressHydrationWarning
           >
             {newIn.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -202,7 +214,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
       {/* ── Bestsellers ────────────────────────────── plain ── */}
       {topSellers.length > 0 && (
-        <Section>
+        <Section className="cv-auto">
           <SectionHeading
             align="between"
             eyebrow="Loved Most"
@@ -213,6 +225,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
           <div
             className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
+            data-reveal-stagger
+            suppressHydrationWarning
           >
             {topSellers.map((product) => (
               <ProductCard key={product.id} product={product} />

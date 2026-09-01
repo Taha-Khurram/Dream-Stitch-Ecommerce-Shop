@@ -125,7 +125,11 @@ export default function AboutPage() {
       <section className="mx-auto max-w-[1500px] px-6 py-16 sm:py-24 xl:px-10">
         <SectionHeading eyebrow="Milestones" title="How we got here" />
 
-        <div className="mt-14 grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className="mt-14 grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-4"
+          data-reveal-stagger
+          suppressHydrationWarning
+        >
           {MILESTONES.map((milestone) => (
             <div key={milestone.year} className="bg-white p-8">
               <span className="font-[family-name:var(--font-display)] text-[34px] text-purple">

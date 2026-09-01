@@ -84,7 +84,7 @@ export default function CustomOrderPage() {
           </h2>
         </div>
 
-        <ol className="mt-14 grid grid-cols-1 gap-px bg-line md:grid-cols-3">
+        <ol className="mt-14 grid grid-cols-1 gap-px bg-line md:grid-cols-3" data-reveal-stagger suppressHydrationWarning>
           {STEPS.map(({ icon: Icon, title, copy }, i) => (
             <li key={title} className="bg-white p-8">
               <div className="flex items-center gap-4">

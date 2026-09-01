@@ -10,7 +10,13 @@ interface SectionHeadingProps {
   className?: string;
 }
 
-/** The standard editorial section header used across the storefront. */
+/**
+ * The standard editorial section header used across the storefront.
+ *
+ * Both variants carry `data-reveal`, so every section on the site rises into
+ * place as it is scrolled to without any page having to ask for it. The
+ * observer that drives this lives in components/motion/ScrollReveal.
+ */
 export function SectionHeading({
   eyebrow,
   title,
@@ -21,7 +27,7 @@ export function SectionHeading({
 }: SectionHeadingProps) {
   if (align === "center") {
     return (
-      <div className={`text-center ${className}`}>
+      <div className={`text-center ${className}`} data-reveal="up" suppressHydrationWarning>
         {eyebrow && <span className="eyebrow block text-purple">{eyebrow}</span>}
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[38px]">
           {title}
@@ -42,7 +48,11 @@ export function SectionHeading({
   }
 
   return (
-    <div className={`flex flex-wrap items-end justify-between gap-4 ${className}`}>
+    <div
+      className={`flex flex-wrap items-end justify-between gap-4 ${className}`}
+      data-reveal="up"
+      suppressHydrationWarning
+    >
       <div>
         {eyebrow && <span className="eyebrow block text-purple">{eyebrow}</span>}
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-[28px] leading-tight text-ink sm:text-[34px]">

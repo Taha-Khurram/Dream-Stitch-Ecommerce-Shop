@@ -119,7 +119,7 @@ export default async function HomePage() {
           copy="Three weaves, one standard. Photographed on the same bed, in the same light, so the cloth is the only thing that changes."
         />
 
-        <div className={HEADING_GAP}>
+        <div className={HEADING_GAP} data-reveal="fade" suppressHydrationWarning>
           <FabricCarousel tiles={tiles} />
         </div>
       </Section>
@@ -135,7 +135,11 @@ export default async function HomePage() {
             className="h-full w-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-purple/80" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+            data-reveal="up"
+            suppressHydrationWarning
+          >
             <span className="eyebrow text-white/75">Custom Demand</span>
             <h2 className="mt-5 max-w-2xl font-[family-name:var(--font-display)] text-[32px] leading-tight text-white sm:text-[46px]">
               Your bed isn&apos;t standard. Your sheet shouldn&apos;t be.
@@ -162,8 +166,12 @@ export default async function HomePage() {
           copy="We started because bedsheets that looked beautiful in the shop gave up after three washes. So we began choosing our own cloth."
         />
 
+        {/* Stagger: the four promises ripple across each row rather than
+            all arriving on the same frame. */}
         <div
           className={`${HEADING_GAP} grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4`}
+          data-reveal-stagger
+          suppressHydrationWarning
         >
           {PROMISES.map(({ icon: Icon, title, copy }) => (
             <div key={title} className="text-center">

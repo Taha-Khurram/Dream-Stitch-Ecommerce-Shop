@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Jost, Prata, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { BRAND } from "@/lib/constants";
+import { RouteProgress } from "@/components/motion/RouteProgress";
 
 const jost = Jost({
   subsets: ["latin"],
@@ -32,6 +33,32 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Arms the scroll-reveal system before the first paint.
+ *
+ * This has to be a blocking inline script rather than an effect: the attribute
+ * is what *hides* revealable content, so setting it from React would let the
+ * page paint fully and then blink out. Running here means content is only ever
+ * hidden if JS is actually available to bring it back.
+ *
+ * The failsafe matters more than it looks. If the observer never arms — a
+ * chunk fails to load, a script error — the attribute is dropped and every
+ * reveal falls back to plain visible content. The alternative is a blank
+ * storefront, so the three seconds of insurance is worth the four lines.
+ */
+const ARM_REVEALS = `
+(function () {
+  try {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var d = document.documentElement;
+    d.setAttribute("data-reveal-ready", "");
+    setTimeout(function () {
+      if (!d.hasAttribute("data-reveal-armed")) d.removeAttribute("data-reveal-ready");
+    }, 3000);
+  } catch (e) {}
+})();
+`;
+
+/**
  * Only the document shell lives here. Site chrome (header, cart, footer) is
  * owned by the (site) group so the (auth) group can render a bare page.
  */
@@ -41,8 +68,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jost.variable} ${prata.variable} ${greatVibes.variable}`}>
+    <html
+      lang="en"
+      className={`${jost.variable} ${prata.variable} ${greatVibes.variable}`}
+      /* ARM_REVEALS stamps data-reveal-ready on this element before React
+         reaches it; without this React reports it as a mismatch. */
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ARM_REVEALS }} />
+      </head>
       <body className="flex min-h-screen flex-col bg-white text-ink antialiased">
+        {/* Navigation feedback sits above the route groups so the auth
+            pages get it too. Renders nothing until a link is clicked. */}
+        <RouteProgress />
         {children}
       </body>
     </html>

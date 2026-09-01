@@ -35,6 +35,20 @@
 
   /* Textile retail = square corners; only pills stay round */
   --radius-card: 0px;
+
+  /* ── Motion system ───────────────────────────────────────────
+     One vocabulary of easings and durations for the whole site, so
+     a drawer, a reveal and a hover all decelerate the same way.
+     Tailwind exposes these as ease-* / duration-* utilities. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);   /* default: long, soft settle */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);    /* entrances that must feel fast */
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);/* symmetric in/out (panels) */
+  --ease-back: cubic-bezier(0.34, 1.4, 0.64, 1);      /* tiny overshoot for confirmations */
+
+  --duration-fast: 180ms;    /* hover / colour swaps */
+  --duration-base: 320ms;    /* the workhorse */
+  --duration-panel: 460ms;   /* drawers and sheets */
+  --duration-reveal: 760ms;  /* scroll entrances */
 }
 
 @layer base {
@@ -266,7 +280,193 @@
   cursor: progress;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   GLOBAL MOTION LAYER
+   Scroll behaviour, route feedback, scroll reveals, panel
+   transitions and loading skeletons. Everything below is driven by
+   data-attributes so server components can opt in without having to
+   become client components.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Scrolling ────────────────────────────────────────────────
+   Smooth anchor jumps, but never during a route change: Next scrolls
+   to top on navigation, and animating that on a long page reads as a
+   slow drag. RouteProgress flips [data-navigating] for the hand-off. */
+html {
+  scroll-behavior: smooth;
+  /* Sticky header is 56px; keep anchored targets clear of it. */
+  scroll-padding-top: 5rem;
+}
+html[data-navigating] { scroll-behavior: auto; }
+
+body {
+  /* Stops the rubber-band from chaining out to the browser chrome. */
+  overscroll-behavior-y: none;
+}
+
+/* Scroll containers inside overlays must not chain to the page behind. */
+.scroll-area {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Route progress ───────────────────────────────────────────
+   A 2px purple filament pinned to the top of the viewport. It eases
+   toward 90% while the server thinks, then wipes out once the new
+   page commits. Every storefront page is force-dynamic, so this is
+   the only thing telling a shopper their click registered. */
+.route-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--color-purple), var(--color-aubergine));
+  transform-origin: 0 50%;
+  transform: scaleX(var(--progress, 0));
+  opacity: 0;
+  transition: transform 320ms var(--ease-out-quint), opacity 200ms ease;
+}
+.route-progress[data-active="true"] { opacity: 1; }
+/* The finish is a fast wipe-out, not a fade — it should read as decisive. */
+.route-progress[data-active="false"] {
+  transition: transform 180ms ease-out, opacity 320ms ease 120ms;
+}
+
+/* ── Scroll reveal ────────────────────────────────────────────
+   Any element opts in with `data-reveal`; one global observer
+   (components/motion/ScrollReveal) flips data-revealed. The hidden
+   state is gated behind [data-reveal-ready] on <html> so the page
+   stays fully readable if JS never runs. */
+[data-reveal-ready] [data-reveal],
+[data-reveal-ready] [data-reveal-stagger] > * {
+  opacity: 0;
+  transition:
+    opacity var(--duration-reveal) var(--ease-out-quint),
+    transform var(--duration-reveal) var(--ease-out-quint);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-reveal-ready] [data-reveal=""],
+[data-reveal-ready] [data-reveal="up"],
+[data-reveal-ready] [data-reveal-stagger] > * { transform: translate3d(0, 24px, 0); }
+[data-reveal-ready] [data-reveal="fade"]  { transform: none; }
+[data-reveal-ready] [data-reveal="scale"] { transform: scale(0.965); }
+[data-reveal-ready] [data-reveal="left"]  { transform: translate3d(-28px, 0, 0); }
+[data-reveal-ready] [data-reveal="right"] { transform: translate3d(28px, 0, 0); }
+
+/* Note the second selector: a stagger container's children resolve from the
+   *container's* [data-revealed], never their own. That is deliberate. Script
+   may only ever touch an element the author explicitly marked up (and which
+   therefore carries suppressHydrationWarning) — reaching into arbitrary
+   children meant writing to server-rendered nodes React had not hydrated yet,
+   which it reports as a mismatch. */
+[data-reveal-ready] [data-reveal][data-revealed="true"],
+[data-reveal-ready] [data-reveal-stagger][data-revealed="true"] > * {
+  opacity: 1;
+  transform: none;
+  /* Released once settled so the compositor can drop the layer. */
+  will-change: auto;
+}
+
+/* The ripple across a row is pure CSS: a cycle of four, matching the widest
+   grid on the site. Narrower breakpoints phase-shift against the cycle, which
+   still reads as a ripple rather than one blunt entrance. */
+[data-reveal-stagger] > *:nth-child(4n + 1) { --reveal-delay: 0ms; }
+[data-reveal-stagger] > *:nth-child(4n + 2) { --reveal-delay: 70ms; }
+[data-reveal-stagger] > *:nth-child(4n + 3) { --reveal-delay: 140ms; }
+[data-reveal-stagger] > *:nth-child(4n + 4) { --reveal-delay: 210ms; }
+
+/* ── Panels: enter and exit ───────────────────────────────────
+   Overlays stay mounted through their exit (see usePresence), so both
+   halves of the transition are real rather than an abrupt unmount. */
+@keyframes veil-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes veil-out { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes sheet-in-right  { from { transform: translate3d(100%, 0, 0); }  to { transform: translate3d(0, 0, 0); } }
+@keyframes sheet-out-right { from { transform: translate3d(0, 0, 0); }     to { transform: translate3d(100%, 0, 0); } }
+@keyframes sheet-in-left   { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes sheet-out-left  { from { transform: translate3d(0, 0, 0); }     to { transform: translate3d(-100%, 0, 0); } }
+@keyframes sheet-in-top    { from { opacity: 0; transform: translate3d(0, -14px, 0); } to { opacity: 1; transform: none; } }
+@keyframes sheet-out-top   { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate3d(0, -14px, 0); } }
+
+.veil[data-state="open"]   { animation: veil-in  var(--duration-base) var(--ease-out-quint) both; }
+.veil[data-state="closed"] { animation: veil-out var(--duration-base) var(--ease-out-quint) both; }
+
+.sheet-right[data-state="open"]   { animation: sheet-in-right  var(--duration-panel) var(--ease-out-expo) both; }
+.sheet-right[data-state="closed"] { animation: sheet-out-right var(--duration-panel) var(--ease-in-out-quart) both; }
+.sheet-left[data-state="open"]    { animation: sheet-in-left   var(--duration-panel) var(--ease-out-expo) both; }
+.sheet-left[data-state="closed"]  { animation: sheet-out-left  var(--duration-panel) var(--ease-in-out-quart) both; }
+.sheet-top[data-state="open"]     { animation: sheet-in-top    var(--duration-base) var(--ease-out-expo) both; }
+.sheet-top[data-state="closed"]   { animation: sheet-out-top   var(--duration-fast) ease-in both; }
+
+/* ── Page transition ──────────────────────────────────────────
+   Deliberately short. A long fade layered on an already-slow dynamic
+   page just adds latency the shopper can feel. */
+@keyframes page-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.page-in { animation: page-in 300ms var(--ease-out-quint) both; }
+
+/* ── Loading skeletons ────────────────────────────────────────
+   A sheen that travels across the placeholder rather than a pulsing
+   opacity — it reads as "arriving" instead of "broken". */
+@keyframes skeleton-sheen {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-lilac);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: skeleton-sheen 1.6s var(--ease-in-out-quart) infinite;
+}
+
+/* ── Micro-interactions ───────────────────────────────────────
+   A press needs to register on touch, where there is no hover. */
+.btn-primary,
+.btn-outline {
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-out-quint);
+}
+.btn-primary:active,
+.btn-outline:active { transform: scale(0.975); }
+
+/* Focus ring: visible for keyboards, absent for mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 3px;
+}
+
+/* Product imagery drifts in slightly under the existing cross-fade. */
+.img-swap > img { transform-origin: center; }
+.img-swap > .img-back { transition: opacity 0.7s ease, transform 1.4s var(--ease-out-quint); }
+.img-swap:hover > .img-back { transform: scale(1.045); }
+
+/* Long pages: let the browser skip layout work for offscreen sections. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────
+   Everything decorative stops. What survives is anything that would
+   otherwise leave content hidden or a loading state ambiguous. */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
   .marquee-track { animation: none; }
   .fabric-rail { animation: none; }
   .fabric-rail-viewport { overflow-x: auto; }
@@ -275,7 +475,36 @@
   .auth-panel-in,
   .auth-veil-in { animation: none; }
   .auth-sweep { animation-duration: 3s; }
-  * { transition-duration: 0.01ms !important; }
+  .page-in { animation: none; }
+  .img-swap:hover > .img-back { transform: none; }
+
+  /* Reveals must still resolve to visible — never trap content at opacity 0. */
+  [data-reveal-ready] [data-reveal],
+  [data-reveal-ready] [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  /* Panels swap instantly rather than sliding, but still mount and unmount. */
+  .veil[data-state],
+  .sheet-right[data-state],
+  .sheet-left[data-state],
+  .sheet-top[data-state] { animation-duration: 1ms !important; }
+
+  /* The skeleton sheen is slowed, not removed: it is the only signal
+     that something is still on its way. */
+  .skeleton::after { animation-duration: 3.5s; }
+
+  .btn-primary:active,
+  .btn-outline:active { transform: none; }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
