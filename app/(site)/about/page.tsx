@@ -27,7 +27,7 @@ const VALUES = [
 
 export default function AboutPage() {
   return (
-    <div className="pb-8">
+    <div>
       {/* Hero */}
       <section className="relative h-[380px] w-full overflow-hidden bg-lilac sm:h-[480px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}

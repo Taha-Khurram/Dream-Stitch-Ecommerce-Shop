@@ -50,14 +50,6 @@ export default function ProductLoading() {
             ))}
           </div>
 
-          {/* Colour swatches */}
-          <Skeleton className="mt-8 h-2 w-16" />
-          <div className="mt-3 flex gap-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-6 w-6 rounded-full" />
-            ))}
-          </div>
-
           <Skeleton className="mt-10 h-[52px] w-full" />
 
           {/* Delivery / returns / custom-size reassurance rows */}

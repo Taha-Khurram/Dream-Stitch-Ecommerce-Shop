@@ -6,20 +6,17 @@ import { AddToCartButton } from "./AddToCartButton";
 import { WishlistButton } from "./WishlistButton";
 import { SizeGuideDialog } from "./SizeGuideDialog";
 import Link from "next/link";
-import { swatchHex } from "@/lib/constants";
-import { productSizes, productColors, isMadeToOrder } from "@/lib/product-attributes";
+import { productSizes, isMadeToOrder } from "@/lib/product-attributes";
 
 /**
- * Colourway + bed-size selection for the product page. A size must be chosen
- * before the bag accepts a stocked set; made-to-order sets skip the run and
- * go through the Custom Demand flow instead.
+ * Bed-size selection for the product page. A size must be chosen before the bag
+ * accepts a stocked set; made-to-order sets skip the run and go through the
+ * Custom Demand flow instead.
  */
 export function ProductOptions({ product }: { product: Product }) {
   const sizes = productSizes(product);
-  const colors = productColors(product);
   const madeToOrder = isMadeToOrder(product);
 
-  const [color, setColor] = useState(colors[0]);
   const [size, setSize] = useState<string | null>(
     madeToOrder || sizes.length === 1 ? sizes[0] : null
   );
@@ -28,29 +25,6 @@ export function ProductOptions({ product }: { product: Product }) {
 
   return (
     <div className="space-y-7">
-      {colors.length > 0 && (
-        <div>
-          <div className="flex items-baseline gap-2">
-            <span className="eyebrow text-ink">Colour</span>
-            <span className="text-[12px] text-muted">{color}</span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2.5">
-            {colors.map((option) => (
-              <button
-                key={option}
-                onClick={() => setColor(option)}
-                title={option}
-                aria-label={option}
-                aria-pressed={color === option}
-                data-active={color === option}
-                className="swatch h-7 w-7 cursor-pointer"
-                style={{ backgroundColor: swatchHex(option) }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {!madeToOrder && (
         <div>
           <div className="flex items-center justify-between">
@@ -96,7 +70,7 @@ export function ProductOptions({ product }: { product: Product }) {
       <div className="flex items-stretch gap-3">
         <AddToCartButton
           product={product}
-          variant={{ size, color }}
+          variant={{ size, color: null }}
           requireSelection={
             !madeToOrder && !size && !soldOut ? "Please choose a bed size first." : null
           }
