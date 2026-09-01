@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
-import { BRAND, SIZE_GUIDE, FABRICS } from "@/lib/constants";
+import { BRAND, FABRICS } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
 import { Check, MessageCircle, Ruler, Scissors, Truck } from "lucide-react";
 
@@ -100,90 +99,6 @@ export default function CustomOrderPage() {
             </li>
           ))}
         </ol>
-      </section>
-
-      {/* Measuring guide + standard sizes */}
-      <section id="measuring" className="border-y border-line bg-frost scroll-mt-28">
-        <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-14 px-6 py-16 lg:grid-cols-2 lg:gap-20 sm:py-20 xl:px-10">
-          <div>
-            <span className="eyebrow text-purple">Measuring Guide</span>
-            <h2 className="mt-3 font-[family-name:var(--font-display)] text-[28px] leading-tight text-ink sm:text-[34px]">
-              How to measure your bed
-            </h2>
-
-            <ol className="mt-8 space-y-6">
-              {[
-                {
-                  label: "Width",
-                  copy: "Measure the mattress across, from edge to edge, with the bedding stripped off.",
-                },
-                {
-                  label: "Length",
-                  copy: "Measure from the head of the mattress to the foot, along the centre.",
-                },
-                {
-                  label: "Drop",
-                  copy: "Measure the mattress depth, then add how much you want tucked under — most people ask for 6 to 10 inches on top of the depth.",
-                },
-              ].map((row, i) => (
-                <li key={row.label} className="flex gap-5">
-                  <span className="font-[family-name:var(--font-display)] text-xl text-faint">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div>
-                    <h3 className="text-[14px] font-medium text-ink">{row.label}</h3>
-                    <p className="mt-1.5 text-[13px] leading-relaxed text-ink-soft">{row.copy}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            <p className="mt-8 border-l-2 border-purple bg-white px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
-              Measure in inches, and measure twice. If a number looks unusual to us we will call
-              before cutting — it is cheaper for everyone than a sheet that does not fit.
-            </p>
-          </div>
-
-          <div>
-            <span className="eyebrow text-purple">For Reference</span>
-            <h2 className="mt-3 font-[family-name:var(--font-display)] text-[28px] leading-tight text-ink sm:text-[34px]">
-              Our standard sizes
-            </h2>
-
-            <div className="mt-8 overflow-x-auto">
-              <table className="w-full min-w-[26rem] text-left text-[12px]">
-                <thead>
-                  <tr className="border-b border-ink">
-                    {["Size", "Bedsheet", "Pillow Cover", "Set"].map((head) => (
-                      <th key={head} className="eyebrow pb-3 text-ink">
-                        {head}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {SIZE_GUIDE.map((row) => (
-                    <tr key={row.size} className="border-b border-line">
-                      <td className="py-3.5 font-medium text-ink">{row.size}</td>
-                      <td className="py-3.5 text-ink-soft">{row.sheet}</td>
-                      <td className="py-3.5 text-ink-soft">{row.pillow}</td>
-                      <td className="py-3.5 text-ink-soft">{row.pieces}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="mt-6 text-[12px] leading-relaxed text-muted">
-              Dimensions are of the finished sheet, measured flat — the side drop is already
-              included. Falling between two sizes is exactly what this service is for.
-            </p>
-
-            <Link href="/shop" className="btn-outline mt-8">
-              Browse Stocked Sizes
-            </Link>
-          </div>
-        </div>
       </section>
 
       {/* Request form */}
