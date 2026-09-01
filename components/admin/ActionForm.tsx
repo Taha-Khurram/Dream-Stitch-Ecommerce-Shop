@@ -131,6 +131,3 @@ export function Field({
     </div>
   );
 }
-
-export const inputClass =
-  "w-full border border-line bg-white px-3 py-2.5 text-[13px] text-ink transition-colors placeholder-faint focus:border-purple focus:outline-none";

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
-import { inputClass } from "@/components/admin/ActionForm";
+import { inputClass } from "@/components/admin/field-styles";
 import type { ColumnSpec } from "@/lib/content/fields";
 
 /**

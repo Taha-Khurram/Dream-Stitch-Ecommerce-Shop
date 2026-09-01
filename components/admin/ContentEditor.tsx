@@ -1,5 +1,5 @@
 import React from "react";
-import { inputClass } from "@/components/admin/ActionForm";
+import { inputClass } from "@/components/admin/field-styles";
 import { Repeater } from "@/components/admin/Repeater";
 import type { FieldSpec, SectionSpec, TabSpec } from "@/lib/content/fields";
 import type { SiteContent } from "@/lib/content/defaults";

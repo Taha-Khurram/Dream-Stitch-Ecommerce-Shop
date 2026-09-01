@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { ActionForm, DeleteButton, Field, inputClass } from "./ActionForm";
+import { ActionForm, DeleteButton, Field } from "./ActionForm";
+import { inputClass } from "./field-styles";
 import { saveCategory, deleteCategory } from "@/app/(site)/admin/actions";
 import type { Category } from "@/types/ecommerce";
 import { Plus, X } from "lucide-react";

@@ -18,8 +18,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const profile = await requireAdmin();
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-8 px-6 py-10 lg:flex-row lg:gap-12 xl:px-10">
-      <aside className="shrink-0 lg:w-52">
+    <div className="mx-auto flex max-w-[1500px] flex-col px-6 py-10 lg:flex-row xl:px-10">
+      {/* The rail is separated from the work area by a single hairline: a bottom
+          rule when the nav stacks above the page, a right rule once they sit
+          side by side. */}
+      <aside className="shrink-0 border-b border-line pb-8 lg:w-52 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-10">
         <div className="lg:sticky lg:top-24">
           {/* The wordmark lives in the site header a row above; the rail only
               needs to say which surface you are on. */}
@@ -48,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1 pt-8 lg:pt-0 lg:pl-10">{children}</main>
     </div>
   );
 }
