@@ -379,8 +379,8 @@ export function Header({
   const iconButton =
     "relative flex h-8 w-8 cursor-pointer items-center justify-center text-ink transition-colors duration-300 hover:text-purple";
 
-  /* Under /admin the shop nav, search, wishlist and cart all point away from
-     the work surface — the bar keeps the wordmark and nothing else. */
+  /* Under /admin the shop nav, search and cart all point away from the work
+     surface — the bar keeps the wordmark and nothing else. */
   if (pathname?.startsWith("/admin")) {
     return (
       <header
@@ -447,24 +447,6 @@ export function Header({
             <button onClick={() => setSearchOpen(true)} aria-label="Search" className={iconButton}>
               <Search className="h-[17px] w-[17px]" strokeWidth={1.25} />
             </button>
-
-            <Link
-              href="/wishlist"
-              aria-label={
-                savedCount > 0 ? `Wishlist, ${savedCount} saved` : "Wishlist"
-              }
-              className={`${iconButton} hidden sm:flex`}
-            >
-              <Heart
-                className={`h-[17px] w-[17px] ${savedCount > 0 ? "fill-purple text-purple" : ""}`}
-                strokeWidth={1.25}
-              />
-              {savedCount > 0 && (
-                <span className="absolute right-0 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple px-1 text-[8px] font-medium leading-none text-white">
-                  {savedCount}
-                </span>
-              )}
-            </Link>
 
             <AccountMenu
               user={user}
