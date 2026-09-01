@@ -1,10 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { getProducts, getCategories } from "@/lib/api/products";
-import { ProductCard } from "@/components/products/ProductCard";
+import { getCategories } from "@/lib/api/products";
 import { HeroCarousel, type HeroSlide } from "@/components/home/HeroCarousel";
 import { SectionHeading } from "@/components/layout/SectionHeading";
-import { Section, HEADING_GAP, GRID_GAP } from "@/components/layout/Section";
+import { Section, HEADING_GAP } from "@/components/layout/Section";
 import { HomeClosing } from "@/components/home/HomeClosing";
 import { FabricCarousel, type FabricTile } from "@/components/home/FabricCarousel";
 import { IMG, img } from "@/lib/imagery";
@@ -88,15 +87,7 @@ const PROMISES = [
 ];
 
 export default async function HomePage() {
-  const [newArrivals, bestsellers, categories] = await Promise.all([
-    getProducts({ limit: 8, sortBy: "newest" }),
-    getProducts({ limit: 8, sortBy: "rating" }),
-    getCategories(),
-  ]);
-
-  const newIn = newArrivals.slice(0, 4);
-  const newInIds = new Set(newIn.map((product) => product.id));
-  const topSellers = bestsellers.filter((product) => !newInIds.has(product.id)).slice(0, 4);
+  const categories = await getCategories();
 
   const fabrics = categories
     .filter((c) => FABRIC_ORDER.includes(c.slug))
@@ -132,48 +123,6 @@ export default async function HomePage() {
           <FabricCarousel tiles={tiles} />
         </div>
       </Section>
-
-      {/* ── New in ───────────────────────────────────────────── tint ── */}
-      {newIn.length > 0 && (
-        <Section surface="tint">
-          <SectionHeading
-            align="between"
-            eyebrow="Just Landed"
-            title="New In"
-            copy="The most recent sets off the table, updated every week."
-            action={{ label: "View All New In", href: "/shop?sort=newest" }}
-          />
-
-          <div
-            className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
-          >
-            {newIn.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* ── Bestsellers ─────────────────────────────────────── plain ── */}
-      {topSellers.length > 0 && (
-        <Section>
-          <SectionHeading
-            align="between"
-            eyebrow="Loved Most"
-            title="Bestsellers"
-            copy="The sets our customers come back for a second time."
-            action={{ label: "Shop All", href: "/shop?sort=rating" }}
-          />
-
-          <div
-            className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
-          >
-            {topSellers.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </Section>
-      )}
 
       {/* ── Custom demand — full bleed, the loudest purple on the page ── */}
       <Section bleed>

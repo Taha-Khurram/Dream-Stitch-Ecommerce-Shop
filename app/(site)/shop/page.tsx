@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { getProducts, getCategories } from "@/lib/api/products";
 import { ProductCard } from "@/components/products/ProductCard";
+import { SectionHeading } from "@/components/layout/SectionHeading";
+import { Section, HEADING_GAP, GRID_GAP } from "@/components/layout/Section";
 import { FilterSheet } from "@/components/products/FilterSheet";
 import { SortMenu } from "@/components/products/SortMenu";
 import { productSizes } from "@/lib/product-attributes";
@@ -48,7 +50,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const minPrice = params.min ? Number(params.min) : undefined;
   const maxPrice = params.max ? Number(params.max) : undefined;
 
-  const [fetched, categories] = await Promise.all([
+  const [fetched, categories, newArrivals, bestsellers] = await Promise.all([
     getProducts({
       categorySlug,
       query: searchQuery,
@@ -58,7 +60,15 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       limit: 60,
     }),
     getCategories(),
+    getProducts({ limit: 8, sortBy: "newest" }),
+    getProducts({ limit: 8, sortBy: "rating" }),
   ]);
+
+  // The two rails are curated across the whole catalogue, not the current
+  // filter, so a shopper who has narrowed to nothing still has somewhere to go.
+  const newIn = newArrivals.slice(0, 4);
+  const newInIds = new Set(newIn.map((product) => product.id));
+  const topSellers = bestsellers.filter((product) => !newInIds.has(product.id)).slice(0, 4);
 
   // Size, colour and markdowns live in optional columns, so they are narrowed
   // here rather than in the query — this keeps working before the migration runs.
@@ -87,7 +97,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       "Every set we make, in pure cotton, cotton zeen and cotton satin — king, single or cut to your own measurements.");
 
   return (
-    <div className="pb-16">
+    <div>
       {/* Collection banner */}
       <section className="relative h-[220px] w-full overflow-hidden bg-lilac sm:h-[300px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -126,7 +136,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         )}
       </nav>
 
-      <div className="mx-auto max-w-[1500px] px-6 xl:px-10">
+      <div className="mx-auto max-w-[1500px] px-6 pb-16 xl:px-10">
         <div className="min-w-0">
           {/* Toolbar */}
           <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
@@ -168,6 +178,48 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           )}
         </div>
       </div>
+
+      {/* ── New in ──────────────────────────────────── tint ── */}
+      {newIn.length > 0 && (
+        <Section surface="tint">
+          <SectionHeading
+            align="between"
+            eyebrow="Just Landed"
+            title="New In"
+            copy="The most recent sets off the table, updated every week."
+            action={{ label: "View All New In", href: "/shop?sort=newest" }}
+          />
+
+          <div
+            className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
+          >
+            {newIn.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* ── Bestsellers ────────────────────────────── plain ── */}
+      {topSellers.length > 0 && (
+        <Section>
+          <SectionHeading
+            align="between"
+            eyebrow="Loved Most"
+            title="Bestsellers"
+            copy="The sets our customers come back for a second time."
+            action={{ label: "Shop All", href: "/shop?sort=rating" }}
+          />
+
+          <div
+            className={`${HEADING_GAP} grid grid-cols-2 ${GRID_GAP} md:grid-cols-3 lg:grid-cols-4`}
+          >
+            {topSellers.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }
