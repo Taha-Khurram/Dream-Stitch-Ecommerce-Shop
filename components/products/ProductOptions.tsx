@@ -70,7 +70,7 @@ export function ProductOptions({ product }: { product: Product }) {
       <div className="flex items-stretch gap-3">
         <AddToCartButton
           product={product}
-          variant={{ size, color: null }}
+          variant={{ size }}
           requireSelection={
             !madeToOrder && !size && !soldOut ? "Please choose a bed size first." : null
           }

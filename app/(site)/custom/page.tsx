@@ -1,9 +1,8 @@
-"use client";
-
-import React, { useState } from "react";
-import { BRAND, FABRICS } from "@/lib/constants";
+import React from "react";
+import Link from "next/link";
+import { BRAND } from "@/lib/constants";
 import { IMG, img } from "@/lib/imagery";
-import { Check, MessageCircle, Ruler, Scissors, Truck } from "lucide-react";
+import { MessageCircle, Ruler, Scissors, Truck } from "lucide-react";
 
 /**
  * Custom Demand — the made-to-measure service. This is the one thing the
@@ -31,23 +30,6 @@ const STEPS = [
 ];
 
 export default function CustomOrderPage() {
-  const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    fabric: FABRICS[0],
-    width: "",
-    length: "",
-    drop: "",
-    notes: "",
-  });
-
-  const inputClass =
-    "w-full border-b border-line bg-transparent py-2.5 text-[13px] text-ink placeholder-faint transition-colors focus:border-purple focus:outline-none";
-
-  const set = (key: keyof typeof form) => (value: string) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
-
   return (
     <div className="pb-8">
       {/* Hero */}
@@ -101,141 +83,26 @@ export default function CustomOrderPage() {
         </ol>
       </section>
 
-      {/* Request form */}
-      <section id="request" className="mx-auto max-w-3xl px-6 py-16 sm:py-20 scroll-mt-28">
-        <div className="text-center">
+      {/* Request CTA */}
+      <section id="request" className="bg-lilac scroll-mt-28">
+        <div className="mx-auto max-w-2xl px-6 py-16 text-center sm:py-20">
           <span className="eyebrow text-purple">Start Here</span>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-[30px] leading-tight text-ink sm:text-[38px]">
             Request your size
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-ink-soft">
-            Send your numbers and we will come back the same working day with a price. Prefer to
-            talk it through? Message us on WhatsApp at {BRAND.whatsapp}.
+          <p className="mx-auto mt-5 max-w-md text-[13px] leading-relaxed text-ink-soft">
+            Every bedsheet we make can be cut to your own measurements — no premium for an odd
+            size. Browse the range, pick the fabric and finish you want, then send us your width,
+            length and drop. We confirm the price the same working day, before anything is cut.
           </p>
+          <p className="mx-auto mt-3 max-w-md text-[12px] leading-relaxed text-muted">
+            Prefer to talk it through? Message us on WhatsApp at {BRAND.whatsapp}.
+          </p>
+
+          <Link href="/shop" className="btn-primary mt-9 inline-flex">
+            Order a Custom Size
+          </Link>
         </div>
-
-        {submitted ? (
-          <div className="mt-12 border border-line bg-frost p-10 text-center">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple text-white">
-              <Check className="h-5 w-5" />
-            </span>
-            <h3 className="mt-5 font-[family-name:var(--font-display)] text-xl text-ink">
-              Measurements received
-            </h3>
-            <p className="mx-auto mt-3 max-w-sm text-[13px] leading-relaxed text-ink-soft">
-              Thank you{form.name ? `, ${form.name}` : ""}. We will confirm the price for a{" "}
-              {form.width || "—"}&quot; × {form.length || "—"}&quot; set in {form.fabric} and come
-              back to you within one working day.
-            </p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="btn-outline mt-8 cursor-pointer"
-            >
-              Send Another
-            </button>
-          </div>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSubmitted(true);
-            }}
-            className="mt-12 space-y-8"
-          >
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label htmlFor="cs-name" className="eyebrow text-muted">
-                  Name
-                </label>
-                <input
-                  id="cs-name"
-                  required
-                  value={form.name}
-                  onChange={(e) => set("name")(e.target.value)}
-                  placeholder="Your name"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="cs-phone" className="eyebrow text-muted">
-                  Phone or WhatsApp
-                </label>
-                <input
-                  id="cs-phone"
-                  required
-                  value={form.phone}
-                  onChange={(e) => set("phone")(e.target.value)}
-                  placeholder="03xx xxxxxxx"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div>
-              <span className="eyebrow text-muted">Fabric</span>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {FABRICS.map((fabric) => (
-                  <button
-                    key={fabric}
-                    type="button"
-                    onClick={() => set("fabric")(fabric)}
-                    aria-pressed={form.fabric === fabric}
-                    className={`h-11 cursor-pointer border px-4 text-[12px] font-medium tracking-wider transition-colors ${
-                      form.fabric === fabric
-                        ? "border-purple bg-purple text-white"
-                        : "border-line text-ink hover:border-purple"
-                    }`}
-                  >
-                    {fabric}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-              {(
-                [
-                  { key: "width", label: "Mattress width (in)", placeholder: "72" },
-                  { key: "length", label: "Mattress length (in)", placeholder: "78" },
-                  { key: "drop", label: "Drop per side (in)", placeholder: "10" },
-                ] as const
-              ).map((field) => (
-                <div key={field.key}>
-                  <label htmlFor={`cs-${field.key}`} className="eyebrow text-muted">
-                    {field.label}
-                  </label>
-                  <input
-                    id={`cs-${field.key}`}
-                    required
-                    inputMode="decimal"
-                    value={form[field.key]}
-                    onChange={(e) => set(field.key)(e.target.value)}
-                    placeholder={field.placeholder}
-                    className={inputClass}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <label htmlFor="cs-notes" className="eyebrow text-muted">
-                Anything else?
-              </label>
-              <textarea
-                id="cs-notes"
-                rows={4}
-                value={form.notes}
-                onChange={(e) => set("notes")(e.target.value)}
-                placeholder="Colour preference, number of pillow covers, a deadline…"
-                className={`${inputClass} resize-none`}
-              />
-            </div>
-
-            <button type="submit" className="btn-primary w-full cursor-pointer sm:w-auto">
-              Send My Measurements
-            </button>
-          </form>
-        )}
       </section>
 
       {/* Reassurance strip */}

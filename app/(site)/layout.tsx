@@ -1,5 +1,6 @@
 import React from "react";
 import { CartProvider } from "@/context/CartContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -18,11 +19,13 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         shippingFee: settings.shipping_fee,
       }}
     >
-      <Header announcements={settings.announcements} isAdmin={admin} />
-      <main className="flex-1">{children}</main>
-      <CartDrawer />
-      <SiteFooter settings={settings} />
-      <BackToTop />
+      <WishlistProvider>
+        <Header announcements={settings.announcements} isAdmin={admin} />
+        <main className="flex-1">{children}</main>
+        <CartDrawer />
+        <SiteFooter settings={settings} />
+        <BackToTop />
+      </WishlistProvider>
     </CartProvider>
   );
 }

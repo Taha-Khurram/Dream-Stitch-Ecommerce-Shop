@@ -7,7 +7,7 @@ import { Check } from "lucide-react";
 
 interface AddToCartButtonProps {
   product: Product;
-  /** Chosen size / colour, carried onto the cart line. */
+  /** Chosen size, carried onto the cart line. */
   variant?: VariantOptions;
   /** Blocks the click and shows this message instead of adding. */
   requireSelection?: string | null;

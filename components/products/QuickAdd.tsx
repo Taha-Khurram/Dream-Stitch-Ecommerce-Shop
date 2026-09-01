@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/types/ecommerce";
-import { productSizes, productColors, isMadeToOrder } from "@/lib/product-attributes";
+import { productSizes, isMadeToOrder } from "@/lib/product-attributes";
 import { Check } from "lucide-react";
 
 /**
@@ -31,7 +31,7 @@ export function QuickAdd({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
     if (maxed) return;
-    addItem(product, 1, { size, color: productColors(product)[0] });
+    addItem(product, 1, { size });
     setJustAdded(size);
     setTimeout(() => setJustAdded(null), 1600);
   };

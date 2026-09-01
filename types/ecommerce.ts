@@ -49,8 +49,6 @@ export interface Product {
   images?: string[] | null;
   /** Bed sizes, e.g. ["Single", "King Size"]; ["Custom Size"] for made-to-order. */
   sizes?: string[] | null;
-  /** Colourway names — resolved to hex via `swatchHex()`. */
-  colors?: string[] | null;
   /** e.g. "Pure Cotton", "Cotton Zeen", "Cotton Satin". */
   fabric?: string | null;
   /** What the set contains, e.g. "1 bedsheet + 2 pillow covers". */
@@ -105,7 +103,6 @@ export interface CartItem {
   categoryName?: string | null;
   /** Chosen variant, carried for display only — checkout aggregates by product. */
   size?: string | null;
-  color?: string | null;
 }
 
 export interface CheckoutPayload {

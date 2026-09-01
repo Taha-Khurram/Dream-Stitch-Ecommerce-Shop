@@ -70,8 +70,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const newInIds = new Set(newIn.map((product) => product.id));
   const topSellers = bestsellers.filter((product) => !newInIds.has(product.id)).slice(0, 4);
 
-  // Size, colour and markdowns live in optional columns, so they are narrowed
-  // here rather than in the query — this keeps working before the migration runs.
+  // Size and markdowns live in optional columns, so they are narrowed here
+  // rather than in the query — this keeps working before the migration runs.
   const onSale = params.sale === "true";
   const products = fetched.filter((product) => {
     if (params.size && !productSizes(product).includes(params.size)) return false;

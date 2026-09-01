@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Product, Category } from "@/types/ecommerce";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export interface GetProductsOptions {
   categorySlug?: string;
   query?: string;
@@ -144,6 +147,37 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   }
 
   return (data as unknown as Product) || null;
+}
+
+/**
+ * Fetch a set of products by id, returned in the order the ids were given.
+ *
+ * The wishlist lives in the browser, so it arrives as a bare list of ids with
+ * no ordering the database knows about — the caller's order is the one the
+ * shopper saved in, and it is restored here rather than in the component.
+ */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  // `id` is a uuid column, so a single malformed id from a stale browser store
+  // would fail the whole query rather than just being absent from the results.
+  const unique = Array.from(new Set(ids.filter((id) => UUID_PATTERN.test(id))));
+  if (unique.length === 0) return [];
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("*, category:categories(*)")
+    .in("id", unique);
+
+  if (error) {
+    console.error("Error fetching products by id:", error.message);
+    return [];
+  }
+
+  const byId = new Map((data as unknown as Product[]).map((product) => [product.id, product]));
+  return unique
+    .map((id) => byId.get(id))
+    .filter((product): product is Product => Boolean(product));
 }
 
 /**

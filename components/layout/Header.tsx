@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { BRAND, NAV_ITEMS } from "@/lib/constants";
@@ -15,8 +16,10 @@ import {
   User as UserIcon,
   Menu,
   X,
+  LogIn,
   LogOut,
   LayoutDashboard,
+  UserPlus,
 } from "lucide-react";
 
 /**
@@ -186,7 +189,12 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-/* ── Account icon, with a sign-out menu once signed in ─────────────────── */
+/* ── Account icon and its dropdown ─────────────────────────────────────── */
+
+/** Every row in the account dropdown shares this line style. */
+const MENU_ROW =
+  "eyebrow flex w-full items-center gap-2 text-ink transition-colors hover:text-purple";
+
 function AccountMenu({
   user,
   isAdmin,
@@ -201,6 +209,8 @@ function AccountMenu({
   const [open, setOpen] = useState(false);
   const { mounted: menuMounted, state: menuState } = usePresence(open, 180);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const { count: wishlistCount, isHydrated } = useWishlist();
+  const savedCount = isHydrated ? wishlistCount : 0;
 
   useEffect(() => {
     if (!open) return;
@@ -218,14 +228,6 @@ function AccountMenu({
     };
   }, [open]);
 
-  if (!user) {
-    return (
-      <Link href="/signin" aria-label="Sign in" className={className}>
-        <UserIcon className="h-[17px] w-[17px]" strokeWidth={1.25} />
-      </Link>
-    );
-  }
-
   return (
     <div ref={wrapRef} className="relative">
       <button
@@ -236,7 +238,9 @@ function AccountMenu({
         className={className}
       >
         <UserIcon className="h-[17px] w-[17px]" strokeWidth={1.25} />
-        <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-purple" />
+        {user && (
+          <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-purple" />
+        )}
       </button>
 
       {menuMounted && (
@@ -245,30 +249,65 @@ function AccountMenu({
           data-state={menuState}
           className="sheet-top absolute right-0 top-full z-50 mt-2 w-52 border border-line bg-white p-4 shadow-[0_18px_34px_-26px_rgba(42,27,51,0.5)]"
         >
-          <p className="truncate text-[12px] text-ink-soft">{user.email}</p>
+          <p className="truncate text-[12px] text-ink-soft">
+            {user ? user.email : "Not signed in"}
+          </p>
 
-          {isAdmin && (
+          {/* The wishlist is kept in the browser, so it is offered either way */}
+          <Link
+            role="menuitem"
+            href="/wishlist"
+            onClick={() => setOpen(false)}
+            className={`${MENU_ROW} mt-4 border-t border-line pt-3`}
+          >
+            <Heart className="h-3.5 w-3.5" strokeWidth={1.4} /> Wishlist
+            {savedCount > 0 && (
+              <span className="ml-auto text-[10px] font-medium text-purple">{savedCount}</span>
+            )}
+          </Link>
+
+          {isAdmin && user && (
             <Link
+              role="menuitem"
               href="/admin"
               onClick={() => setOpen(false)}
-              className="eyebrow mt-4 flex items-center gap-2 border-t border-line pt-3 text-purple transition-colors hover:text-purple-deep"
+              className={`${MENU_ROW} mt-3 text-purple hover:text-purple-deep`}
             >
               <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={1.4} /> Admin Panel
             </Link>
           )}
 
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onSignOut();
-            }}
-            className={`eyebrow flex w-full cursor-pointer items-center gap-2 pt-3 text-ink transition-colors hover:text-purple ${
-              isAdmin ? "mt-3" : "mt-4 border-t border-line"
-            }`}
-          >
-            <LogOut className="h-3.5 w-3.5" strokeWidth={1.4} /> Sign Out
-          </button>
+          {user ? (
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onSignOut();
+              }}
+              className={`${MENU_ROW} mt-3 cursor-pointer`}
+            >
+              <LogOut className="h-3.5 w-3.5" strokeWidth={1.4} /> Sign Out
+            </button>
+          ) : (
+            <>
+              <Link
+                role="menuitem"
+                href="/signin"
+                onClick={() => setOpen(false)}
+                className={`${MENU_ROW} mt-3`}
+              >
+                <LogIn className="h-3.5 w-3.5" strokeWidth={1.4} /> Sign In
+              </Link>
+              <Link
+                role="menuitem"
+                href="/signup"
+                onClick={() => setOpen(false)}
+                className={`${MENU_ROW} mt-3`}
+              >
+                <UserPlus className="h-3.5 w-3.5" strokeWidth={1.4} /> Register
+              </Link>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -283,6 +322,8 @@ export function Header({
   isAdmin?: boolean;
 }) {
   const { totalItems, toggleCart } = useCart();
+  const { count: wishlistCount, isHydrated: wishlistHydrated } = useWishlist();
+  const savedCount = wishlistHydrated ? wishlistCount : 0;
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -408,11 +449,21 @@ export function Header({
             </button>
 
             <Link
-              href="/shop?sort=rating"
-              aria-label="Wishlist"
+              href="/wishlist"
+              aria-label={
+                savedCount > 0 ? `Wishlist, ${savedCount} saved` : "Wishlist"
+              }
               className={`${iconButton} hidden sm:flex`}
             >
-              <Heart className="h-[17px] w-[17px]" strokeWidth={1.25} />
+              <Heart
+                className={`h-[17px] w-[17px] ${savedCount > 0 ? "fill-purple text-purple" : ""}`}
+                strokeWidth={1.25}
+              />
+              {savedCount > 0 && (
+                <span className="absolute right-0 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple px-1 text-[8px] font-medium leading-none text-white">
+                  {savedCount}
+                </span>
+              )}
             </Link>
 
             <AccountMenu
@@ -481,6 +532,21 @@ export function Header({
             </div>
 
             <div className="border-t border-line px-5 py-5">
+              <Link
+                href="/wishlist"
+                onClick={() => setMobileOpen(false)}
+                className="mb-4 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
+              >
+                <Heart
+                  className={`h-3.5 w-3.5 ${savedCount > 0 ? "fill-purple text-purple" : ""}`}
+                  strokeWidth={1.4}
+                />
+                Wishlist
+                {savedCount > 0 && (
+                  <span className="ml-auto text-[10px] text-purple">{savedCount}</span>
+                )}
+              </Link>
+
               {user ? (
                 <div className="space-y-3">
                   {isAdmin && (

@@ -141,7 +141,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
             <p className={`mt-5 text-[12px] ${soldOut ? "text-muted" : "text-purple"}`}>
               {soldOut
                 ? "Sold out for now — or have this cut to your size on order."
-                : `Only ${product.stock} left in this colourway.`}
+                : `Only ${product.stock} left in stock.`}
             </p>
           )}
 

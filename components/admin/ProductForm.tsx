@@ -154,20 +154,6 @@ export function ProductForm({
       </div>
 
       <Field
-        label="Colourways"
-        name="colors"
-        hint="Comma separated. Names map to swatches; unknown names fall back to a neutral chip."
-      >
-        <input
-          id="colors"
-          name="colors"
-          defaultValue={product?.colors?.join(", ") ?? ""}
-          placeholder="Ivory, Lilac, Sage"
-          className={inputClass}
-        />
-      </Field>
-
-      <Field
         label="Images"
         name="images"
         hint="One URL per line. The first becomes the main shot; the second drives the hover cross-fade on product cards."

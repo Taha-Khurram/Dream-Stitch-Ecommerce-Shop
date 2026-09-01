@@ -12,7 +12,6 @@ import {
 
 export interface VariantOptions {
   size?: string | null;
-  color?: string | null;
 }
 
 interface CartContextType {
@@ -42,9 +41,9 @@ const CART_STORAGE_KEY = "dreamstitch_cart_v1";
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-/** Lines are keyed by product *and* variant so two sizes stay separate rows. */
+/** Lines are keyed by product *and* size so two sizes stay separate rows. */
 function lineIdFor(productId: string, variant?: VariantOptions): string {
-  return `${productId}::${variant?.size ?? ""}::${variant?.color ?? ""}`;
+  return `${productId}::${variant?.size ?? ""}`;
 }
 
 export function CartProvider({
@@ -125,7 +124,6 @@ export function CartProvider({
           maxStock: stockCap,
           categoryName: product.category?.name || null,
           size: variant?.size ?? null,
-          color: variant?.color ?? null,
         };
         return [...prevItems, newItem];
       });

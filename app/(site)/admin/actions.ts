@@ -82,7 +82,6 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
     image_url: primary,
     images: gallery.length ? gallery : primary ? [primary] : null,
     sizes: commas(formData.get("sizes")),
-    colors: commas(formData.get("colors")),
     fabric: text(formData.get("fabric")) || null,
     pieces: text(formData.get("pieces")) || null,
     is_featured: formData.get("is_featured") === "on",

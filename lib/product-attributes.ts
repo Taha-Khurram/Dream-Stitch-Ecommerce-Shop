@@ -3,12 +3,9 @@ import { DEFAULT_SIZES, CUSTOM_SIZES } from "@/lib/constants";
 
 /**
  * The bedding columns are optional (see `bedding_seed.sql`). These helpers give
- * every product a sensible set of gallery shots, bed sizes and colourways
- * whether or not the migration has been applied, so the UI never renders
- * half-empty.
+ * every product a sensible set of gallery shots and bed sizes whether or not
+ * the migration has been applied, so the UI never renders half-empty.
  */
-
-const FALLBACK_COLORS = ["White", "Lilac", "Charcoal"];
 
 /**
  * True for sets we cut to the customer's own measurements rather than to a
@@ -26,11 +23,6 @@ export function productSizes(product: Product): string[] {
   if (product.sizes?.length) return product.sizes;
   if (isMadeToOrder(product)) return CUSTOM_SIZES;
   return DEFAULT_SIZES;
-}
-
-export function productColors(product: Product): string[] {
-  if (product.colors?.length) return product.colors;
-  return FALLBACK_COLORS;
 }
 
 /** `image_url` first, then any extra gallery shots, de-duplicated. */

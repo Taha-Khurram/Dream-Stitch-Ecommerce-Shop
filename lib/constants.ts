@@ -1,7 +1,7 @@
 /**
  * Storefront-wide catalogue constants: the navigation tree, bed-size runs and
- * colourway swatches. Kept out of the database so the navigation can be
- * restructured without a migration.
+ * fabric list. Kept out of the database so the navigation can be restructured
+ * without a migration.
  */
 
 export const BRAND = {
@@ -43,33 +43,6 @@ export const FILTER_SIZES = ["Single", "King Size", "Custom Size"];
 
 /** The three materials the house weaves. */
 export const FABRICS = ["Pure Cotton", "Cotton Zeen", "Cotton Satin"];
-
-export const COLOR_SWATCHES: Record<string, string> = {
-  White: "#ffffff",
-  Ivory: "#f4efe6",
-  Pearl: "#f1eef5",
-  Lilac: "#cbb9e4",
-  Lavender: "#b39ddb",
-  Orchid: "#9a6fc4",
-  Plum: "#5e2b8a",
-  Aubergine: "#3d1c56",
-  Blush: "#e6c3cd",
-  Rose: "#c98a99",
-  Sage: "#a8b8a2",
-  Teal: "#3d6f72",
-  Indigo: "#33406b",
-  Navy: "#22304a",
-  Slate: "#6f6b78",
-  Charcoal: "#39343f",
-  Graphite: "#2a1b33",
-  Sand: "#ddd0bd",
-  Mustard: "#c9962f",
-  Terracotta: "#a8512c",
-};
-
-export function swatchHex(name: string): string {
-  return COLOR_SWATCHES[name] ?? "#cfc6d8";
-}
 
 /**
  * Finished sheet dimensions, not mattress dimensions — the drop is already

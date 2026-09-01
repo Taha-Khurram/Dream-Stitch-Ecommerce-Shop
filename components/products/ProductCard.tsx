@@ -2,8 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { Product } from "@/types/ecommerce";
 import { formatPrice, discountPercent } from "@/lib/format";
-import { swatchHex } from "@/lib/constants";
-import { productColors, productSubtitle, hoverImage } from "@/lib/product-attributes";
+import { productSubtitle, hoverImage } from "@/lib/product-attributes";
 import { QuickAdd } from "./QuickAdd";
 import { WishlistButton } from "./WishlistButton";
 
@@ -16,7 +15,6 @@ interface ProductCardProps {
 export function ProductCard({ product, compact = false }: ProductCardProps) {
   const soldOut = product.stock <= 0;
   const lowStock = product.stock > 0 && product.stock <= 3;
-  const colors = productColors(product);
   const subtitle = productSubtitle(product);
   const secondary = hoverImage(product);
   const discount = discountPercent(Number(product.price), product.compare_at_price);
@@ -115,22 +113,6 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
             </span>
           )}
         </div>
-
-        {colors.length > 1 && (
-          <div className="mt-3 flex items-center gap-1.5">
-            {colors.slice(0, 5).map((color) => (
-              <span
-                key={color}
-                title={color}
-                className="h-3 w-3 rounded-full border border-line"
-                style={{ backgroundColor: swatchHex(color) }}
-              />
-            ))}
-            {colors.length > 5 && (
-              <span className="text-[10px] text-muted">+{colors.length - 5}</span>
-            )}
-          </div>
-        )}
       </div>
     </article>
   );

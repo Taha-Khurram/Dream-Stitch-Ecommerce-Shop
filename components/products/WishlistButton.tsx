@@ -1,23 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Heart } from "lucide-react";
-
-const STORAGE_KEY = "dreamstitch_wishlist_v1";
-
-function readWishlist(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
+import { useWishlist } from "@/context/WishlistContext";
 
 /**
- * Local-only wishlist toggle. Persisted per browser — there is no wishlist
- * table yet, and a saved item shouldn't require an account to try the feature.
+ * Heart toggle. The list itself lives in `WishlistContext`, so pressing this
+ * updates the header count and the /wishlist grid in the same tick.
  */
 export function WishlistButton({
   productId,
@@ -26,26 +15,13 @@ export function WishlistButton({
   productId: string;
   size?: "sm" | "lg";
 }) {
-  const [saved, setSaved] = useState(false);
+  const { has, toggle, isHydrated } = useWishlist();
+  const saved = isHydrated && has(productId);
 
-  useEffect(() => {
-    setSaved(readWishlist().includes(productId));
-  }, [productId]);
-
-  const toggle = (e: React.MouseEvent) => {
+  const onClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const next = saved
-      ? readWishlist().filter((id) => id !== productId)
-      : [...readWishlist(), productId];
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* private browsing — the toggle still reflects this session */
-    }
-    setSaved(!saved);
+    toggle(productId);
   };
 
   const box = size === "lg" ? "h-12 w-12" : "h-8 w-8";
@@ -54,7 +30,7 @@ export function WishlistButton({
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={onClick}
       aria-pressed={saved}
       aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
       className={`${box} flex cursor-pointer items-center justify-center border border-line bg-white/95 transition-colors hover:border-ink`}

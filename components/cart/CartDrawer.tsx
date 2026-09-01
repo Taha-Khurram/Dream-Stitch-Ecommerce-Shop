@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import { amountToFreeShipping } from "@/lib/pricing";
-import { swatchHex, BRAND } from "@/lib/constants";
+import { BRAND } from "@/lib/constants";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import {
   X,
@@ -268,15 +268,6 @@ export function CartDrawer() {
                         </Link>
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
                           {item.size && <span>Size {item.size}</span>}
-                          {item.color && (
-                            <span className="flex items-center gap-1.5">
-                              <span
-                                className="h-2.5 w-2.5 rounded-full border border-line"
-                                style={{ backgroundColor: swatchHex(item.color) }}
-                              />
-                              {item.color}
-                            </span>
-                          )}
                         </div>
                       </div>
 
