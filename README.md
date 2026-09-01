@@ -47,6 +47,7 @@ street cannot match.
 | **Product** | `/shop/[id]` — thumbnail gallery, colourway and bed-size selection, size-guide dialog, service promises, detail accordions |
 | **Custom** | `/custom` — how it works, measuring guide, standard-size table, measurement request form |
 | **Bag** | Slide-over with a free-delivery progress bar and an inline delivery-details step |
+| **Wishlist** | `/wishlist` — saved sets, kept in the browser, no account needed |
 | **Editorial** | `/about` and `/contact` — story, milestones, stockists, FAQs |
 | **Account** | `/signin` and `/signup` — split editorial layout over Supabase Auth |
 
@@ -108,6 +109,8 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
 No signup path grants admin, and there is no service-role key in the app.
+[`product_media_schema.sql`](product_media_schema.sql) goes last — see
+[Product media](#product-media) below.
 
 | | |
 | :-- | :-- |
@@ -124,8 +127,8 @@ subject to RLS) and gates every catalogue write and order read behind it.
 `requireAdmin()` in [`lib/auth/admin.ts`](lib/auth/admin.ts) only buys a clean
 redirect — a forged session that slipped past it would still be refused by
 Postgres. Mutations run as the signed-in user through server actions in
-[`app/admin/actions.ts`](app/admin/actions.ts), so there is one security model
-to audit.
+[`app/(site)/admin/actions.ts`](app/%28site%29/admin/actions.ts), so there is
+one security model to audit.
 
 **What settings actually drive.** Saving is not cosmetic: the delivery
 threshold and fee feed the cart's progress bar, the product-page promise and
@@ -140,6 +143,40 @@ emptied. Each tab covers one surface: section switches, headings, body copy,
 button labels and links, image URLs, and repeatable lists (hero slides,
 promises, steps, FAQs, footer and navigation links). *Restore defaults* puts one
 tab back to what the app ships with.
+
+---
+
+## Product media
+
+[`product_media_schema.sql`](product_media_schema.sql) adds a public
+`product-media` bucket and a `product_media` table that records what is in it.
+Run it in the **Supabase SQL editor** after `admin_schema.sql`.
+
+**The uploaded file is the master.** Nothing on the way in compresses,
+re-encodes or resizes — what lands in the bucket is the photographer's
+original, byte for byte. Display sizes are asked for at read time from
+Supabase's render endpoint, so producing a thumbnail costs the original
+nothing. `productMediaSrc()` in
+[`lib/supabase/storage.ts`](lib/supabase/storage.ts) makes the choice: a sized
+rendering for an image, the master for a video.
+
+| | |
+| :-- | :-- |
+| **Bucket** | 100 MB ceiling and a MIME allow-list enforced by storage-api itself — jpeg, png, webp, avif; mp4, webm, mov |
+| **Keys** | `products/{product-id}/{timestamp}-{name}`, so an object is immutable — a replaced shot is a new key, which makes a year-long cache header safe |
+| **Transport** | one XHR request up to 6 MB; TUS in 6 MB chunks above it and for all video, fingerprinted in `localStorage` so a dropped connection resumes instead of restarting a 90 MB clip. Four files in flight at once |
+| **Atomicity** | a `product_media` row is written only once its object commits, and a failed insert deletes the object rather than orphan it in the bucket |
+| **Primary shot** | a partial unique index permits one per product, and a trigger demotes the incumbent — so "set as primary" stays a single `UPDATE` |
+| **Writes** | RLS on both `storage.objects` and `product_media`, through `can_manage_product_media()`, which already accepts a future `seller` role. The upload path is pinned to `products/<id>/` by the policy itself |
+
+Image transformations are a paid-plan feature — on the free tier the render URL
+returns 400 — which is why `productMediaSrc()` takes a `transform` flag that can
+be switched off project-wide from one place.
+
+> **Where it is mounted.** `ProductMediaUploader` sits below the form on
+> `/admin/products/[id]` — an edit page, because a product id has to exist
+> before media can hang off it. The storefront gallery still reads the `images`
+> text array the seed fills in; pointing it at `product_media` is the next step.
 
 ---
 
@@ -175,39 +212,53 @@ Utility classes worth knowing: `.link-rule` (underline wipes in on hover),
 
 ## Project structure
 
+Routes are split by route group: `(site)` carries the header and footer,
+`(auth)` gets the split editorial shell instead.
+
 ```
 app/
-  page.tsx              home — hero, fabrics, New In, bestsellers, promises
-  admin/                the panel: dashboard, products, categories,
+  layout.tsx            root shell — fonts, metadata, Speed Insights
+  (site)/
+    page.tsx            home — hero, fabrics, New In, bestsellers, promises
+    shop/page.tsx       collection listing with filters and sort
+    shop/[id]/page.tsx  product detail
+    custom/page.tsx     made-to-measure service and measurement request
+    wishlist/           saved sets, held in the browser
+    about/  contact/    editorial pages
+    admin/              the panel: dashboard, products, categories,
                         orders, settings, and the server actions behind them
-  shop/page.tsx         collection listing with filters and sort
-  shop/[id]/page.tsx    product detail
-  custom/page.tsx       made-to-measure service and measurement request
-  about/  contact/      editorial pages
-  signin/  signup/      auth, over Supabase
+  (auth)/               signin, signup — over Supabase Auth
+  auth/                 OAuth callback and email-confirmation routes
   api/checkout/         order placement, price-verified server-side
 components/
   layout/               Header (one-row bar, mega panel, search overlay),
-                        Section (vertical rhythm), SectionHeading
-  home/                 HeroCarousel, HomeClosing
-  admin/                ActionForm, ProductForm, CategoryEditor,
+                        Section (vertical rhythm), SectionHeading, SiteFooter
+  home/                 HeroCarousel, FabricCarousel, HomeClosing
+  admin/                ActionForm, ProductForm, ProductMediaUploader,
+                        CategoryEditor, ContentEditor, Repeater,
                         OrderStatusControl, StatusPill, AdminNav
   products/             ProductCard, QuickAdd, ProductGallery, ProductOptions,
-                        CategoryFilter, SortMenu, SizeGuideDialog, …
+                        FilterPanel, SortMenu, SizeGuideDialog, WishlistGrid, …
   cart/CartDrawer.tsx   bag + delivery details + confirmation
   auth/AuthShell.tsx    split editorial layout shared by sign in / register
+  motion/               ScrollReveal, RouteProgress, BackToTop, Skeleton
 lib/
   constants.ts          brand, navigation tree, bed sizes, colour swatches
   auth/admin.ts         admin gate for the panel
-  api/settings.ts       store settings, falling back to the constants
+  api/                  product, settings and page-content queries
+  content/              default page copy, the field schema behind the
+                        settings tabs, and the merge over the defaults
   format.ts             currency formatting
   pricing.ts            delivery thresholds and order totals
   imagery.ts            verified editorial photography ids
   product-attributes.ts fallbacks for optional bedding columns
-  api/products.ts       Supabase queries
-  supabase/             browser / server / middleware clients
+  supabase/             browser / server / middleware clients, plus the
+                        media bucket contract and its upload transport
 scripts/                catalogue and README asset generators
 ```
+
+Legacy paths redirect rather than 404: `/products` → `/shop`, `/login` →
+`/signin`, `/dashboard` → `/`.
 
 ---
 
@@ -240,18 +291,24 @@ trusted from the client.
 
 ## Imagery
 
-Editorial photography ids live in [`lib/imagery.ts`](lib/imagery.ts). Every id
-has been checked to return `200` from `images.unsplash.com` — a dead id renders
-as an empty tile, so verify before adding one.
+Two sources, and they do not overlap. **Editorial** photography — heroes,
+section bands, the about page — is Unsplash, by id, in
+[`lib/imagery.ts`](lib/imagery.ts); every id has been checked to return `200`
+from `images.unsplash.com`, since a dead id renders as an empty tile.
+**Product** photography is uploaded, and lives in the bucket described under
+[Product media](#product-media).
 
-README images are generated:
+README images are generated from full-page screenshots:
 
 ```bash
 python scripts/gen_readme_assets.py banner=<screenshot.png> about=<screenshot.png>
 ```
 
-The palette strip is drawn from the token list in that script, so it cannot
-drift from the CSS.
+Capture them at 1600 wide with **reduced motion** on — the announcement strip
+crossfades and the hero autoplays, so without it a frame lands mid-transition
+with two headlines on top of each other. The palette strip needs no input: it
+is drawn from the token list inside that script, so it cannot drift from the
+CSS.
 
 ---
 
@@ -262,6 +319,7 @@ drift from the CSS.
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
+| `npm run lint` | ESLint, via `eslint-config-next` |
 | `python scripts/gen_bedding_seed.py` | Regenerate `bedding_seed.sql` |
 | `python scripts/gen_readme_assets.py` | Regenerate the README images |
 
