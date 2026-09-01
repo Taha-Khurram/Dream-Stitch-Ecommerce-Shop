@@ -122,3 +122,20 @@ export interface CheckoutResponse {
   error?: string;
   details?: unknown;
 }
+
+/**
+ * One file in the `product-media` bucket, attached to a product.
+ * Mirrors `product_media` in `product_media_schema.sql`.
+ *
+ * `file_path` is the object key, not a URL — build the URL with the helpers in
+ * `lib/supabase/storage.ts` so sizing and caching stay in one place.
+ */
+export interface ProductMedia {
+  id: string;
+  product_id: string;
+  file_path: string;
+  media_type: "image" | "video";
+  sort_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
