@@ -3,6 +3,7 @@ import { Jost, Prata, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { BRAND } from "@/lib/constants";
 import { RouteProgress } from "@/components/motion/RouteProgress";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const jost = Jost({
   subsets: ["latin"],
@@ -83,6 +84,8 @@ export default function RootLayout({
             pages get it too. Renders nothing until a link is clicked. */}
         <RouteProgress />
         {children}
+        {/* Real-user performance metrics. No-ops off Vercel. */}
+        <SpeedInsights />
       </body>
     </html>
   );
