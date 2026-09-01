@@ -2,7 +2,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { accessToken } from "@/lib/supabase/lazy-client";
 import { uploadMaster } from "@/lib/supabase/media-upload";
 import {
   ALLOWED_IMAGE_MIME,
@@ -32,8 +32,6 @@ const IMAGE_ACCEPT = ALLOWED_IMAGE_MIME.join(",");
 
 /** Shared upload mechanics: one file at a time, into `folder`. */
 function useImageUpload(folder: string) {
-  // Lazy: the factory must not run on every render.
-  const [supabase] = useState(createClient);
   const [percent, setPercent] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,11 +46,11 @@ function useImageUpload(folder: string) {
       setError(null);
       setPercent(0);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      /* Fetches @supabase/supabase-js on first use. The user has just dropped
+         a file, so this lands long before the upload it authorises. */
+      const token = await accessToken();
 
-      if (!session) {
+      if (!token) {
         setError("Your session expired — sign in again");
         setPercent(null);
         return null;
@@ -64,7 +62,7 @@ function useImageUpload(folder: string) {
         await uploadMaster({
           file,
           path,
-          accessToken: session.access_token,
+          accessToken: token,
           onProgress: (loaded, total) =>
             setPercent(total ? Math.round((loaded / total) * 100) : 0),
         }).done;
@@ -77,7 +75,7 @@ function useImageUpload(folder: string) {
       setPercent(null);
       return publicMediaUrl(path);
     },
-    [folder, supabase]
+    [folder]
   );
 
   return { upload, percent, error, setError, busy: percent !== null };

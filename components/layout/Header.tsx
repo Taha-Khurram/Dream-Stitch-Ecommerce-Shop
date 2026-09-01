@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { signOut } from "@/app/auth/actions";
 import { BRAND } from "@/lib/constants";
 import type { SiteContent } from "@/lib/content/defaults";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
@@ -31,6 +30,21 @@ import {
  * `app/shop/page.tsx` pins its filter rail below this; keep the two in step.
  */
 const ANNOUNCEMENT_MS = 5200;
+
+/**
+ * All the header ever reads off the session is an email and whether there is
+ * one at all. Taking that shape instead of Supabase's `User` is what lets this
+ * file — which sits in the layout, so it is on every route — stop importing
+ * `@supabase/supabase-js`. That library is 67 kB gzipped and pulls in a
+ * realtime WebSocket client this app never opens.
+ *
+ * The layout resolves it server-side and passes it down, which also removes
+ * the `auth.getUser()` the header used to fire on mount: the account state is
+ * now correct in the first paint rather than a beat later.
+ */
+export interface HeaderUser {
+  email: string | null;
+}
 
 /** Fallback only — the live list comes from `store_settings` via the layout. */
 const ANNOUNCEMENTS = [
@@ -207,7 +221,7 @@ function AccountMenu({
   onSignOut,
   className,
 }: {
-  user: User | null;
+  user: HeaderUser | null;
   isAdmin?: boolean;
   showWishlist: boolean;
   onSignOut: () => void;
@@ -326,10 +340,13 @@ function AccountMenu({
 export function Header({
   announcements,
   isAdmin,
+  user = null,
   content,
 }: {
   announcements?: string[];
   isAdmin?: boolean;
+  /** Resolved on the server by the layout — see the note on `HeaderUser`. */
+  user?: HeaderUser | null;
   /** Chrome switches and navigation from `/admin/settings?tab=header`. */
   content: SiteContent["header"];
 }) {
@@ -341,16 +358,6 @@ export function Header({
   const [searchOpen, setSearchOpen] = useState(false);
   const { mounted: drawerMounted, state: drawerState } = usePresence(mobileOpen);
   const [lifted, setLifted] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [supabase] = useState(() => createClient());
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) =>
-      setUser(session?.user ?? null)
-    );
-    return () => listener.subscription.unsubscribe();
-  }, [supabase]);
 
   // Close every transient surface on navigation
   useEffect(() => {
@@ -382,32 +389,15 @@ export function Header({
     };
   }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    window.location.href = "/";
+  /* The action clears the cookie, revalidates the layout and redirects, so
+     there is nothing left to reset locally. */
+  const handleSignOut = () => {
+    startRouteProgress();
+    void signOut();
   };
 
   const iconButton =
     "relative flex h-8 w-8 cursor-pointer items-center justify-center text-ink transition-colors duration-300 hover:text-purple";
-
-  /* Under /admin the shop nav, search and cart all point away from the work
-     surface — the bar keeps the wordmark and nothing else. */
-  if (pathname?.startsWith("/admin")) {
-    return (
-      <header
-        className={`sticky top-0 z-50 border-b bg-white transition-shadow duration-500 ${
-          lifted
-            ? "border-line shadow-[0_10px_30px_-26px_rgba(42,27,51,0.55)]"
-            : "border-line-soft shadow-none"
-        }`}
-      >
-        <div className="mx-auto flex h-14 max-w-[1500px] items-center px-4 sm:px-6 xl:px-10">
-          <Wordmark suffix={content.show_suffix} />
-        </div>
-      </header>
-    );
-  }
 
   return (
     <>

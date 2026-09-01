@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/ecommerce";
@@ -9,8 +10,13 @@ import type { Profile } from "@/types/ecommerce";
  * in `admin_schema.sql`: `is_admin()` guards every write policy, so a forged
  * session that slipped past this check would still be rejected by Postgres.
  * What this buys is a clean redirect instead of a wall of empty tables.
+ *
+ * Cached per request. `isAdmin()` from the site layout and `requireAdmin()`
+ * from the admin layout both land here, and without this each one paid for
+ * its own round trip to GoTrue plus its own `profiles` read — four calls to
+ * answer one question. Same contract as `getSiteContent()`.
  */
-export async function getProfile(): Promise<Profile | null> {
+export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
 
   const {
@@ -26,7 +32,7 @@ export async function getProfile(): Promise<Profile | null> {
     .single();
 
   return (data as Profile) ?? null;
-}
+});
 
 export async function isAdmin(): Promise<boolean> {
   const profile = await getProfile();

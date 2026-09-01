@@ -3,7 +3,7 @@
 import React, { useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, AlertCircle, Loader2, Trash2 } from "lucide-react";
-import type { ActionResult } from "@/app/(site)/admin/actions";
+import type { ActionResult } from "@/app/admin/actions";
 
 /**
  * Wraps a server action so every admin form reports success or failure the

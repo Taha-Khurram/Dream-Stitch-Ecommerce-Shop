@@ -4,10 +4,28 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { ProductForm } from "@/components/admin/ProductForm";
-import { ProductMediaUploader } from "@/components/admin/ProductMediaUploader";
+import nextDynamic from "next/dynamic";
 import type { Category, Product, ProductMedia } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 826 lines of drag-and-drop, upload pooling, progress and retry state, sitting
+ * below the fold behind a deliberate action. It has no business blocking the
+ * form above it, so it is fetched once the page is interactive.
+ *
+ * Imported as `nextDynamic` because `dynamic` is taken by the route segment
+ * config directly above.
+ */
+const ProductMediaUploader = nextDynamic(
+  () =>
+    import("@/components/admin/ProductMediaUploader").then((m) => m.ProductMediaUploader),
+  {
+    loading: () => (
+      <div className="h-64 animate-pulse border border-line bg-lilac/30" aria-hidden />
+    ),
+  }
+);
 
 export default async function EditProductPage({
   params,

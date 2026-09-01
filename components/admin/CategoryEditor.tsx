@@ -5,7 +5,7 @@ import { ActionForm, DeleteButton, Field } from "./ActionForm";
 import { inputClass } from "./field-styles";
 import { MediaField } from "./MediaField";
 import { siteFolder } from "@/lib/supabase/storage";
-import { saveCategory, deleteCategory } from "@/app/(site)/admin/actions";
+import { saveCategory, deleteCategory } from "@/app/admin/actions";
 import type { Category } from "@/types/ecommerce";
 import { Plus, X } from "lucide-react";
 

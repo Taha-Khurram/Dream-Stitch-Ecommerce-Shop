@@ -12,7 +12,7 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { accessToken, browserClient } from "@/lib/supabase/lazy-client";
 import { UploadCancelledError, uploadMaster } from "@/lib/supabase/media-upload";
 import {
   ALLOWED_MEDIA_MIME,
@@ -109,7 +109,6 @@ export function ProductMediaUploader({
   useTransformations?: boolean;
   onChange?: (media: ProductMedia[]) => void;
 }) {
-  const supabase = useMemo(() => createClient(), []);
 
   const [attached, setAttached] = useState<ProductMedia[]>(
     () => [...(initialMedia ?? [])].sort(byDisplayOrder)
@@ -161,6 +160,7 @@ export function ProductMediaUploader({
 
     let live = true;
     void (async () => {
+      const supabase = await browserClient();
       const { data, error } = await supabase
         .from("product_media")
         .select("*")
@@ -182,7 +182,7 @@ export function ProductMediaUploader({
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, supabase]);
+  }, [productId]);
 
   // Blob URLs outlive the component unless revoked explicitly.
   useEffect(
@@ -236,7 +236,7 @@ export function ProductMediaUploader({
       // First image in becomes the primary shot; video never claims it.
       const isPrimary = !hasPrimary.current && item.mediaType === "image";
 
-      const { data, error } = await supabase
+      const { data, error } = await (await browserClient())
         .from("product_media")
         .insert({
           product_id: productId,
@@ -251,7 +251,7 @@ export function ProductMediaUploader({
       if (error || !data) {
         // The object is up but unreferenced — take it back out so the bucket
         // never accumulates masters nothing points at.
-        await supabase.storage.from(PRODUCT_MEDIA_BUCKET).remove([path]);
+        await (await browserClient()).storage.from(PRODUCT_MEDIA_BUCKET).remove([path]);
         patch(item.key, {
           status: "error",
           error: error?.message ?? "Could not attach the file to this product",
@@ -262,7 +262,7 @@ export function ProductMediaUploader({
       commit([...attachedRef.current, data as ProductMedia]);
       patch(item.key, { status: "done" });
     },
-    [commit, patch, productId, supabase]
+    [commit, patch, productId]
   );
 
   /**
@@ -274,11 +274,10 @@ export function ProductMediaUploader({
     async (items: QueueItem[]) => {
       if (items.length === 0) return;
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      /* Loads @supabase/supabase-js on first use — see lib/supabase/lazy-client. */
+      const token = await accessToken();
 
-      if (!session) {
+      if (!token) {
         items.forEach((item) =>
           patch(item.key, { status: "error", error: "Your session expired — sign in again" })
         );
@@ -291,14 +290,14 @@ export function ProductMediaUploader({
         async () => {
           while (pending.length > 0) {
             const next = pending.shift();
-            if (next) await uploadOne(next, session.access_token);
+            if (next) await uploadOne(next, token);
           }
         }
       );
 
       await Promise.all(workers);
     },
-    [maxParallel, patch, supabase, uploadOne]
+    [maxParallel, patch, uploadOne]
   );
 
   // ── Intake ─────────────────────────────────────────────────────────────
@@ -419,6 +418,7 @@ export function ProductMediaUploader({
     setBusyId(media.id);
     setNotice(null);
 
+    const supabase = await browserClient();
     const { error } = await supabase.from("product_media").delete().eq("id", media.id);
     if (error) {
       setNotice(`Could not remove that file: ${error.message}`);
@@ -445,7 +445,7 @@ export function ProductMediaUploader({
     setBusyId(media.id);
     setNotice(null);
 
-    const { error } = await supabase
+    const { error } = await (await browserClient())
       .from("product_media")
       .update({ is_primary: true })
       .eq("id", media.id);

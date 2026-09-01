@@ -35,22 +35,17 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
 
   const supabase = await createClient();
 
+  /* Filtering by category used to cost two sequential round trips: resolve the
+     slug to an id, wait, then query products. `!inner` turns the embed into an
+     inner join, so the slug filters the products in the same request. */
+  const filterByCategory = Boolean(categorySlug && categorySlug !== "all");
+
   let queryBuilder = supabase
     .from("products")
-    .select("*, category:categories(*)");
+    .select(filterByCategory ? "*, category:categories!inner(*)" : "*, category:categories(*)");
 
-  // Filter by category slug if provided
-  if (categorySlug && categorySlug !== "all") {
-    // Look up category id first to ensure clean query
-    const { data: categoryData } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("slug", categorySlug)
-      .maybeSingle();
-
-    if (categoryData?.id) {
-      queryBuilder = queryBuilder.eq("category_id", categoryData.id);
-    }
+  if (filterByCategory) {
+    queryBuilder = queryBuilder.eq("categories.slug", categorySlug!);
   }
 
   // Filter by featured status

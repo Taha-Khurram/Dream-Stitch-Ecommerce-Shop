@@ -4,17 +4,19 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
-import { StorefrontOnly } from "@/components/layout/StorefrontOnly";
 import { getSettings } from "@/lib/api/settings";
 import { getSiteContent } from "@/lib/api/content";
-import { isAdmin } from "@/lib/auth/admin";
+import { getProfile } from "@/lib/auth/admin";
 import { BackToTop } from "@/components/motion/BackToTop";
 
-/** Storefront chrome. The (auth) group deliberately opts out of all of it. */
+/** Storefront chrome. The (auth) and admin groups deliberately opt out of it. */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [settings, admin, content] = await Promise.all([
+  /* One profile read answers both questions the header asks — who is signed in,
+     and may they see the admin link. `getProfile` is request-cached, so this
+     costs nothing extra anywhere else in the tree. */
+  const [settings, profile, content] = await Promise.all([
     getSettings(),
-    isAdmin(),
+    getProfile(),
     getSiteContent(),
   ]);
 
@@ -26,14 +28,15 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       }}
     >
       <WishlistProvider>
-        <Header announcements={settings.announcements} isAdmin={admin} content={content.header} />
+        <Header
+          announcements={settings.announcements}
+          isAdmin={profile?.role === "admin"}
+          user={profile ? { email: profile.email } : null}
+          content={content.header}
+        />
         <main className="flex-1">{children}</main>
         <CartDrawer />
-        {content.footer.enabled && (
-          <StorefrontOnly>
-            <SiteFooter settings={settings} content={content.footer} />
-          </StorefrontOnly>
-        )}
+        {content.footer.enabled && <SiteFooter settings={settings} content={content.footer} />}
         <BackToTop />
       </WishlistProvider>
     </CartProvider>

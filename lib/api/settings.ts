@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { BRAND } from "@/lib/constants";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/pricing";
@@ -25,7 +26,9 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   ],
 };
 
-export async function getSettings(): Promise<StoreSettings> {
+/* Cached per request, matching `getSiteContent()`: the layout and the page
+   body both ask for these, and neither should pay for a second round trip. */
+export const getSettings = cache(async (): Promise<StoreSettings> => {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -54,4 +57,4 @@ export async function getSettings(): Promise<StoreSettings> {
     // Table absent (migration not run) — the storefront still needs to render.
     return DEFAULT_SETTINGS;
   }
-}
+});

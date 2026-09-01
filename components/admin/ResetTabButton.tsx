@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
-import type { ActionResult } from "@/app/(site)/admin/actions";
+import type { ActionResult } from "@/app/admin/actions";
 
 /**
  * Puts one tab's copy, imagery and switches back to the values the site ships
