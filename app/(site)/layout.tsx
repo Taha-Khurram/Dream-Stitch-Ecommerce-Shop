@@ -6,12 +6,17 @@ import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StorefrontOnly } from "@/components/layout/StorefrontOnly";
 import { getSettings } from "@/lib/api/settings";
+import { getSiteContent } from "@/lib/api/content";
 import { isAdmin } from "@/lib/auth/admin";
 import { BackToTop } from "@/components/motion/BackToTop";
 
 /** Storefront chrome. The (auth) group deliberately opts out of all of it. */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [settings, admin] = await Promise.all([getSettings(), isAdmin()]);
+  const [settings, admin, content] = await Promise.all([
+    getSettings(),
+    isAdmin(),
+    getSiteContent(),
+  ]);
 
   return (
     <CartProvider
@@ -21,12 +26,14 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       }}
     >
       <WishlistProvider>
-        <Header announcements={settings.announcements} isAdmin={admin} />
+        <Header announcements={settings.announcements} isAdmin={admin} content={content.header} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
-        <StorefrontOnly>
-          <SiteFooter settings={settings} />
-        </StorefrontOnly>
+        {content.footer.enabled && (
+          <StorefrontOnly>
+            <SiteFooter settings={settings} content={content.footer} />
+          </StorefrontOnly>
+        )}
         <BackToTop />
       </WishlistProvider>
     </CartProvider>

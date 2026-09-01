@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getProducts, getCategories } from "@/lib/api/products";
+import { getSiteContent } from "@/lib/api/content";
 import { ProductCard } from "@/components/products/ProductCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Section, HEADING_GAP, GRID_GAP } from "@/components/layout/Section";
@@ -50,7 +51,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const minPrice = params.min ? Number(params.min) : undefined;
   const maxPrice = params.max ? Number(params.max) : undefined;
 
-  const [fetched, categories, newArrivals, bestsellers] = await Promise.all([
+  const [fetched, categories, newArrivals, bestsellers, content] = await Promise.all([
     getProducts({
       categorySlug,
       query: searchQuery,
@@ -62,7 +63,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     getCategories(),
     getProducts({ limit: 8, sortBy: "newest" }),
     getProducts({ limit: 8, sortBy: "rating" }),
+    getSiteContent(),
   ]);
+
+  const { banner: bannerCopy, empty, new_in: newInCopy, bestsellers: bestsellersCopy } =
+    content.shop;
 
   // The two rails are curated across the whole catalogue, not the current
   // filter, so a shopper who has narrowed to nothing still has somewhere to go.
@@ -88,37 +93,40 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       ? activeCategory.name
       : searchQuery
         ? `Search: ${searchQuery}`
-        : "All Bedsheets";
+        : bannerCopy.title;
 
   const description = onSale
     ? "Sets currently reduced from their original price. Same cloth, same finish."
-    : (banner?.copy ??
-      activeCategory?.description ??
-      "Every set we make, in pure cotton, cotton zeen and cotton satin — king, single or cut to your own measurements.");
+    : (banner?.copy ?? activeCategory?.description ?? bannerCopy.copy);
 
   return (
     <div>
       {/* Collection banner */}
-      <section className="relative h-[220px] w-full overflow-hidden bg-lilac sm:h-[300px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={activeCategory?.image_url ?? img(banner?.image ?? IMG.editorialCraft, 1900)}
-          alt={heading}
-          className="h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-aubergine/45" />
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
-          data-reveal="up"
-          suppressHydrationWarning
-        >
-          <span className="eyebrow text-white/80">Collection</span>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-[34px] leading-tight text-white sm:text-[46px]">
-            {heading}
-          </h1>
-          <p className="mt-3 max-w-md text-[13px] leading-relaxed text-white/85">{description}</p>
-        </div>
-      </section>
+      {bannerCopy.enabled && (
+        <section className="relative h-[220px] w-full overflow-hidden bg-lilac sm:h-[300px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={
+              activeCategory?.image_url ??
+              (banner ? img(banner.image, 1900) : bannerCopy.image)
+            }
+            alt={heading}
+            className="h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-aubergine/45" />
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+            data-reveal="up"
+            suppressHydrationWarning
+          >
+            <span className="eyebrow text-white/80">{bannerCopy.eyebrow}</span>
+            <h1 className="mt-3 font-[family-name:var(--font-display)] text-[34px] leading-tight text-white sm:text-[46px]">
+              {heading}
+            </h1>
+            <p className="mt-3 max-w-md text-[13px] leading-relaxed text-white/85">{description}</p>
+          </div>
+        </section>
+      )}
 
       {/* Breadcrumb */}
       <nav
@@ -158,11 +166,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           {products.length === 0 ? (
             <div className="py-24 text-center">
               <h3 className="font-[family-name:var(--font-display)] text-2xl text-ink">
-                Nothing here yet
+                {empty.title}
               </h3>
               <p className="mx-auto mt-3 max-w-sm text-[13px] leading-relaxed text-ink-soft">
-                No sets match these filters. Try widening your search, browse the full collection,
-                or have this made in your own size.
+                {empty.copy}
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link href="/shop" className="btn-primary">
@@ -190,14 +197,14 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       {/* ── New in ──────────────────────────────────── tint ── */}
       {/* Both rails sit well below the fold on every viewport, so the browser
           is allowed to skip their layout work until they are scrolled near. */}
-      {newIn.length > 0 && (
+      {newInCopy.enabled && newIn.length > 0 && (
         <Section surface="tint" className="cv-auto">
           <SectionHeading
             align="between"
-            eyebrow="Just Landed"
-            title="New In"
-            copy="The most recent sets off the table, updated every week."
-            action={{ label: "View All New In", href: "/shop?sort=newest" }}
+            eyebrow={newInCopy.eyebrow}
+            title={newInCopy.title}
+            copy={newInCopy.copy}
+            action={{ label: newInCopy.action_label, href: "/shop?sort=newest" }}
           />
 
           <div
@@ -213,14 +220,14 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       )}
 
       {/* ── Bestsellers ────────────────────────────── plain ── */}
-      {topSellers.length > 0 && (
+      {bestsellersCopy.enabled && topSellers.length > 0 && (
         <Section className="cv-auto">
           <SectionHeading
             align="between"
-            eyebrow="Loved Most"
-            title="Bestsellers"
-            copy="The sets our customers come back for a second time."
-            action={{ label: "Shop All", href: "/shop?sort=rating" }}
+            eyebrow={bestsellersCopy.eyebrow}
+            title={bestsellersCopy.title}
+            copy={bestsellersCopy.copy}
+            action={{ label: bestsellersCopy.action_label, href: "/shop?sort=rating" }}
           />
 
           <div

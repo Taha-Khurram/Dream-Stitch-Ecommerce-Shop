@@ -79,6 +79,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
 -- ----------------------------------------------------------------------
 -- 3. Store settings — one row, id fixed at 1
+--    (contact details, delivery rates, announcements and page content)
 -- ----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.store_settings (
     id                      SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -91,8 +92,16 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     shipping_fee            NUMERIC(10, 2) NOT NULL DEFAULT 250
                               CHECK (shipping_fee >= 0),
     announcements           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    -- Page copy, imagery and section switches, one document per store. The
+    -- app merges it over the defaults in lib/content/defaults.ts, so '{}' is
+    -- a valid, complete storefront.
+    content                 JSONB NOT NULL DEFAULT '{}'::jsonb,
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Existing installs: the column arrived after the table did.
+ALTER TABLE public.store_settings
+    ADD COLUMN IF NOT EXISTS content JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 INSERT INTO public.store_settings (
     id, brand_email, brand_phone, brand_whatsapp, brand_address,

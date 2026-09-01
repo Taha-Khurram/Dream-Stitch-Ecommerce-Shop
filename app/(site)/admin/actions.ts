@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { getSiteContent } from "@/lib/api/content";
+import { DEFAULT_CONTENT, type SiteContent } from "@/lib/content/defaults";
+import { parseContentForm } from "@/lib/content/merge";
+import { findTab } from "@/lib/content/fields";
 
 /**
  * Every mutation runs through the caller's own Supabase session, so the RLS
@@ -257,4 +261,69 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
 
   revalidatePath("/", "layout");
   return { ok: true, message: "Settings saved." };
+}
+
+/* ── Page content ───────────────────────────────────────────────────────── */
+
+/**
+ * `store_settings.content` is one jsonb document, and each tab of the editor
+ * posts only its own fields — so the write is always "current content, with
+ * this form's fields applied", never a partial document.
+ */
+async function writeContent(content: SiteContent, message: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("store_settings")
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq("id", 1);
+
+  if (error) {
+    return {
+      ok: false,
+      message:
+        error.code === "42703" || error.code === "PGRST204"
+          ? "The content column is missing — run admin_schema.sql against this database first."
+          : `Could not save: ${error.message}`,
+    };
+  }
+
+  // Header, footer and every page read this, so the whole tree is stale.
+  revalidatePath("/", "layout");
+  return { ok: true, message };
+}
+
+export async function saveContent(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const current = await getSiteContent();
+  return writeContent(parseContentForm(formData, current), "Content saved.");
+}
+
+/** Put one tab of the editor back to the values compiled into the app. */
+export async function resetContent(tabKey: string): Promise<ActionResult> {
+  await requireAdmin();
+
+  const tab = findTab(tabKey);
+  if (!tab) return { ok: false, message: "Unknown settings tab." };
+
+  const next = structuredClone(await getSiteContent()) as Record<string, unknown>;
+  for (const section of tab.sections) {
+    assign(next, section.path, at(DEFAULT_CONTENT, section.path));
+  }
+
+  return writeContent(next as SiteContent, `${tab.label} restored to defaults.`);
+}
+
+/** Read a dotted path out of a content tree. */
+function at(tree: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)?.[key], tree);
+}
+
+/** Write a dotted path into a content tree, cloning what it puts there. */
+function assign(tree: Record<string, unknown>, path: string, value: unknown): void {
+  const keys = path.split(".");
+  const last = keys.pop()!;
+  let node = tree;
+  for (const key of keys) node = node[key] as Record<string, unknown>;
+  node[last] = structuredClone(value);
 }

@@ -7,7 +7,8 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { BRAND, NAV_ITEMS } from "@/lib/constants";
+import { BRAND } from "@/lib/constants";
+import type { SiteContent } from "@/lib/content/defaults";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import { startRouteProgress } from "@/components/motion/RouteProgress";
 import {
@@ -40,7 +41,7 @@ const ANNOUNCEMENTS = [
 ];
 
 /* ── Serif wordmark ────────────────────────────────────────────────────── */
-function Wordmark({ compact = false }: { compact?: boolean }) {
+function Wordmark({ compact = false, suffix = true }: { compact?: boolean; suffix?: boolean }) {
   return (
     <Link href="/" className="group inline-flex flex-col items-start leading-none">
       <span
@@ -50,7 +51,7 @@ function Wordmark({ compact = false }: { compact?: boolean }) {
       >
         {BRAND.name}
       </span>
-      {!compact && (
+      {!compact && suffix && (
         <span className="mt-[3px] text-[7px] font-medium uppercase tracking-[0.42em] text-muted">
           {BRAND.suffix}
         </span>
@@ -94,7 +95,17 @@ function AnnouncementBar({ messages }: { messages: string[] }) {
 }
 
 /* ── Full-width search overlay ─────────────────────────────────────────── */
-function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+function SearchOverlay({
+  open,
+  onClose,
+  placeholder,
+  suggestions,
+}: {
+  open: boolean;
+  onClose: () => void;
+  placeholder: string;
+  suggestions: string[];
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [term, setTerm] = useState(searchParams.get("search") ?? "");
@@ -123,14 +134,6 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
     startRouteProgress();
     router.push(term.trim() ? `/shop?search=${encodeURIComponent(term.trim())}` : "/shop");
   };
-
-  const suggestions = [
-    "King Size Bedsheet",
-    "Pure Cotton",
-    "Cotton Satin",
-    "Single Bed Set",
-    "Custom Size",
-  ];
 
   return (
     <div className="fixed inset-0 z-[60]" onClick={onClose}>
@@ -161,7 +164,7 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
               ref={inputRef}
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Search bedsheets, fabrics, sizes…"
+              placeholder={placeholder}
               aria-label="Search products"
               className="w-full bg-transparent font-[family-name:var(--font-display)] text-2xl text-ink placeholder-faint focus:outline-none sm:text-3xl"
             />
@@ -170,6 +173,7 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
             </button>
           </form>
 
+          {suggestions.length > 0 && (
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
             <span className="eyebrow text-faint">Popular</span>
             {suggestions.map((s) => (
@@ -183,6 +187,7 @@ function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }
               </Link>
             ))}
           </div>
+          )}
         </div>
       </div>
     </div>
@@ -198,11 +203,13 @@ const MENU_ROW =
 function AccountMenu({
   user,
   isAdmin,
+  showWishlist,
   onSignOut,
   className,
 }: {
   user: User | null;
   isAdmin?: boolean;
+  showWishlist: boolean;
   onSignOut: () => void;
   className: string;
 }) {
@@ -254,17 +261,19 @@ function AccountMenu({
           </p>
 
           {/* The wishlist is kept in the browser, so it is offered either way */}
-          <Link
-            role="menuitem"
-            href="/wishlist"
-            onClick={() => setOpen(false)}
-            className={`${MENU_ROW} mt-4 border-t border-line pt-3`}
-          >
-            <Heart className="h-3.5 w-3.5" strokeWidth={1.4} /> Wishlist
-            {savedCount > 0 && (
-              <span className="ml-auto text-[10px] font-medium text-purple">{savedCount}</span>
-            )}
-          </Link>
+          {showWishlist && (
+            <Link
+              role="menuitem"
+              href="/wishlist"
+              onClick={() => setOpen(false)}
+              className={`${MENU_ROW} mt-4 border-t border-line pt-3`}
+            >
+              <Heart className="h-3.5 w-3.5" strokeWidth={1.4} /> Wishlist
+              {savedCount > 0 && (
+                <span className="ml-auto text-[10px] font-medium text-purple">{savedCount}</span>
+              )}
+            </Link>
+          )}
 
           {isAdmin && user && (
             <Link
@@ -317,9 +326,12 @@ function AccountMenu({
 export function Header({
   announcements,
   isAdmin,
+  content,
 }: {
   announcements?: string[];
   isAdmin?: boolean;
+  /** Chrome switches and navigation from `/admin/settings?tab=header`. */
+  content: SiteContent["header"];
 }) {
   const { totalItems, toggleCart } = useCart();
   const { count: wishlistCount, isHydrated: wishlistHydrated } = useWishlist();
@@ -391,7 +403,7 @@ export function Header({
         }`}
       >
         <div className="mx-auto flex h-14 max-w-[1500px] items-center px-4 sm:px-6 xl:px-10">
-          <Wordmark />
+          <Wordmark suffix={content.show_suffix} />
         </div>
       </header>
     );
@@ -399,7 +411,9 @@ export function Header({
 
   return (
     <>
-      <AnnouncementBar messages={announcements?.length ? announcements : ANNOUNCEMENTS} />
+      {content.show_announcement_bar && (
+        <AnnouncementBar messages={announcements?.length ? announcements : ANNOUNCEMENTS} />
+      )}
 
       <header
         className={`sticky top-0 z-50 border-b bg-white transition-shadow duration-500 ${
@@ -418,18 +432,16 @@ export function Header({
             >
               <Menu className="h-[17px] w-[17px]" strokeWidth={1.25} />
             </button>
-            <Wordmark />
+            <Wordmark suffix={content.show_suffix} />
           </div>
 
           <nav className="hidden h-full flex-1 items-stretch justify-center lg:flex">
             <ul className="flex items-stretch">
-              {NAV_ITEMS.map((item) => (
-                <li key={item.name} className="flex">
+              {content.nav.map((item) => (
+                <li key={item.href + item.name} className="flex">
                   <Link
                     href={item.href}
-                    className={`group relative flex items-center px-3.5 text-[10px] font-medium uppercase tracking-[0.18em] transition-colors duration-300 xl:px-4 ${
-                      item.accent ? "text-sale hover:text-purple-deep" : "text-ink hover:text-purple"
-                    }`}
+                    className="group relative flex items-center px-3.5 text-[10px] font-medium uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:text-purple xl:px-4"
                   >
                     {item.name}
                     {/* Hairline that wipes in from the centre on hover */}
@@ -444,35 +456,47 @@ export function Header({
           </nav>
 
           <div className="flex flex-1 items-center justify-end gap-0.5 lg:flex-none">
-            <button onClick={() => setSearchOpen(true)} aria-label="Search" className={iconButton}>
-              <Search className="h-[17px] w-[17px]" strokeWidth={1.25} />
-            </button>
+            {content.show_search && (
+              <button onClick={() => setSearchOpen(true)} aria-label="Search" className={iconButton}>
+                <Search className="h-[17px] w-[17px]" strokeWidth={1.25} />
+              </button>
+            )}
 
-            <AccountMenu
-              user={user}
-              isAdmin={isAdmin}
-              onSignOut={handleSignOut}
-              className={iconButton}
-            />
+            {content.show_account && (
+              <AccountMenu
+                user={user}
+                isAdmin={isAdmin}
+                showWishlist={content.show_wishlist}
+                onSignOut={handleSignOut}
+                className={iconButton}
+              />
+            )}
 
-            <button
-              onClick={toggleCart}
-              aria-label={`Shopping bag, ${totalItems} items`}
-              className={`${iconButton} -mr-2`}
-            >
-              <ShoppingBagIcon />
-              {totalItems > 0 && (
-                <span className="absolute right-0 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple px-1 text-[8px] font-medium leading-none text-white">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+            {content.show_cart && (
+              <button
+                onClick={toggleCart}
+                aria-label={`Shopping bag, ${totalItems} items`}
+                className={`${iconButton} -mr-2`}
+              >
+                <ShoppingBagIcon />
+                {totalItems > 0 && (
+                  <span className="absolute right-0 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-purple px-1 text-[8px] font-medium leading-none text-white">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <Suspense fallback={null}>
-        <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <SearchOverlay
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          placeholder={content.search_placeholder}
+          suggestions={content.search_suggestions}
+        />
       </Suspense>
 
       {/* Mobile drawer */}
@@ -499,14 +523,12 @@ export function Header({
             </div>
 
             <div className="scroll-area flex-1 overflow-y-auto">
-              {NAV_ITEMS.map((item) => (
+              {content.nav.map((item) => (
                 <Link
-                  key={item.name}
+                  key={item.href + item.name}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`block border-b border-line-soft px-5 py-4 text-[11px] font-medium uppercase tracking-[0.18em] ${
-                    item.accent ? "text-sale" : "text-ink"
-                  }`}
+                  className="block border-b border-line-soft px-5 py-4 text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
                 >
                   {item.name}
                 </Link>
@@ -514,42 +536,45 @@ export function Header({
             </div>
 
             <div className="border-t border-line px-5 py-5">
-              <Link
-                href="/wishlist"
-                onClick={() => setMobileOpen(false)}
-                className="mb-4 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
-              >
-                <Heart
-                  className={`h-3.5 w-3.5 ${savedCount > 0 ? "fill-purple text-purple" : ""}`}
-                  strokeWidth={1.4}
-                />
-                Wishlist
-                {savedCount > 0 && (
-                  <span className="ml-auto text-[10px] text-purple">{savedCount}</span>
-                )}
-              </Link>
-
-              {user ? (
-                <div className="space-y-3">
-                  {isAdmin && (
-                    <Link href="/admin" className="btn-primary w-full">
-                      <LayoutDashboard className="h-3.5 w-3.5" /> Admin Panel
-                    </Link>
+              {content.show_wishlist && (
+                <Link
+                  href="/wishlist"
+                  onClick={() => setMobileOpen(false)}
+                  className="mb-4 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
+                >
+                  <Heart
+                    className={`h-3.5 w-3.5 ${savedCount > 0 ? "fill-purple text-purple" : ""}`}
+                    strokeWidth={1.4}
+                  />
+                  Wishlist
+                  {savedCount > 0 && (
+                    <span className="ml-auto text-[10px] text-purple">{savedCount}</span>
                   )}
-                  <button onClick={handleSignOut} className="btn-outline w-full cursor-pointer">
-                    <LogOut className="h-3.5 w-3.5" /> Sign Out
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Link href="/signin" className="btn-outline">
-                    Sign In
-                  </Link>
-                  <Link href="/signup" className="btn-primary">
-                    Register
-                  </Link>
-                </div>
+                </Link>
               )}
+
+              {content.show_account &&
+                (user ? (
+                  <div className="space-y-3">
+                    {isAdmin && (
+                      <Link href="/admin" className="btn-primary w-full">
+                        <LayoutDashboard className="h-3.5 w-3.5" /> Admin Panel
+                      </Link>
+                    )}
+                    <button onClick={handleSignOut} className="btn-outline w-full cursor-pointer">
+                      <LogOut className="h-3.5 w-3.5" /> Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link href="/signin" className="btn-outline">
+                      Sign In
+                    </Link>
+                    <Link href="/signup" className="btn-primary">
+                      Register
+                    </Link>
+                  </div>
+                ))}
             </div>
           </div>
         </div>

@@ -1,0 +1,197 @@
+import React from "react";
+import { inputClass } from "@/components/admin/ActionForm";
+import { Repeater } from "@/components/admin/Repeater";
+import type { FieldSpec, SectionSpec, TabSpec } from "@/lib/content/fields";
+import type { SiteContent } from "@/lib/content/defaults";
+
+/**
+ * Renders one tab of the content editor from its spec. Everything except the
+ * repeaters is plain HTML — the switches are CSS-only — so a tab of forty
+ * fields ships no client JavaScript beyond the lists that genuinely need it.
+ */
+export function ContentEditor({ tab, content }: { tab: TabSpec; content: SiteContent }) {
+  return (
+    <div className="space-y-12">
+      {tab.sections.map((section, index) => (
+        <ContentSection key={`${section.path}-${index}`} section={section} content={content} />
+      ))}
+    </div>
+  );
+}
+
+function ContentSection({
+  section,
+  content,
+}: {
+  section: SectionSpec;
+  content: SiteContent;
+}) {
+  const values = resolve(content, section.path);
+
+  return (
+    <section>
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-3">
+        <div>
+          <h2 className="eyebrow text-ink">{section.title}</h2>
+          {section.copy && <p className="mt-2 text-[12px] text-muted">{section.copy}</p>}
+        </div>
+
+        {section.toggle && (
+          <Switch
+            name={`${section.path}.enabled`}
+            checked={Boolean(values.enabled)}
+            label={values.enabled ? "Visible" : "Hidden"}
+          />
+        )}
+      </div>
+
+      {section.toggleHint && (
+        <p className="mt-2 text-[11px] text-faint">{section.toggleHint}</p>
+      )}
+
+      <div className="mt-5 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+        {section.fields.map((field) => (
+          <ContentField
+            key={field.key}
+            field={field}
+            name={`${section.path}.${field.key}`}
+            value={values[field.key]}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ContentField({
+  field,
+  name,
+  value,
+}: {
+  field: FieldSpec;
+  name: string;
+  value: unknown;
+}) {
+  if (field.kind === "switch") {
+    return (
+      <div className={field.hint ? "sm:col-span-2" : ""}>
+        <Switch name={name} checked={Boolean(value)} label={field.label} />
+        {field.hint && <p className="mt-1.5 text-[11px] text-faint">{field.hint}</p>}
+      </div>
+    );
+  }
+
+  const wide = field.kind !== "text" && field.kind !== "url" ? true : !field.half;
+
+  return (
+    <div className={wide ? "sm:col-span-2" : ""}>
+      <label htmlFor={name} className="eyebrow text-muted">
+        {field.label}
+      </label>
+
+      <div className="mt-2">
+        {field.kind === "list" ? (
+          <Repeater
+            name={name}
+            columns={field.columns ?? []}
+            rows={asRows(value)}
+            addLabel={field.addLabel}
+          />
+        ) : field.kind === "lines" ? (
+          <textarea
+            id={name}
+            name={name}
+            rows={Math.min(Math.max(asLines(value).length + 1, 3), 8)}
+            defaultValue={asLines(value).join("\n")}
+            className={`${inputClass} resize-y`}
+          />
+        ) : field.kind === "textarea" ? (
+          <textarea
+            id={name}
+            name={name}
+            rows={3}
+            defaultValue={String(value ?? "")}
+            className={`${inputClass} resize-y`}
+          />
+        ) : field.kind === "image" ? (
+          <ImageField name={name} value={String(value ?? "")} />
+        ) : (
+          <input
+            id={name}
+            name={name}
+            defaultValue={String(value ?? "")}
+            className={inputClass}
+          />
+        )}
+      </div>
+
+      {field.hint && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{field.hint}</p>}
+    </div>
+  );
+}
+
+/** A URL box with the picture it currently points at, so a typo is obvious. */
+function ImageField({ name, value }: { name: string; value: string }) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="h-16 w-24 shrink-0 overflow-hidden border border-line bg-lilac">
+        {value && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={value} alt="" className="h-full w-full object-cover object-center" />
+        )}
+      </div>
+      <input id={name} name={name} defaultValue={value} className={inputClass} />
+    </div>
+  );
+}
+
+/**
+ * CSS-only switch. The hidden "off" ahead of the checkbox is what tells the
+ * server the field was on the form at all — see `parseContentForm`.
+ */
+function Switch({
+  name,
+  checked,
+  label,
+}: {
+  name: string;
+  checked: boolean;
+  label: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3">
+      <input type="hidden" name={name} value="off" />
+      <input type="checkbox" name={name} value="on" defaultChecked={checked} className="peer sr-only" />
+      <span className="relative block h-5 w-9 shrink-0 border border-line bg-white transition-colors after:absolute after:left-[3px] after:top-1/2 after:h-3 after:w-3 after:-translate-y-1/2 after:bg-line after:transition-transform peer-checked:border-purple peer-checked:bg-purple peer-checked:after:translate-x-4 peer-checked:after:bg-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-purple" />
+      <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+        {label}
+      </span>
+    </label>
+  );
+}
+
+/* ── Reading the content tree ───────────────────────────────────────────── */
+
+function resolve(content: SiteContent, path: string): Record<string, unknown> {
+  const value = path
+    .split(".")
+    .reduce<unknown>((node, key) => (node as Record<string, unknown>)?.[key], content);
+
+  if (value === undefined || value === null || typeof value !== "object") {
+    // A spec pointing at nothing would render fields that save nowhere.
+    throw new Error(`Content spec references a missing section: ${path}`);
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function asRows(value: unknown): Record<string, string>[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((row) =>
+    Object.fromEntries(Object.entries(row ?? {}).map(([k, v]) => [k, String(v ?? "")]))
+  );
+}
+
+function asLines(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}

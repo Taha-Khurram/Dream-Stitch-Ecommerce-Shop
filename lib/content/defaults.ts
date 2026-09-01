@@ -300,7 +300,9 @@ export const DEFAULT_CONTENT = {
       enabled: true,
       eyebrow: "Answers",
       title: "Frequently Asked",
-      note: "Still stuck? Start a custom order or write to us above — a person always replies.",
+      note: "Still stuck? Write to us above — a person always replies.",
+      note_cta_label: "Start a custom order",
+      note_cta_href: "/custom",
       items: [
         {
           question: "How long does delivery take?",

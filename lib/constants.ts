@@ -17,13 +17,15 @@ export const BRAND = {
 export interface NavItem {
   name: string;
   href: string;
-  accent?: boolean;
 }
 
 /**
  * Four plain links, no dropdowns. Fabrics and bed sizes are reachable from the
  * shop filter rail and the footer, so nothing here needs a mega panel to be
  * findable.
+ *
+ * These are the *defaults*: the live list is `header.nav` in the site content,
+ * editable at /admin/settings?tab=header.
  */
 export const NAV_ITEMS: NavItem[] = [
   { name: "Shop", href: "/shop" },

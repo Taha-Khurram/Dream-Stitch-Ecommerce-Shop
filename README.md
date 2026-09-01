@@ -116,6 +116,7 @@ No signup path grants admin, and there is no service-role key in the app.
 | **Categories** | Inline editing of the three fabrics, with a product count per category |
 | **Orders** | Filter by status, view line items and delivery address, move an order through its states |
 | **Settings** | Contact details, free-delivery threshold, delivery fee, announcement bar copy |
+| **Settings → page tabs** | Copy, imagery and a show/hide switch for every section of the home, shop, custom, about and contact pages, plus what the header and footer carry |
 
 **Security.** RLS is the enforcement point, not the UI. `admin_schema.sql` adds
 an `is_admin()` helper (`SECURITY DEFINER`, so the role lookup is not itself
@@ -130,6 +131,15 @@ to audit.
 threshold and fee feed the cart's progress bar, the product-page promise and
 the total recorded by `app/api/checkout/route.ts`; contact details render in the
 footer; announcement lines feed the strip above the header.
+
+**Page content.** The tabs beside *General* edit
+`store_settings.content`, a single jsonb document merged over the defaults in
+[`lib/content/defaults.ts`](lib/content/defaults.ts) — which stay the fallback,
+so the storefront renders unchanged before the column exists or after a row is
+emptied. Each tab covers one surface: section switches, headings, body copy,
+button labels and links, image URLs, and repeatable lists (hero slides,
+promises, steps, FAQs, footer and navigation links). *Restore defaults* puts one
+tab back to what the app ships with.
 
 ---
 
