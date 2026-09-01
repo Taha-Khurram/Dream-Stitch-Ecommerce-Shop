@@ -39,13 +39,23 @@ const FOOTER_COLUMNS = [
 ];
 
 /* ── Wordmark, the one thing the admin footer keeps ────────────────────── */
-function Wordmark() {
+function Wordmark({ tone = "ink" }: { tone?: "ink" | "light" }) {
+  const light = tone === "light";
+
   return (
     <Link href="/" className="inline-flex flex-col items-start leading-none">
-      <span className="font-[family-name:var(--font-script)] text-[38px] leading-[1.15] text-ink">
+      <span
+        className={`font-[family-name:var(--font-script)] text-[38px] leading-[1.15] ${
+          light ? "text-white" : "text-ink"
+        }`}
+      >
         {BRAND.name}
       </span>
-      <span className="mt-0.5 block text-[10px] uppercase tracking-[0.28em] text-muted">
+      <span
+        className={`mt-0.5 block text-[10px] uppercase tracking-[0.28em] ${
+          light ? "text-white/60" : "text-muted"
+        }`}
+      >
         {BRAND.suffix}
       </span>
     </Link>
@@ -71,27 +81,27 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
   }
 
   return (
-    <footer className="border-t border-line">
+    <footer className="bg-purple text-white">
       {/* Link columns */}
       <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-x-8 gap-y-10 px-6 py-14 md:grid-cols-4 lg:grid-cols-5 xl:px-10">
         <div className="col-span-2 lg:col-span-2">
-          <Wordmark />
-          <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-ink-soft">
+          <Wordmark tone="light" />
+          <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-white/75">
             Premium bedsheets in pure cotton, cotton zeen and cotton satin — cut, stitched
             and checked by hand in Karachi.
           </p>
 
-          <ul className="mt-6 space-y-2.5 text-[12px] text-muted">
+          <ul className="mt-6 space-y-2.5 text-[12px] text-white/75">
             <li className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/55" strokeWidth={1.4} />
               <span className="max-w-[16rem]">{settings.brand_address}</span>
             </li>
             <li className="flex items-center gap-2.5">
-              <Phone className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
+              <Phone className="h-3.5 w-3.5 shrink-0 text-white/55" strokeWidth={1.4} />
               <span>{settings.brand_phone}</span>
             </li>
             <li className="flex items-center gap-2.5">
-              <Mail className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.4} />
+              <Mail className="h-3.5 w-3.5 shrink-0 text-white/55" strokeWidth={1.4} />
               <a href={`mailto:${settings.brand_email}`} className="link-rule">
                 {settings.brand_email}
               </a>
@@ -104,7 +114,7 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
                 key={i}
                 href="#"
                 aria-label="Social link"
-                className="flex h-9 w-9 items-center justify-center border border-line text-ink transition-colors hover:border-ink hover:bg-ink hover:text-white"
+                className="flex h-9 w-9 items-center justify-center border border-white/25 text-white transition-colors hover:border-white hover:bg-white hover:text-purple"
               >
                 <Icon className="h-4 w-4" strokeWidth={1.4} />
               </a>
@@ -114,13 +124,13 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
 
         {FOOTER_COLUMNS.map((column) => (
           <div key={column.title}>
-            <h4 className="eyebrow text-ink">{column.title}</h4>
+            <h4 className="eyebrow text-white">{column.title}</h4>
             <ul className="mt-5 space-y-3">
               {column.links.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-[13px] text-ink-soft transition-colors hover:text-purple"
+                    className="text-[13px] text-white/70 transition-colors hover:text-white"
                   >
                     {link.name}
                   </Link>
@@ -132,18 +142,18 @@ export function SiteFooter({ settings }: { settings: StoreSettings }) {
       </div>
 
       {/* Legal bar */}
-      <div className="border-t border-line bg-frost">
+      <div className="bg-aubergine">
         <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-4 px-6 py-6 sm:flex-row xl:px-10">
-          <p className="text-[11px] text-muted">
+          <p className="text-[11px] text-white/60">
             © {new Date().getFullYear()} {BRAND.name} {BRAND.suffix}. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
-            <span className="eyebrow text-faint">Secure payments</span>
+            <span className="eyebrow text-white/45">Secure payments</span>
             <div className="flex items-center gap-2">
               {["VISA", "MASTER", "JAZZCASH", "EASYPAISA", "COD"].map((method) => (
                 <span
                   key={method}
-                  className="border border-line bg-white px-2 py-1 text-[8px] font-medium tracking-[0.14em] text-ink-soft"
+                  className="border border-white/25 px-2 py-1 text-[8px] font-medium tracking-[0.14em] text-white/75"
                 >
                   {method}
                 </span>

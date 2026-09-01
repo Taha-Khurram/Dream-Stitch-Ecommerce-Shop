@@ -168,6 +168,20 @@
   }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
 
+  /* Fabric rail: an unbroken right-to-left drift that rests under the cursor */
+  .fabric-rail-viewport { overflow: hidden; }
+  .fabric-rail {
+    display: flex;
+    width: max-content;
+    gap: var(--rail-gap);
+    animation: fabric-drift var(--rail-duration, 40s) linear infinite;
+    will-change: transform;
+  }
+  .fabric-rail-viewport:hover .fabric-rail,
+  .fabric-rail-viewport:focus-within .fabric-rail {
+    animation-play-state: paused;
+  }
+
   /* Product image cross-fade on hover */
   .img-swap > .img-back { opacity: 0; transition: opacity 0.7s ease; }
   .img-swap:hover > .img-back { opacity: 1; }
@@ -186,6 +200,13 @@
   .swatch[data-active="true"] {
     box-shadow: inset 0 0 0 2px #fff, 0 0 0 1.5px var(--color-purple);
   }
+}
+
+/* Half the track is a copy of the other half, so landing one half to the left
+   is seamless — the extra half-gap is what the shared column gap adds. */
+@keyframes fabric-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(calc(-50% - (var(--rail-gap) / 2)), 0, 0); }
 }
 
 @keyframes marquee {
@@ -247,6 +268,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
+  .fabric-rail { animation: none; }
+  .fabric-rail-viewport { overflow-x: auto; }
   .animate-fade-up { animation: none; }
   .auth-rise,
   .auth-panel-in,
