@@ -551,3 +551,34 @@ body {
 ::-webkit-scrollbar-track { background: var(--color-lilac); }
 ::-webkit-scrollbar-thumb { background: #d3c4e6; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
+
+/* ── Admin rail ───────────────────────────────────────────────
+   The panel's rail is pinned, not scrolled with the page.
+
+   Sticky would be the lighter tool, but it only engages once the
+   element reaches its offset, and it needs an ancestor chain with
+   no containment anywhere on it. Fixed has neither caveat: the
+   rail holds its place from the first pixel of scroll.
+
+   The cost is that a fixed box leaves the flow, so it no longer
+   inherits the centring of the max-w-[1500px] shell — that math is
+   reproduced here. 1500px is the shell's border-box width and the
+   trailing term is its horizontal padding, which steps up at xl. */
+@media (width >= 64rem) {
+  .admin-rail {
+    position: fixed;
+    top: 3.5rem;    /* clears the 56px bar */
+    bottom: 0;
+    width: 13rem;   /* matches the lg:w-52 spacer it sits over */
+    left: calc(max(0px, (100% - 1500px) / 2) + 1.5rem);
+    overflow-y: auto;
+    /* Top pad lines the rail up with the shell's py-10 at rest, so
+       nothing shifts between a page that scrolls and one that does not. */
+    padding: 2.5rem 2.5rem 2.5rem 0;
+    border-right: 1px solid var(--color-line);
+  }
+}
+
+@media (width >= 80rem) {
+  .admin-rail { left: calc(max(0px, (100% - 1500px) / 2) + 2.5rem); }
+}

@@ -43,19 +43,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
 
       <div className="mx-auto flex max-w-[1500px] flex-col px-6 py-10 lg:flex-row xl:px-10">
-        {/* The rail is separated from the work area by a single hairline: a bottom
-            rule when the nav stacks above the page, a right rule once they sit
-            side by side.
+        {/* The rail is separated from the work area by a single hairline: a
+            bottom rule when the nav stacks above the page, a right rule once
+            they sit side by side.
 
-            Once side by side the rail pins itself under the 56px bar. The
-            sticky has to sit on the <aside> — not on a wrapper inside it —
-            because as a stretched flex item the aside is as tall as the page,
-            so a nested sticky has no room to travel and never engages. With
-            `self-start` the aside owns its own height, and holding that height
-            at the viewport keeps the hairline running to the bottom edge
-            instead of stopping under the last nav item. */}
-        <aside className="shrink-0 border-b border-line pb-8 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:w-52 lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r lg:pb-10 lg:pr-10">
-          <div>
+            Side by side, the rail is fixed to the viewport (see .admin-rail in
+            globals.css) — so the <aside> is left behind purely to reserve the
+            column, and the right-hand rule moves onto the fixed rail with it. */}
+        <aside className="shrink-0 border-b border-line pb-8 lg:w-52 lg:border-b-0 lg:pb-0">
+          <div className="admin-rail">
             {/* The wordmark lives in the bar a row above; the rail only needs to
                 say which surface you are on. */}
             <Link
