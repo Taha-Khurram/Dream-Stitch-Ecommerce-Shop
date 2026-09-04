@@ -2,14 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
-import { img } from "@/lib/imagery";
 
 export interface FabricTile {
   name: string;
   slug: string;
-  /** Local fallback used when the category carries no uploaded image. */
-  image: string;
+  /** `categories.image_url` — null until an admin uploads one. */
   imageUrl?: string | null;
+  /** `categories.description` — may be empty, in which case no line is drawn. */
   blurb: string;
 }
 
@@ -65,20 +64,24 @@ export function FabricCarousel({ tiles }: { tiles: FabricTile[] }) {
               className="group w-[78vw] shrink-0 text-center sm:w-[22rem] lg:w-[26rem]"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-lilac">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={tile.imageUrl ?? img(tile.image, 800)}
-                  alt={duplicate ? "" : tile.name}
-                  loading="lazy"
-                  draggable={false}
-                  className="h-full w-full object-cover object-center transition-transform duration-[1400ms] group-hover:scale-105"
-                />
+                {/* Without an uploaded image the lilac block behind is the
+                    card — no stock photo stands in for the real thing. */}
+                {tile.imageUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={tile.imageUrl}
+                    alt={duplicate ? "" : tile.name}
+                    loading="lazy"
+                    draggable={false}
+                    className="h-full w-full object-cover object-center transition-transform duration-[1400ms] group-hover:scale-105"
+                  />
+                )}
                 <div className="absolute inset-0 bg-aubergine/0 transition-colors duration-500 group-hover:bg-aubergine/10" />
               </div>
               <h3 className="mt-6 font-[family-name:var(--font-display)] text-xl text-ink transition-colors group-hover:text-purple">
                 {tile.name}
               </h3>
-              <p className="mt-2 text-[13px] text-muted">{tile.blurb}</p>
+              {tile.blurb && <p className="mt-2 text-[13px] text-muted">{tile.blurb}</p>}
             </Link>
           );
         })}
