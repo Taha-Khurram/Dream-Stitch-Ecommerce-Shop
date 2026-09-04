@@ -285,18 +285,23 @@ export function trackingJourney(status: string): TrackingJourney {
   const paused = status === "pending";
   const current = cancelled ? -1 : stageIndex(status);
 
+  /* The last stage is not somewhere an order waits — reaching `closed` *is*
+     being delivered. So a finished order ticks its final step rather than
+     marking it as the one in progress, which would leave a delivered parcel
+     drawn with a spinner against it. */
+  const complete = current === TRACKING_STAGES.length - 1;
+
   const steps = TRACKING_STAGES.map<TrackingStep>((stage, index) => ({
     stage,
     label: CUSTOMER_STATUS_COPY[stage as OrderStatus],
     note: STAGE_NOTE[stage],
-    state: index < current ? "done" : index === current ? "current" : "upcoming",
+    state:
+      index < current || (complete && index === current)
+        ? "done"
+        : index === current
+          ? "current"
+          : "upcoming",
   }));
 
-  return {
-    steps,
-    headline: customerStatusLabel(status),
-    cancelled,
-    paused,
-    complete: current === TRACKING_STAGES.length - 1,
-  };
+  return { steps, headline: customerStatusLabel(status), cancelled, paused, complete };
 }
