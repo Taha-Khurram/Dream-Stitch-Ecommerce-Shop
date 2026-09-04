@@ -3,7 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth/admin";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { SessionGuard } from "@/components/auth/SessionGuard";
 import { BRAND } from "@/lib/constants";
+import {
+  HEARTBEAT_INTERVAL_MS,
+  HEARTBEAT_PATH,
+  IDLE_TIMEOUT_MS,
+} from "@/lib/auth/session";
 import { ArrowUpRight } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -32,6 +38,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <>
+      {/* Renders nothing. Signs an idle admin out, and keeps an active one in.
+          The middleware enforces the same window server-side regardless. */}
+      <SessionGuard
+        idleMs={IDLE_TIMEOUT_MS}
+        heartbeatMs={HEARTBEAT_INTERVAL_MS}
+        heartbeatPath={HEARTBEAT_PATH}
+      />
+
       <header className="sticky top-0 z-50 border-b border-line-soft bg-white">
         <div className="mx-auto flex h-14 max-w-[1500px] items-center px-4 sm:px-6 xl:px-10">
           <Link href="/" className="group inline-flex flex-col items-start leading-none">

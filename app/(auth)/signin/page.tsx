@@ -4,13 +4,26 @@ import { signIn, signInWithGoogle } from "@/app/auth/actions";
 import { AuthShell, OrDivider, authInputClass } from "@/components/auth/AuthShell";
 import { AuthForm, GoogleForm } from "@/components/auth/AuthForm";
 import { IMG } from "@/lib/imagery";
+import { IDLE_TIMEOUT_MINUTES, TIMEOUT_REASON } from "@/lib/auth/session";
 
 interface SignInPageProps {
-  searchParams: Promise<{ error?: string; message?: string; next?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    message?: string;
+    next?: string;
+    reason?: string;
+  }>;
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
-  const { error, message, next } = await searchParams;
+  const { error, message, next, reason } = await searchParams;
+
+  /* Being bounced to a sign-in page with no explanation reads as a bug. Say
+     what happened — and it is a notice, not an error: nothing went wrong. */
+  const notice =
+    reason === TIMEOUT_REASON
+      ? `You were signed out after ${IDLE_TIMEOUT_MINUTES} minutes of inactivity. Sign in to pick up where you left off.`
+      : message;
 
   return (
     <AuthShell
@@ -19,7 +32,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       copy="Sign in to track orders, save pieces and check out faster."
       image={IMG.storyAtelier}
       error={error}
-      message={message}
+      message={notice}
       footer={
         <>
           New to Dream Stitch?{" "}

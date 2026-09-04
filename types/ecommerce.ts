@@ -80,15 +80,37 @@ export interface ShippingAddress {
   phone?: string;
 }
 
+/**
+ * A person the store sells to. Mirrors `customers` in `dashboard_schema.sql`.
+ *
+ * `user_id` is null for a customer who has no login — an imported record, a
+ * phone order, or seed data. It is the account link, not the identity: the
+ * identity is `email`, which is what the table is unique on.
+ */
+export interface Customer {
+  id: string;
+  user_id: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: string;
-  user_id: string;
+  /** Null once an order can exist without an account — see dashboard_schema.sql. */
+  user_id: string | null;
+  /** Set by dashboard_schema.sql; null on orders placed before it was applied. */
+  customer_id?: string | null;
   status: "pending" | "processing" | "completed" | "cancelled";
   total_amount: number;
   shipping_address: ShippingAddress;
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];
+  /** Populated only when the query embeds it: `customer:customers(...)`. */
+  customer?: Pick<Customer, "id" | "name" | "email"> | null;
 }
 
 export interface CartItem {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth/api";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
 import { getSettings } from "@/lib/api/settings";
@@ -7,7 +7,14 @@ import { z } from "zod";
 
 export async function POST(request: Request) {
   try {
-    // 1. Parse and strictly validate incoming request body with Zod
+    // 1. Authenticate before anything else. A signed-out caller learns that it
+    //    is signed out — not which fields of the payload it got wrong.
+    const auth = await requireUser();
+    if (!auth.ok) return auth.response;
+
+    const { user, supabase } = auth;
+
+    // 2. Parse and strictly validate incoming request body with Zod
     const body = await request.json().catch(() => null);
 
     if (!body) {
@@ -33,23 +40,6 @@ export async function POST(request: Request) {
     }
 
     const { items, shippingAddress } = validationResult.data;
-
-    // 2. Initialize Supabase Server Client and authenticate user
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unauthorized. You must be signed in to place an order.",
-        },
-        { status: 401 }
-      );
-    }
 
     // 3. Security best practice: Fetch actual prices and verify stock directly from Database
     const productIds = items.map((item) => item.productId);

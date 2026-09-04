@@ -120,10 +120,11 @@ No signup path grants admin, and there is no service-role key in the app.
 
 | | |
 | :-- | :-- |
-| **Dashboard** | Open orders, revenue, product count, low-stock alerts, recent orders |
+| **Dashboard** | Revenue, average order value and order count; a seven-day revenue chart; open orders, low-stock alerts and the five most recent orders with the customer's name |
 | **Products** | Search, create, edit, delete. Price, compare-at, stock, sizes, colourways, gallery |
 | **Categories** | Inline editing of the three fabrics, with a product count per category |
 | **Orders** | Filter by status, view line items and delivery address, move an order through its states |
+| **Customers** | Everyone on the books — accounts and guest records alike — with contact details and an order count |
 | **Settings** | Contact details, free-delivery threshold, delivery fee, announcement bar copy |
 | **Settings → page tabs** | Copy, imagery and a show/hide switch for every section of the home, shop, custom, about and contact pages, plus what the header and footer carry |
 
@@ -133,7 +134,7 @@ subject to RLS) and gates every catalogue write and order read behind it.
 `requireAdmin()` in [`lib/auth/admin.ts`](lib/auth/admin.ts) only buys a clean
 redirect — a forged session that slipped past it would still be refused by
 Postgres. Mutations run as the signed-in user through server actions in
-[`app/(site)/admin/actions.ts`](app/%28site%29/admin/actions.ts), so there is
+[`app/admin/actions.ts`](app/admin/actions.ts), so there is
 one security model to audit.
 
 **What settings actually drive.** Saving is not cosmetic: the delivery
@@ -151,6 +152,109 @@ promises, steps, FAQs, footer and navigation links). *Restore defaults* puts one
 tab back to what the app ships with.
 
 ---
+
+## Sessions & authorization
+
+**Idle timeout.** Supabase sessions do not expire on their own: `@supabase/ssr`
+exchanges the refresh token on every request, so an untouched tab stays signed in
+for as long as that token lives — weeks. [`lib/auth/session.ts`](lib/auth/session.ts)
+holds the policy and the middleware enforces it. Every real request stamps a
+`ds-last-seen` cookie (httpOnly); a session whose stamp is older than the window
+is torn down — refresh token revoked with `scope: 'local'`, so idling at a desk
+does not sign the same person out on their phone, and every `sb-*` cookie
+cleared on the way out. Thirty minutes by default; set
+`SESSION_IDLE_TIMEOUT_MINUTES` to change it.
+
+Router prefetches are excluded from "activity" on purpose — a hovered link must
+not keep a session alive. The stamp cookie deliberately outlives the window, so
+that a *missing* stamp means a new session and an *old* one means an expired
+session; expiring the cookie with the window would fail open.
+
+**Staying signed in while actually working.** Typing is not a request, so a
+half-finished product form would otherwise be signed out mid-edit and the work
+lost. [`SessionGuard`](components/auth/SessionGuard.tsx) watches for deliberate
+input — pointer, key, scroll, touch, but never `mousemove` — and pings
+`/api/session/heartbeat` at most once a quarter-window, and only when there has
+been input since the last ping. An abandoned tab sends nothing, times out, and
+redirects itself so the order book is not left on screen. It is mounted in the
+admin layout; the middleware enforces the same window everywhere regardless.
+
+**Who checks what.**
+
+| Surface | Guard | Failure |
+| :-- | :-- | :-- |
+| `/admin/*` pages | `requireAdmin()` in the layout | redirect |
+| Admin server actions | `requireAdmin()`, at the top of all nine | redirect |
+| Route handlers | `requireUser()` / `requireAdminUser()` in [`lib/auth/api.ts`](lib/auth/api.ts) | 401 / 403 |
+| Every read and write | RLS in Postgres | no rows |
+
+Pages and endpoints are guarded by separate modules because they need to fail
+differently: a 302 to an HTML sign-in page is a confusing thing for a `fetch` to
+receive, arriving as a 200 full of markup. 401 and 403 are also kept distinct —
+401 says signing in would help, 403 says it would not.
+
+`requireUser()` returns a discriminated union rather than `User | null`, so the
+user is unreachable until the failure has been handled:
+
+```ts
+const auth = await requireUser();
+if (!auth.ok) return auth.response;
+const { user, supabase } = auth;
+```
+
+None of this displaces RLS as the enforcement point. It buys an honest status
+code instead of a silently empty result.
+
+---
+
+## Customers & dashboard analytics
+
+[`dashboard_schema.sql`](dashboard_schema.sql) adds the `customers` table, links
+it to `orders`, and installs the two functions the dashboard reads its numbers
+from. [`dashboard_seed.sql`](dashboard_seed.sql) is optional demo data.
+
+### How to run it
+
+1. Open your project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. **SQL Editor** in the left rail → **New query**.
+3. Paste the whole of `dashboard_schema.sql` and press **Run** (`Ctrl`/`Cmd` +
+   `Enter`). It ends with a three-row verification: the customer count, the new
+   `orders.customer_id` column, and `user_id` now reading `YES` for nullable.
+4. Reload `/admin`. The tiles and the chart switch from their fallback path to
+   the exact aggregates.
+
+Run it **after** `admin_schema.sql` and `admin_performance.sql` — it depends on
+`is_admin()` and it replaces `admin_dashboard_stats()` with a wider version.
+Every statement is idempotent, so a second run is a no-op.
+
+> **Demo data.** `dashboard_seed.sql` inserts ten customers, ten orders and ten
+> products. The products are slugged `demo-*` and **will appear in the shop**
+> until you remove them; the file ends with a commented rollback block that
+> deletes exactly what it inserted. To light up the dashboard without touching
+> the storefront, run its sections A and C and skip B and D.
+
+### What changed, and what did not
+
+`products` is untouched. `orders` gains a nullable `customer_id`, and its
+`user_id` is relaxed to nullable so an order can exist without an auth account —
+an import, a phone order, or seed data. Both changes only widen what the column
+accepts, so no existing row, policy or checkout path is affected.
+`handle_new_customer()` keeps the table in step: a new signup gets a customer
+row the same way it already gets a profile.
+
+**Fallbacks.** Nothing here is required for the panel to work. If the file has
+not been run, the dashboard counts over REST instead, the revenue chart buckets
+a bounded date window in the server render, and the recent-orders table reads
+the customer name out of `shipping_address` — the same contract as
+[`lib/api/settings.ts`](lib/api/settings.ts). The Customers screen is the one
+exception: it says plainly that the table is missing rather than showing an
+empty list.
+
+**Bundle cost.** Recharts is around 110 kB — more than the rest of the admin
+entry bundle put together. [`RevenueChart.tsx`](components/admin/RevenueChart.tsx)
+defers it to its own chunk, so `/admin` stays at 108 kB First Load JS instead of
+216 kB. The day-by-day figures under the chart are server-rendered and readable
+with no JavaScript at all.
 
 ## Product media
 
@@ -238,8 +342,10 @@ app/
     custom/page.tsx     made-to-measure service and measurement request
     wishlist/           saved sets, held in the browser
     about/  contact/    editorial pages
-    admin/              the panel: dashboard, products, categories,
-                        orders, settings, and the server actions behind them
+  admin/                the panel, deliberately outside (site) so it pays for
+                        none of the storefront chrome: dashboard, products,
+                        categories, orders, customers, settings, and the
+                        server actions behind them
   (auth)/               signin, signup — over Supabase Auth
   auth/                 OAuth callback and email-confirmation routes
   api/checkout/         order placement, price-verified server-side
@@ -249,7 +355,9 @@ components/
   home/                 HeroCarousel, FabricCarousel, HomeClosing
   admin/                ActionForm, ProductForm, ProductMediaUploader,
                         CategoryEditor, ContentEditor, Repeater,
-                        OrderStatusControl, StatusPill, AdminNav
+                        OrderStatusControl, StatusPill, AdminNav,
+                        RevenueChart (defers recharts), RevenueChartCanvas,
+                        RevenueTable, revenue.ts (shared day/number helpers)
   products/             ProductCard, QuickAdd, ProductGallery, ProductOptions,
                         FilterPanel, SortMenu, SizeGuideDialog, WishlistGrid, …
   cart/CartDrawer.tsx   bag + delivery details + confirmation
