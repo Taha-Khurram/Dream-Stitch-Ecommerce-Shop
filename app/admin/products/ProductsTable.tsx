@@ -93,8 +93,11 @@ export async function ProductsTable({
         <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
-              {["Product", "Category", "Price", "Stock", ""].map((head) => (
-                <th key={head} className="admin-th pb-3">
+              {/* A gutter on every column but the last. Without it the cells
+                  only look separated while their contents happen to be short:
+                  a four-digit price runs straight into the stock number. */}
+              {["Product", "Category", "Price", "Stock", ""].map((head, i, all) => (
+                <th key={head} className={`admin-th pb-3 ${i < all.length - 1 ? "pr-6" : ""}`}>
                   {head === "" ? <span className="sr-only">Actions</span> : head}
                 </th>
               ))}
@@ -110,7 +113,7 @@ export async function ProductsTable({
                   key={product.id}
                   className="border-b border-line align-middle transition-colors hover:bg-frost"
                 >
-                  <td className="py-3">
+                  <td className="py-3 pr-6">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-10 shrink-0 overflow-hidden bg-lilac">
                         {product.image_url && (
@@ -135,8 +138,8 @@ export async function ProductsTable({
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 text-muted">{product.category?.name ?? "—"}</td>
-                  <td className="py-3 tabular-nums text-ink">
+                  <td className="py-3 pr-6 text-muted">{product.category?.name ?? "—"}</td>
+                  <td className="py-3 pr-6 tabular-nums text-ink">
                     {formatPrice(product.price)}
                     {product.compare_at_price &&
                       Number(product.compare_at_price) > Number(product.price) && (
@@ -145,7 +148,7 @@ export async function ProductsTable({
                         </span>
                       )}
                   </td>
-                  <td className="py-3">
+                  <td className="py-3 pr-6">
                     <span
                       className={`tabular-nums ${
                         soldOut ? "text-sale" : low ? "text-purple" : "text-ink-soft"

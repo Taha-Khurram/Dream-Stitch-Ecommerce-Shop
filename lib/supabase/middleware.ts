@@ -8,6 +8,7 @@ import {
   isSessionExpired,
   lastSeenCookieOptions,
 } from "@/lib/auth/session";
+import { isPresencePing } from "@/lib/presence";
 
 /** Supabase's own auth cookies all carry this prefix. */
 const AUTH_COOKIE_PREFIX = "sb-";
@@ -152,7 +153,14 @@ export async function updateSession(request: NextRequest) {
     return await endIdleSession(request, supabase);
   }
 
-  if (!isPrefetch(request.headers)) {
+  /* Two kinds of request reach here without a person behind them, and neither
+     may stamp the clock: a prefetch is the router guessing, and a presence ping
+     is a timer proving only that a tab is still open. Counting either would
+     keep a session alive off a hovered link or an abandoned storefront tab.
+
+     The expiry check above still runs for both, so a ping cannot outlive a
+     session either — it just cannot extend one. */
+  if (!isPrefetch(request.headers) && !isPresencePing(request.nextUrl.pathname)) {
     supabaseResponse.cookies.set(LAST_SEEN_COOKIE, String(now), lastSeenCookieOptions());
   }
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { StatusPill } from "@/components/admin/StatusPill";
+import { LiveVisitors } from "@/components/admin/LiveVisitors";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { RevenueTable } from "@/components/admin/RevenueTable";
 import type { RevenuePoint } from "@/components/admin/revenue";
@@ -34,6 +35,10 @@ export default function AdminDashboard() {
         title="Dashboard"
         copy="What needs attention today, and how the store is trading."
       />
+
+      {/* Above the grid, not in it: the tiles are settled totals, this is a
+          sample of the last minute and a half. It fetches its own number. */}
+      <LiveVisitors />
 
       <Suspense fallback={<StatsSkeleton />}>
         <Stats />

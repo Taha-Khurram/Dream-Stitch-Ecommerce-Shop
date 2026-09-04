@@ -256,6 +256,68 @@ defers it to its own chunk, so `/admin` stays at 108 kB First Load JS instead of
 216 kB. The day-by-day figures under the chart are server-rendered and readable
 with no JavaScript at all.
 
+---
+
+## Live visitors
+
+[`presence_schema.sql`](presence_schema.sql) adds the one table and two
+functions behind the strip at the top of `/admin`: **how many people are on the
+storefront right now**, split into signed-in and guests. Run it in the
+**Supabase SQL editor** after `admin_schema.sql` — it depends on `is_admin()`.
+The file ends with a three-row verification, and every statement is idempotent.
+
+**How it works.** Every visible storefront tab POSTs to `/api/presence` once
+every 30 seconds ([`PresenceBeacon`](components/presence/PresenceBeacon.tsx),
+which renders nothing and ships about a kilobyte). The route mints a random
+visitor id into an httpOnly **session** cookie — scoped to `/api/presence`, so
+it is not sent with anything else, and gone when the browser closes — and
+upserts one row keyed on it. The dashboard polls
+[`/api/admin/presence`](app/api/admin/presence/route.ts) every 15 seconds and
+counts the rows touched in the last 90 seconds. The three intervals are one
+constant each in [`lib/presence.ts`](lib/presence.ts) and only make sense
+together: the window is three ping intervals wide so a single dropped request
+does not blink a present visitor out of the count.
+
+**Polling, not realtime.** Supabase Realtime presence would mean shipping the
+realtime client to every storefront page — the same 67 kB that
+[`app/admin/layout.tsx`](app/admin/layout.tsx) exists to have removed — to learn
+a number that only changes as fast as the beacon reports it. One small fetch
+every 15 seconds, only while the tab is visible, is the cheaper answer.
+
+**A ping is not activity.** The idle-session policy stamps a clock on every
+real request. A beacon that fires for as long as a tab is open would keep a
+signed-in session alive forever, so `isPresencePing()` excludes it in
+[`lib/supabase/middleware.ts`](lib/supabase/middleware.ts) exactly the way a
+prefetch is excluded. The expiry *check* still runs, so a ping can never
+outlive a session — it just cannot extend one. Contrast
+`/api/session/heartbeat`, which `SessionGuard` only sends after real input and
+which is meant to count.
+
+**Privacy and precision.** The table holds a random id, an optional user id and
+a timestamp — no IP, no user agent, no page history, nothing that outlives the
+visit. RLS is on with **no policies**, so the table is unreachable except
+through the two `SECURITY DEFINER` functions. Treat the number as footfall
+rather than an audit: a JavaScript-running crawler counts as a visitor, and a
+determined caller can hit `/rpc/record_presence` directly with invented uuids.
+Rate limiting that is a separate job.
+
+**Housekeeping.** `admin_live_visitors()` deletes rows older than an hour as it
+counts, which is free because it is already the one query running on a timer.
+Rows are keyed by visitor, so the table grows with concurrent visitors and not
+with time. If you would rather not depend on someone opening the dashboard:
+
+```sql
+select cron.schedule('prune-live-sessions', '*/15 * * * *',
+  $$delete from public.live_sessions where last_seen_at < now() - interval '1 hour'$$);
+```
+
+**Fallback.** Nothing here is required for the panel to work. Without the file,
+`/api/presence` answers `501`, the beacon stops pinging for the life of the tab
+rather than retrying every 30 seconds forever, and the dashboard strip says the
+SQL has not been run instead of claiming nobody is there.
+
+---
+
 ## Product media
 
 [`product_media_schema.sql`](product_media_schema.sql) adds a public

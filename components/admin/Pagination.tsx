@@ -5,14 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { startRouteProgress } from "@/components/motion/RouteProgress";
+import { PerPageSelect } from "@/components/admin/PerPageSelect";
 import {
-  PER_PAGE_OPTIONS,
   buildPageHref,
   clampPage,
   lastPageFor,
   pageAfterResize,
   pageWindow,
-  parsePerPage,
   summarize,
   type PerPage,
 } from "@/lib/pagination";
@@ -33,9 +32,10 @@ import {
  *    the last page all come from the same `total` the query returned, through
  *    the same helpers the query used to build its range.
  *
- * The rows-per-page control is the one piece that cannot be a link — a `<select>`
- * has no href — so it pushes the URL itself, inside a transition, and pokes the
- * global progress bar the way an anchor click would.
+ * The rows-per-page control is the one piece that cannot be a link — picking a
+ * size is a choice, not a destination, so there is no href to put on it. It
+ * pushes the URL itself, inside a transition, and pokes the global progress bar
+ * the way an anchor click would. See ./PerPageSelect.tsx.
  */
 
 const STEP =
@@ -80,8 +80,7 @@ export function Pagination({
     [basePath, searchParams, perPage]
   );
 
-  const onResize = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const next = parsePerPage(event.target.value);
+  const onResize = (next: PerPage) => {
     if (next === perPage) return;
 
     const target = buildPageHref(basePath, searchParams, {
@@ -108,6 +107,10 @@ export function Pagination({
       </p>
 
       <div className="order-1 flex flex-wrap items-center gap-x-5 gap-y-3 sm:order-2 sm:justify-end">
+        {/* Outside the `lastPage > 1` guard on purpose: rows-per-page is a
+            preference, not a navigation control. Hiding it on short lists
+            would make it vanish exactly when someone has narrowed a search
+            and wants to widen the window again. */}
         <PerPageSelect value={perPage} onChange={onResize} />
 
         {lastPage > 1 && (
@@ -168,46 +171,6 @@ export function Pagination({
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * Rows per page.
- *
- * Rendered whether or not there is more than one page: it is a preference, not
- * a navigation control, and hiding it on short lists would mean it vanishes
- * exactly when someone narrows a search and then wants to widen the window
- * again.
- *
- * Deliberately NOT disabled while the navigation it started is in flight. A
- * disabled control drops keyboard focus to <body>, and on Windows a native
- * select commits on each arrow press — so a keyboard user would be thrown out
- * of the control the instant they used it. A superseded router.push is
- * harmless; the dimmed pager and the progress bar carry the pending state.
- */
-function PerPageSelect({
-  value,
-  onChange,
-}: {
-  value: PerPage;
-  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
-}) {
-  return (
-    <label className="admin-hint flex shrink-0 items-center gap-2">
-      <span>Rows</span>
-      <select
-        value={value}
-        onChange={onChange}
-        aria-label="Rows per page"
-        className="h-9 cursor-pointer border border-line bg-white px-2 text-[13px] tabular-nums text-ink transition-colors hover:border-faint focus:border-purple focus:ring-2 focus:ring-purple/15 focus:outline-none"
-      >
-        {PER_PAGE_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

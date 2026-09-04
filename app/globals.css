@@ -501,6 +501,29 @@ body {
   contain-intrinsic-size: auto 600px;
 }
 
+/* ── Admin popover ────────────────────────────────────────────
+   The rows-per-page listbox, and anything else that hangs off a control
+   in the panel. It grows out of the edge it is anchored to, fast: a menu
+   that keeps you waiting reads as lag rather than polish, so this runs at
+   the hover duration, not the panel one. */
+@keyframes admin-pop-up {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes admin-pop-down {
+  from { opacity: 0; transform: translate3d(0, -6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+.admin-pop[data-placement="top"] {
+  animation: admin-pop-up var(--duration-fast) var(--ease-out-expo) both;
+}
+
+.admin-pop[data-placement="bottom"] {
+  animation: admin-pop-down var(--duration-fast) var(--ease-out-expo) both;
+}
+
 /* ── Reduced motion ───────────────────────────────────────────
    Everything decorative stops. What survives is anything that would
    otherwise leave content hidden or a loading state ambiguous. */
@@ -517,6 +540,10 @@ body {
   .auth-sweep { animation-duration: 3s; }
   .page-in { animation: none; }
   .img-swap:hover > .img-back { transform: none; }
+
+  /* The listbox still has to appear — only its travel is dropped. */
+  .admin-pop[data-placement="top"],
+  .admin-pop[data-placement="bottom"] { animation: none; }
 
   /* Reveals must still resolve to visible — never trap content at opacity 0. */
   [data-reveal-ready] [data-reveal],
