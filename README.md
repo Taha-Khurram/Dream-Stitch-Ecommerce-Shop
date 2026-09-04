@@ -78,8 +78,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 ### Then seed the catalogue
 
-Run [`ecommerce_schema.sql`](ecommerce_schema.sql) first if the database is
-empty, then run [`bedding_seed.sql`](bedding_seed.sql) — both in the
+All SQL lives in [`supabase/migrations/`](supabase/migrations/) — that
+directory's [README](supabase/migrations/README.md) has the full run order and
+what each file depends on.
+
+Run [`ecommerce_schema.sql`](supabase/migrations/ecommerce_schema.sql) first if the database is
+empty, then run [`bedding_seed.sql`](supabase/migrations/bedding_seed.sql) — both in the
 **Supabase SQL editor**. The seed:
 
 1. adds the bedding columns — `images`, `sizes`, `colors`, `fabric`, `pieces`, `compare_at_price`;
@@ -89,7 +93,7 @@ empty, then run [`bedding_seed.sql`](bedding_seed.sql) — both in the
 It is idempotent — re-running refreshes the catalogue in place.
 
 > **Already have a catalogue you want to keep?** Run
-> [`products_bedding_columns.sql`](products_bedding_columns.sql) instead. It is
+> [`products_bedding_columns.sql`](supabase/migrations/products_bedding_columns.sql) instead. It is
 > step 1 above on its own — the columns, no delete-and-reinsert. Skipping it is
 > what produces `Could not find the 'compare_at_price' column of 'products' in
 > the schema cache` when saving a product in `/admin`.
@@ -106,7 +110,7 @@ and re-run it. The `.sql` file is generated output.
 ## Admin panel
 
 `/admin` — catalogue, orders and store settings. Run
-[`admin_schema.sql`](admin_schema.sql) in the **Supabase SQL editor** after the
+[`admin_schema.sql`](supabase/migrations/admin_schema.sql) in the **Supabase SQL editor** after the
 seed, then promote yourself:
 
 ```sql
@@ -115,7 +119,7 @@ UPDATE public.profiles SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
 No signup path grants admin, and there is no service-role key in the app.
-[`product_media_schema.sql`](product_media_schema.sql) goes last — see
+[`product_media_schema.sql`](supabase/migrations/product_media_schema.sql) goes last — see
 [Product media](#product-media) below.
 
 | | |
@@ -245,7 +249,7 @@ is the queue. Everything past that point lives on the detail page.
 
 ### How to run it
 
-[`order_lifecycle.sql`](order_lifecycle.sql) widens the `orders.status` CHECK
+[`order_lifecycle.sql`](supabase/migrations/order_lifecycle.sql) widens the `orders.status` CHECK
 constraint to these six, makes `new` the column default, renames the old
 `completed` rows to `closed`, and adds the admin **DELETE** policy that
 `admin_schema.sql` never granted. Run it in the **Supabase SQL editor** after
@@ -278,9 +282,9 @@ skipped by deep-linking to the detail page.
 
 ## Customers & dashboard analytics
 
-[`dashboard_schema.sql`](dashboard_schema.sql) adds the `customers` table, links
+[`dashboard_schema.sql`](supabase/migrations/dashboard_schema.sql) adds the `customers` table, links
 it to `orders`, and installs the two functions the dashboard reads its numbers
-from. [`dashboard_seed.sql`](dashboard_seed.sql) is optional demo data.
+from. [`dashboard_seed.sql`](supabase/migrations/dashboard_seed.sql) is optional demo data.
 
 ### How to run it
 
@@ -329,7 +333,7 @@ with no JavaScript at all.
 
 ## Live visitors
 
-[`presence_schema.sql`](presence_schema.sql) adds the one table and two
+[`presence_schema.sql`](supabase/migrations/presence_schema.sql) adds the one table and two
 functions behind the strip at the top of `/admin`: **how many people are on the
 storefront right now**, split into signed-in and guests. Run it in the
 **Supabase SQL editor** after `admin_schema.sql` — it depends on `is_admin()`.
@@ -389,7 +393,7 @@ SQL has not been run instead of claiming nobody is there.
 
 ## Contact inbox & newsletter
 
-[`inbox_schema.sql`](inbox_schema.sql) is where the two storefront forms end
+[`inbox_schema.sql`](supabase/migrations/inbox_schema.sql) is where the two storefront forms end
 up. Run it in the **Supabase SQL editor** after `admin_schema.sql` — it depends
 on `is_admin()`. The file ends with a four-row verification, and every
 statement is idempotent.
@@ -449,7 +453,7 @@ in", and the dashboard tiles simply do not appear.
 
 ## Product media
 
-[`product_media_schema.sql`](product_media_schema.sql) adds a public
+[`product_media_schema.sql`](supabase/migrations/product_media_schema.sql) adds a public
 `product-media` bucket and a `product_media` table that records what is in it.
 Run it in the **Supabase SQL editor** after `admin_schema.sql`.
 

@@ -1,5 +1,6 @@
 """
-Generates `bedding_seed.sql` — the bedding migration + catalogue for the store.
+Generates `supabase/migrations/bedding_seed.sql` — the bedding migration +
+catalogue for the store.
 
 Run with `python scripts/gen_bedding_seed.py` after editing CATEGORIES or
 PRODUCTS below; the SQL file is the artefact that actually gets applied.
@@ -315,7 +316,12 @@ INSERT INTO public.products (
 
 
 if __name__ == "__main__":
-    target = Path(__file__).resolve().parent.parent / "bedding_seed.sql"
+    target = (
+        Path(__file__).resolve().parent.parent
+        / "supabase"
+        / "migrations"
+        / "bedding_seed.sql"
+    )
     target.write_text(build(), encoding="utf-8")
     print(
         "Wrote {} — {} categories, {} products".format(
