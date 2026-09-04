@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CUSTOM_SIZE_LABEL, CUSTOM_SIZE_LIMITS } from "@/lib/custom-size";
+import { CODE_PATTERN } from "@/lib/discounts/lifecycle";
 
 /**
  * Made-to-measure dimensions. The bounds are the ones in `lib/custom-size.ts`,
@@ -87,14 +88,60 @@ export const shippingAddressSchema = z.object({
     .or(z.literal("")),
 });
 
+/**
+ * A discount code as the storefront sends it: upper-cased before it is
+ * checked, so `summer24` and `SUMMER24` are the same code here as they are in
+ * Postgres. `CODE_PATTERN` is the same shape the CHECK on `discount_codes.code`
+ * enforces — see lib/discounts/lifecycle.ts.
+ *
+ * Rejecting the shape before the round trip is not about security (the
+ * database decides whether a code exists, and it is the only thing that can)
+ * but about honesty: a code with a space in it was mistyped, and saying so
+ * immediately beats a trip to Postgres to be told it does not exist.
+ */
+export const discountCodeSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .refine((value) => CODE_PATTERN.test(value), {
+    message: "That does not look like a discount code",
+  });
+
+/**
+ * The same, where leaving the field blank is the normal case.
+ *
+ * The empty string has to become `undefined` before the shape check runs —
+ * most orders carry no code, and a checkout should not fail validation because
+ * a field nobody filled in is empty.
+ */
+export const optionalDiscountCodeSchema = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  discountCodeSchema.nullish()
+);
+
 export const checkoutPayloadSchema = z.object({
   items: z
     .array(cartItemSchema)
     .min(1, { message: "Your cart must contain at least one item to checkout" }),
   shippingAddress: shippingAddressSchema,
+  discountCode: optionalDiscountCodeSchema,
+});
+
+/**
+ * What /api/discount takes: a code, and the bag to judge it against.
+ *
+ * The lines rather than a subtotal, deliberately. A subtotal sent by the
+ * browser is a number the browser chose, and quoting a discount against it
+ * would mean quoting against a bag the shopper does not have. The route prices
+ * the lines itself — see lib/api/cart.ts.
+ */
+export const discountPreviewSchema = z.object({
+  code: discountCodeSchema,
+  items: z.array(cartItemSchema).min(1, { message: "Your cart is empty" }),
 });
 
 export type CartItemInput = z.infer<typeof cartItemSchema>;
 export type CustomSizeInput = z.infer<typeof customSizeSchema>;
 export type ShippingAddressInput = z.infer<typeof shippingAddressSchema>;
 export type CheckoutPayloadInput = z.infer<typeof checkoutPayloadSchema>;
+export type DiscountPreviewInput = z.infer<typeof discountPreviewSchema>;

@@ -8,6 +8,13 @@ import { getSiteContent } from "@/lib/api/content";
 import { DEFAULT_CONTENT, type SiteContent } from "@/lib/content/defaults";
 import { parseContentForm } from "@/lib/content/merge";
 import { findTab } from "@/lib/content/fields";
+import { isMissingInstall } from "@/lib/inbox/install";
+import {
+  DISCOUNTS_NOT_INSTALLED,
+  isDiscountKind,
+  isValidCode,
+  normalizeCode,
+} from "@/lib/discounts/lifecycle";
 import {
   ACCEPTED_STATUS,
   INTAKE_STATUS,
@@ -671,6 +678,187 @@ export async function bulkDeleteOrders(ids: string[]): Promise<ActionResult> {
       (returned > 0 ? ` ${plural(returned, "unit")} returned to stock.` : "") +
       (missed > 0 ? ` ${plural(missed, "order")} could not be deleted.` : ""),
   };
+}
+
+/* ── Discount codes ─────────────────────────────────────────────────────── */
+
+/**
+ * The rules are written here; the ledger is never touched.
+ *
+ * There is no action for adding or removing a redemption, and that is
+ * deliberate. A redemption is not a record somebody keeps — it is what
+ * spending a code left behind, written by `redeem_discount()` under a lock,
+ * and it is the only thing the caps are counted from. An admin who could edit
+ * it could quietly change how many uses a coupon has left, which is exactly
+ * the number the lock exists to protect. Giving a use back is done by deleting
+ * the order, which cascades. See discount_codes.sql.
+ */
+
+/** `datetime-local` → an ISO instant, read in the admin's own timezone. */
+function when(value: FormDataEntryValue | null): string | null | false {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? false : parsed.toISOString();
+}
+
+/** A blank optional limit means unlimited, which is null and not zero. */
+function limit(value: FormDataEntryValue | null): number | null | false {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : false;
+}
+
+/** What a write says when discount_codes.sql has not been run. */
+function discountWriteError(error: { code?: string; message?: string }): string {
+  if (isMissingInstall(error)) return DISCOUNTS_NOT_INSTALLED;
+  if (error.code === "23505") return "That code already exists. Codes are unique.";
+  /* The CHECK constraints — the shape of the code, the percentage range, a
+     window that closes before it opens. Everything below is validated here
+     first, so reaching this means the two disagree about a rule. */
+  if (error.code === "23514") return "The database rejected those values. Check the code and its window.";
+  return `Could not save: ${error.message}`;
+}
+
+export async function saveDiscount(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const id = text(formData.get("id"));
+  const code = normalizeCode(text(formData.get("code")));
+  const kind = text(formData.get("kind"));
+  const value = num(formData.get("value"));
+
+  if (!isValidCode(code)) {
+    return {
+      ok: false,
+      message:
+        "A code is 3–32 characters of letters, digits, dashes and underscores, starting with a letter or digit.",
+    };
+  }
+
+  if (!isDiscountKind(kind)) return { ok: false, message: "Pick what the code takes off." };
+
+  if (value === null || value <= 0) {
+    return { ok: false, message: "Enter an amount greater than zero." };
+  }
+
+  if (kind === "percent" && value > 100) {
+    return { ok: false, message: "A percentage cannot be more than 100." };
+  }
+
+  const minSubtotal = num(formData.get("min_subtotal")) ?? 0;
+  if (minSubtotal < 0) return { ok: false, message: "The minimum cannot be negative." };
+
+  const maxUses = limit(formData.get("max_uses"));
+  if (maxUses === false) {
+    return { ok: false, message: "Total uses must be a whole number above zero, or blank for unlimited." };
+  }
+
+  const perCustomer = limit(formData.get("per_customer_limit"));
+  if (perCustomer === false) {
+    return {
+      ok: false,
+      message: "Uses per customer must be a whole number above zero, or blank for unlimited.",
+    };
+  }
+
+  const startsAt = when(formData.get("starts_at"));
+  const expiresAt = when(formData.get("expires_at"));
+
+  if (startsAt === false || expiresAt === false) {
+    return { ok: false, message: "One of those dates could not be read." };
+  }
+
+  if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt)) {
+    return { ok: false, message: "The end date has to come after the start date." };
+  }
+
+  const payload = {
+    code,
+    kind,
+    value,
+    min_subtotal: minSubtotal,
+    max_uses: maxUses,
+    per_customer_limit: perCustomer,
+    starts_at: startsAt,
+    expires_at: expiresAt,
+    is_active: formData.get("is_active") === "on",
+    description: text(formData.get("description")) || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: saved, error } = id
+    ? await supabase.from("discount_codes").update(payload).eq("id", id).select("id")
+    : await supabase.from("discount_codes").insert(payload).select("id");
+
+  if (error) return { ok: false, message: discountWriteError(error) };
+  if (!saved || saved.length === 0) return { ok: false, message: NOT_WRITTEN };
+
+  revalidateDiscounts();
+  return { ok: true, message: id ? "Code updated." : "Code created." };
+}
+
+/**
+ * The off switch, on its own.
+ *
+ * Separate from the form because pausing a code is a one-click decision made
+ * from a list — usually because it is being abused, and usually in a hurry.
+ * It leaves the dates alone: "stop this now" and "this was always going to end
+ * on Sunday" are different facts, and a code that is switched back on should
+ * come back to the schedule it had.
+ */
+export async function setDiscountActive(id: string, active: boolean): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { data: saved, error } = await supabase
+    .from("discount_codes")
+    .update({ is_active: active, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { ok: false, message: discountWriteError(error) };
+  if (!saved || saved.length === 0) return { ok: false, message: NOT_WRITTEN };
+
+  revalidateDiscounts();
+  return { ok: true, message: active ? "Code resumed." : "Code paused." };
+}
+
+/**
+ * Deleting a code takes its redemptions with it — `discount_redemptions` is
+ * ON DELETE CASCADE from the rule. The orders themselves are untouched and
+ * keep their own `discount_code` and `discount_amount`, which is the whole
+ * reason those two columns are on the order: what somebody was charged has to
+ * stay legible after the coupon that did it is gone.
+ *
+ * Which is also why pausing is offered beside this on every row. Deleting a
+ * code that has been used loses the usage history; pausing it loses nothing.
+ */
+export async function deleteDiscount(id: string): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("discount_codes").delete().eq("id", id);
+
+  if (error) {
+    return {
+      ok: false,
+      message: isMissingInstall(error)
+        ? DISCOUNTS_NOT_INSTALLED
+        : `Could not delete: ${error.message}`,
+    };
+  }
+
+  revalidateDiscounts();
+  return { ok: true, message: "Code deleted." };
+}
+
+/** The list, and the dashboard panel that reads the same aggregates. */
+function revalidateDiscounts(): void {
+  revalidatePath("/admin/discounts");
+  revalidatePath("/admin");
 }
 
 /* ── Settings ───────────────────────────────────────────────────────────── */

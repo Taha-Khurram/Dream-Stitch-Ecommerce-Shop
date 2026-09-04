@@ -69,6 +69,63 @@ export function resolveSizeGuide(
   };
 }
 
+/** The finished dimensions behind a named size. See `resolveCutSpec()`. */
+export interface CutSpec {
+  /** The size as the chart spells it, which may re-case what was ordered. */
+  size: string;
+  /** Heading/value pairs — bedsheet, pillow cover, set — in chart order. */
+  spec: { label: string; value: string }[];
+}
+
+/**
+ * What a stock size means in inches, for the packing slip.
+ *
+ * A made-to-measure line carries its own numbers; a line ordered as "King
+ * Size" carries a word, and the person cutting it needs the inches that word
+ * stands for. Those inches are already maintained in one place — the chart the
+ * buyer was shown before they ordered — so the slip reads them from there
+ * rather than keeping a second copy that can drift from it.
+ *
+ * `enabled` is deliberately not consulted: it governs whether the storefront
+ * offers the guide as a link, which says nothing about whether the dimensions
+ * in it are the ones being cut to.
+ *
+ * Returns null when the chart has no row for this size — an own-brand size the
+ * guide never covered, or a legacy row. The slip then prints the size as
+ * ordered and says the dimensions are not on file, which is a question worth
+ * asking before cutting rather than a blank worth ignoring.
+ */
+export function resolveCutSpec(
+  content: SiteContent,
+  categorySlug: string | null | undefined,
+  size: string | null | undefined
+): CutSpec | null {
+  const wanted = (size ?? "").trim().toLowerCase();
+  if (!wanted) return null;
+
+  const guide = content.product.size_guide;
+  const slug = (categorySlug ?? "").trim();
+
+  const row = pickRows(guide.rows ?? [], slug).find(
+    (candidate) => cell(candidate, "size").toLowerCase() === wanted
+  );
+  if (!row) return null;
+
+  const chart = pickChart(guide.charts ?? [], slug);
+  const headings = splitHeadings(chart?.headings ?? FALLBACK_CHART.headings);
+
+  /* `fits` is buyer-facing reassurance — which mattress the size suits — and
+     is not something anyone cuts against, so it stays off the slip. */
+  const spec = (["sheet", "pillow", "set"] as const)
+    .map((key) => ({
+      label: headings[COLUMN_KEYS.indexOf(key)] || key,
+      value: cell(row, key),
+    }))
+    .filter((entry) => entry.label && entry.value);
+
+  return spec.length > 0 ? { size: cell(row, "size"), spec } : null;
+}
+
 /** This category's chart, else the store-wide one, else whatever exists. */
 function pickChart(charts: Chart[], slug: string): Chart | undefined {
   return (

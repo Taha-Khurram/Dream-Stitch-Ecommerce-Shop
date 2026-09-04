@@ -15,7 +15,9 @@ import { formatPrice } from "@/lib/format";
 import { OPEN_STATUSES, REVENUE_STATUSES } from "@/lib/orders/lifecycle";
 import { OPEN_MESSAGE_STATUSES } from "@/lib/inbox/lifecycle";
 import { isMissingInstall } from "@/lib/inbox/install";
-import { AlertTriangle, ArrowRight, Inbox as InboxIcon, Mail } from "lucide-react";
+import { readDiscountUsage } from "@/lib/discounts/usage";
+import { describeDiscount, isDiscountKind } from "@/lib/discounts/lifecycle";
+import { AlertTriangle, ArrowRight, Inbox as InboxIcon, Mail, Ticket } from "lucide-react";
 import type { Order, Product } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +78,14 @@ export default async function AdminDashboard({
           <Revenue days={days} span={span} />
         </Suspense>
       </div>
+
+      {/* Under the chart because it explains part of it: the revenue above is
+          already net of every code redeemed in the same window. Keyed on the
+          range for the reason the tiles are — switching windows must not leave
+          last week's counts on screen under a tab that says something else. */}
+      <Suspense key={range} fallback={null}>
+        <DiscountUsage days={days} span={span} />
+      </Suspense>
 
       <Suspense fallback={null}>
         <LowStock />
@@ -558,6 +568,114 @@ function ChartSkeleton() {
       <Skeleton className="mt-2 h-2.5 w-64" />
       <Skeleton className="mt-5 h-[260px] w-full" />
     </div>
+  );
+}
+
+/* ── Discount codes ─────────────────────────────────────────────────────── */
+
+/** Enough to show which codes are working without becoming a second screen. */
+const TOP_CODES = 5;
+
+/**
+ * What the codes did in the window on screen.
+ *
+ * Counted from the redemption ledger through `admin_discount_usage()`, which
+ * is the same aggregate /admin/discounts reads — so the number here and the
+ * number there cannot disagree, and neither can be thrown off by an order that
+ * was deleted after the fact.
+ *
+ * Renders nothing when `discount_codes.sql` has not been applied, and nothing
+ * when the store has never written a code. Same judgement as `InboxSummary`
+ * above: the dashboard is a summary, and a summary is the wrong place to be
+ * told about a migration or about a feature nobody has started using. The
+ * screen itself says so, at length, where somebody has gone looking.
+ *
+ * A store that *has* codes but used none this window still gets the section,
+ * saying exactly that. Zero is the answer somebody running a campaign most
+ * needs to see, and it is the one an empty-state check would hide.
+ */
+async function DiscountUsage({ days, span }: { days: number; span: string }) {
+  const usage = await readDiscountUsage(days);
+
+  if (usage.status !== "ok" || usage.rows.length === 0) return null;
+
+  const used = usage.rows.filter((row) => row.uses > 0);
+  const redemptions = used.reduce((sum, row) => sum + row.uses, 0);
+  const discounted = used.reduce((sum, row) => sum + row.discounted, 0);
+  const orderTotal = used.reduce((sum, row) => sum + row.order_total, 0);
+
+  return (
+    <section className="mt-12">
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Ticket className="h-4 w-4 text-purple" strokeWidth={1.5} />
+          <h2 className="admin-section-title">Discount codes</h2>
+        </div>
+        <Link
+          href="/admin/discounts"
+          className="flex items-center gap-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:text-purple"
+        >
+          All codes <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      {used.length === 0 ? (
+        <p className="mt-4 border border-line bg-white p-8 text-center text-sm text-muted">
+          No codes were used in {span}. {usage.rows.length}{" "}
+          {usage.rows.length === 1 ? "code is" : "codes are"} on file.
+        </p>
+      ) : (
+        <>
+          <p className="admin-hint mt-2">
+            {redemptions.toLocaleString()} {redemptions === 1 ? "redemption" : "redemptions"} in{" "}
+            {span} · {formatPrice(discounted)} off {formatPrice(orderTotal)} of orders
+          </p>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[38rem] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-ink">
+                  {["Code", "Used", "Customers", "Given away"].map((head) => (
+                    <th key={head} className="admin-th pb-3">
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {used.slice(0, TOP_CODES).map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-line transition-colors hover:bg-frost"
+                  >
+                    <td className="py-3.5">
+                      <Link
+                        href={`/admin/discounts/${row.id}`}
+                        className="font-medium tracking-[0.06em] text-ink transition-colors hover:text-purple"
+                      >
+                        {row.code}
+                      </Link>
+                      <span className="admin-hint mt-1 block">
+                        {isDiscountKind(row.kind)
+                          ? describeDiscount(row.kind, row.value)
+                          : row.kind}
+                      </span>
+                    </td>
+                    <td className="py-3.5 tabular-nums text-ink">{row.uses.toLocaleString()}</td>
+                    <td className="py-3.5 tabular-nums text-ink-soft">
+                      {row.customers.toLocaleString()}
+                    </td>
+                    <td className="py-3.5 tabular-nums text-purple">
+                      −{formatPrice(row.discounted)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

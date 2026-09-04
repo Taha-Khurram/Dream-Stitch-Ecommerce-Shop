@@ -14,9 +14,14 @@ import { formatPrice } from "@/lib/format";
 import { isAwaitingReview, orderReference } from "@/lib/orders/lifecycle";
 import { customSizeFromRow, formatCustomSize } from "@/lib/custom-size";
 import type { Order, OrderItem } from "@/types/ecommerce";
-import { Ruler } from "lucide-react";
+import { Printer, Ruler } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const ORDER_COLUMNS = "id, status, total_amount, created_at, updated_at, shipping_address";
+
+const ITEMS_EMBED =
+  "order_items(id, quantity, unit_price, size, custom_width, custom_height, custom_unit, product:products(id, name, image_url, fabric))";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -26,13 +31,23 @@ export default async function AdminOrderDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data } = await supabase
+  /* The two discount columns arrive with discount_codes.sql, and PostgREST
+     rejects the whole select if either is unknown — so they are asked for, and
+     a failure falls back to the shape this page has always read. Same contract
+     as the customer embed on the dashboard's recent-orders list. */
+  const withDiscount = await supabase
     .from("orders")
-    .select(
-      "id, status, total_amount, created_at, updated_at, shipping_address, order_items(id, quantity, unit_price, size, custom_width, custom_height, custom_unit, product:products(id, name, image_url, fabric))"
-    )
+    .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
     .eq("id", id)
     .single();
+
+  const { data } = withDiscount.error
+    ? await supabase
+        .from("orders")
+        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
+        .eq("id", id)
+        .single()
+    : withDiscount;
 
   if (!data) notFound();
 
@@ -44,7 +59,11 @@ export default async function AdminOrderDetailPage({
     (sum, item) => sum + Number(item.unit_price) * item.quantity,
     0
   );
-  const delivery = Number(order.total_amount) - itemsTotal;
+  const discount = Number(order.discount_amount ?? 0);
+  /* Derived, and the discount has to come out of it or the subtraction starts
+     reporting a negative delivery charge on every discounted order — which is
+     what those two columns on `orders` are for. */
+  const delivery = Number(order.total_amount) - itemsTotal + discount;
   const awaitingReview = isAwaitingReview(order.status);
 
   return (
@@ -59,9 +78,22 @@ export default async function AdminOrderDetailPage({
           minute: "2-digit",
         })}`}
         action={
-          <Link href="/admin/orders" className="btn-outline">
-            Back
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Opened in its own tab, not navigated to: the slip is a document
+                you print and close, and coming back to the order you were
+                working on should not cost a round trip. */}
+            <Link
+              href={`/admin/orders/${order.id}/print`}
+              target="_blank"
+              className="btn-outline inline-flex items-center gap-2"
+            >
+              <Printer className="h-4 w-4" strokeWidth={1.75} />
+              Packing slip
+            </Link>
+            <Link href="/admin/orders" className="btn-outline">
+              Back
+            </Link>
+          </div>
         }
       />
 
@@ -168,6 +200,16 @@ export default async function AdminOrderDetailPage({
                 <dt className="text-muted">Items</dt>
                 <dd className="tabular-nums text-ink">{formatPrice(itemsTotal)}</dd>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between gap-6">
+                  <dt className="truncate text-muted">
+                    Discount{order.discount_code ? ` · ${order.discount_code}` : ""}
+                  </dt>
+                  <dd className="shrink-0 tabular-nums text-purple">
+                    −{formatPrice(discount)}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-6">
                 <dt className="text-muted">Delivery</dt>
                 <dd className="tabular-nums text-ink">

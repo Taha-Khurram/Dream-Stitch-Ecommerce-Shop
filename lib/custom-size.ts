@@ -85,6 +85,46 @@ export function formatCustomSize(size: CustomSize): string {
   return `${trimZero(size.width)} × ${trimZero(size.height)} ${size.unit}`;
 }
 
+/** The one conversion this store needs, between the two units it offers. */
+const CM_PER_INCH = 2.54;
+
+/** The unit the buyer did not order in — `"cm"` for an inches order, and back. */
+export function otherUnit(unit: CustomSizeUnit): CustomSizeUnit {
+  return unit === "in" ? "cm" : "in";
+}
+
+/**
+ * The same measurement expressed in the other unit.
+ *
+ * The buyer measures with whichever tape they own; the cutting table has one.
+ * Converting 82 × 78 in by hand at the table is a sum done in a hurry next to
+ * a bolt of cotton, so the packing slip prints both figures and nobody does
+ * the sum. Rounded to the same 1 decimal place an ordered measurement is held
+ * to — more precision than that is not something anyone can cut to.
+ */
+export function convertCustomSize(size: CustomSize, unit: CustomSizeUnit): CustomSize {
+  if (size.unit === unit) return size;
+
+  const factor = unit === "cm" ? CM_PER_INCH : 1 / CM_PER_INCH;
+
+  return {
+    width: round1(size.width * factor),
+    height: round1(size.height * factor),
+    unit,
+  };
+}
+
+/**
+ * One dimension on its own, e.g. `82 in`.
+ *
+ * `82 × 78` is only unambiguous to whoever typed it. On the slip the two
+ * numbers are split apart under the words Width and Height, which is why they
+ * are formatted one at a time.
+ */
+export function formatDimension(value: number, unit: CustomSizeUnit): string {
+  return `${trimZero(value)} ${unit}`;
+}
+
 /**
  * Rebuild a `CustomSize` from the four nullable `order_items` columns, so the
  * admin screens never have to null-check each one on their own.

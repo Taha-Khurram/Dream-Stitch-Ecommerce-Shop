@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
@@ -155,8 +156,16 @@ async function CustomersTable({
                   key={customer.id}
                   className="border-b border-line transition-colors hover:bg-frost"
                 >
-                  <td className="max-w-[16rem] truncate py-3.5 font-medium text-ink">
-                    {customer.name}
+                  {/* The name is the way in, the same way the reference is on
+                      the orders table — a book you can only read is half a
+                      screen, and the person is what an admin arrives holding. */}
+                  <td className="max-w-[16rem] py-3.5 font-medium text-ink">
+                    <Link
+                      href={`${BASE_PATH}/${customer.id}`}
+                      className="block truncate transition-colors hover:text-purple"
+                    >
+                      {customer.name || customer.email}
+                    </Link>
                   </td>
                   <td className="py-3.5">
                     <a

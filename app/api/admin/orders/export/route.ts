@@ -48,6 +48,21 @@ const COLUMNS =
   "id, status, total_amount, created_at, shipping_address, " +
   "order_items(quantity, size, custom_width, custom_height, custom_unit, product:products(name))";
 
+/**
+ * The discount, asked for separately because it may not be there.
+ *
+ * These two columns arrive with `discount_codes.sql`, and PostgREST refuses
+ * the whole select if either is unknown — so the export is attempted with them
+ * and falls back to the shape it has always had. The two cells then come out
+ * empty, which is the truth on a store that has never issued a code.
+ *
+ * Worth the fallback rather than left out: `total` is already net of the
+ * reduction, so a file without these columns balances but cannot be explained.
+ * Anyone reconciling a day's takings needs to see why an order came to less
+ * than its lines.
+ */
+const DISCOUNT_COLUMNS = "discount_code, discount_amount";
+
 type ExportItem = {
   quantity: number;
   size: string | null;
@@ -64,6 +79,9 @@ type ExportRow = {
   created_at: string;
   shipping_address: ShippingAddress | null;
   order_items?: ExportItem[];
+  /** Absent on the fallback select, and on every store without codes. */
+  discount_code?: string | null;
+  discount_amount?: number | null;
 };
 
 /** `2 × Velvet Throw (Cut to measure 82 × 78 in)` — one line of an order. */
@@ -94,23 +112,29 @@ export async function GET(request: Request) {
   const status = requested && isOrderStatus(requested) ? requested : null;
   const query = params.get(SEARCH_PARAM) ?? "";
 
-  let select = auth.supabase
-    .from("orders")
-    .select(COLUMNS)
-    .order("created_at", { ascending: false })
-    .range(0, MAX_ROWS - 1);
-
-  if (status) select = select.eq("status", status);
-
-  /* Status and search compose exactly as they do on the screen — `.or()` is
-     one clause against the whole set, so it stays an AND with the `.eq()`
-     above rather than widening it back out. Same module the table builds its
-     filter from, so the file and the list can never disagree about what the
-     term means. */
   const search = orderSearchFilter(query);
-  if (search) select = select.or(search);
 
-  const { data, error } = await select;
+  const build = (columns: string) => {
+    let select = auth.supabase
+      .from("orders")
+      .select(columns)
+      .order("created_at", { ascending: false })
+      .range(0, MAX_ROWS - 1);
+
+    if (status) select = select.eq("status", status);
+
+    /* Status and search compose exactly as they do on the screen — `.or()` is
+       one clause against the whole set, so it stays an AND with the `.eq()`
+       above rather than widening it back out. Same module the table builds its
+       filter from, so the file and the list can never disagree about what the
+       term means. */
+    if (search) select = select.or(search);
+
+    return select;
+  };
+
+  const withDiscount = await build(`${COLUMNS}, ${DISCOUNT_COLUMNS}`);
+  const { data, error } = withDiscount.error ? await build(COLUMNS) : withDiscount;
 
   if (error) {
     console.error("Order export failed:", error.message);
@@ -136,6 +160,8 @@ export async function GET(request: Request) {
       "postal_code",
       "country",
       "items",
+      "discount_code",
+      "discount",
       "total",
     ],
     rows.map((row) => {
@@ -165,8 +191,11 @@ export async function GET(request: Request) {
         to?.postalCode ?? "",
         to?.country ?? "",
         (row.order_items ?? []).map(itemLine).join("; "),
+        row.discount_code ?? "",
+        Number(row.discount_amount ?? 0),
         /* The bare number, not `formatPrice`: this column exists to be summed,
-           and "PKR 7,000" is text to every spreadsheet that opens it. */
+           and "PKR 7,000" is text to every spreadsheet that opens it. Already
+           net of the discount column beside it. */
         Number(row.total_amount),
       ];
     }),

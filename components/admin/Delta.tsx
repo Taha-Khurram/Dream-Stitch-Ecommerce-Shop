@@ -14,6 +14,14 @@ import { previousSpan } from "@/lib/admin/range";
  * also spelled out in a visually hidden word, and the window being compared
  * against is written out in full beside the figure rather than left to a
  * legend somewhere else on the page.
+ *
+ * Two units, because the tiles measure two kinds of thing. A quantity —
+ * revenue, orders, customers — moves by a *proportion* of what it was, so the
+ * chip reads `18%`. A rate that is already a percentage does not: conversion
+ * going from 10% to 11.8% is not "up 18%" in any sense a reader will take it,
+ * so those tiles ask for `unit="points"` and get `1.8 pts` instead. Same
+ * colours, same arrow, same hidden direction word — only the arithmetic and
+ * the suffix differ.
  */
 
 interface Change {
@@ -63,6 +71,36 @@ function changeFrom(current: number, previous: number, days: number): Change {
   };
 }
 
+/**
+ * The same movement, for a tile whose value is already a percentage.
+ *
+ * Subtraction rather than division, so the chip says how far the rate moved
+ * rather than how far it moved relative to itself. That also disposes of the
+ * divide-by-zero case above without a special branch: a rate of 0% rising to
+ * 12% is `12 pts`, which is simply true, where "new" would be claiming the
+ * store had no customers to convert rather than none that converted.
+ *
+ * A caller with no previous rate at all — nothing in the denominator last
+ * window — must not render this component. There is no honest chip for it, and
+ * `0 pts` would read as "unchanged".
+ */
+function pointsChange(current: number, previous: number, days: number): Change {
+  const note = `vs ${previousSpan(days)}`;
+  /* One decimal, matching formatRate, and never a trailing `.0`. */
+  const moved = Number((current - previous).toFixed(1));
+
+  if (moved === 0) return { tone: "level", chip: "level", spoken: null, note };
+
+  const size = Math.abs(moved);
+
+  return {
+    tone: moved > 0 ? "up" : "down",
+    chip: `${size} ${size === 1 ? "pt" : "pts"}`,
+    spoken: moved > 0 ? "up" : "down",
+    note,
+  };
+}
+
 const TONES: Record<Change["tone"], { chip: string; arrow: string | null }> = {
   up: { chip: "border-jade/30 bg-jade/10 text-jade", arrow: "▲" },
   down: { chip: "border-sale/30 bg-sale/10 text-sale", arrow: "▼" },
@@ -73,12 +111,18 @@ export function Delta({
   current,
   previous,
   days,
+  unit = "percent",
 }: {
   current: number;
   previous: number;
   days: number;
+  /** `percent` for a quantity, `points` when the value is itself a rate. */
+  unit?: "percent" | "points";
 }) {
-  const change = changeFrom(current, previous, days);
+  const change =
+    unit === "points"
+      ? pointsChange(current, previous, days)
+      : changeFrom(current, previous, days);
   const tone = TONES[change.tone];
 
   return (

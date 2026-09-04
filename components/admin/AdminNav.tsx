@@ -3,12 +3,30 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, Tags, Receipt, Users, Inbox, Mail, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  ChartColumnIncreasing,
+  Package,
+  Tags,
+  Ticket,
+  Receipt,
+  Users,
+  Inbox,
+  Mail,
+  Settings,
+} from "lucide-react";
 
 const LINKS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  /* Directly under the dashboard, because it is the same question asked at
+     more depth — what needs attention, then what is actually selling. */
+  { name: "Analytics", href: "/admin/analytics", icon: ChartColumnIncreasing },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Categories", href: "/admin/categories", icon: Tags },
+  /* With the catalogue rather than with the orders: a code is a term the store
+     sells on, decided in advance, and it is edited on the same kind of morning
+     as a price. What it has actually done shows up on the two screens above. */
+  { name: "Discounts", href: "/admin/discounts", icon: Ticket },
   { name: "Orders", href: "/admin/orders", icon: Receipt },
   { name: "Customers", href: "/admin/customers", icon: Users },
   /* The two storefront forms land here. Below the trading screens because

@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useCart } from "@/context/CartContext";
+import { useCart, cartLines } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import { amountToFreeShipping } from "@/lib/pricing";
 import { formatCustomSize } from "@/lib/custom-size";
+import { isDiscountOutcome } from "@/lib/discounts/lifecycle";
 import { BRAND } from "@/lib/constants";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import {
@@ -16,6 +17,7 @@ import {
   Loader2,
   Check,
   AlertTriangle,
+  Tag,
   Truck,
 } from "lucide-react";
 
@@ -46,6 +48,13 @@ export function CartDrawer() {
     shipping,
     totalPrice,
     rates,
+    discount,
+    discountAmount,
+    payable,
+    applyDiscount,
+    removeDiscount,
+    discountNotice,
+    dismissDiscountNotice,
     isOpen,
     closeCart,
   } = useCart();
@@ -53,8 +62,20 @@ export function CartDrawer() {
   const [stage, setStage] = useState<Stage>("bag");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [order, setOrder] = useState<{ orderId: string; totalAmount: number } | null>(null);
+  const [order, setOrder] = useState<{
+    orderId: string;
+    totalAmount: number;
+    discountCode: string | null;
+    discountAmount: number;
+  } | null>(null);
   const [address, setAddress] = useState(EMPTY_ADDRESS);
+
+  /* The promo field's own state. Deliberately not in the cart context: what has
+     been typed but not yet submitted is this control's business, and the
+     context holds only the code that actually held. */
+  const [codeInput, setCodeInput] = useState("");
+  const [codePending, setCodePending] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
 
   // Stays mounted through the slide-out so the panel can animate away.
   const { mounted, state } = usePresence(isOpen, EXIT_MS);
@@ -86,24 +107,34 @@ export function CartDrawer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            size: item.size ?? null,
-            custom: item.custom ?? null,
-          })),
+          items: cartLines(items),
           shippingAddress: address,
+          discountCode: discount?.code ?? null,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
+        /* The server re-checks the code against the cap, the window and the
+           per-customer limit, and it can refuse one the drawer was holding
+           quite legitimately — a limited code claimed by somebody else in the
+           meantime, or a once-per-customer code the shopper has now signed in
+           to. Taking it off is what makes Place Order work on the second
+           press; leaving it on would refuse the order again for the same
+           reason, with no way to clear it. */
+        if (isDiscountOutcome(String(data.outcome ?? ""))) removeDiscount();
+
         setErrorMessage(data.error || "We couldn't place your order. Please try again.");
         return;
       }
 
-      setOrder({ orderId: data.orderId, totalAmount: data.totalAmount });
+      setOrder({
+        orderId: data.orderId,
+        totalAmount: data.totalAmount,
+        discountCode: data.discountCode ?? null,
+        discountAmount: Number(data.discountAmount ?? 0),
+      });
       setStage("done");
       clearCart();
     } catch {
@@ -113,6 +144,19 @@ export function CartDrawer() {
     }
   };
 
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCodeError(null);
+    dismissDiscountNotice();
+    setCodePending(true);
+
+    const result = await applyDiscount(codeInput);
+
+    setCodePending(false);
+    if (result.ok) setCodeInput("");
+    else setCodeError(result.message);
+  };
+
   const close = () => {
     closeCart();
     // Reset back to the bag once the panel has slid away
@@ -120,16 +164,24 @@ export function CartDrawer() {
       setStage("bag");
       setOrder(null);
       setErrorMessage(null);
+      /* The applied code survives — it belongs to the bag, and the bag is
+         still there. Only what was typed and refused is cleared. */
+      setCodeInput("");
+      setCodeError(null);
     }, EXIT_MS);
   };
 
   if (!mounted) return null;
 
-  const remainingForFreeShipping = amountToFreeShipping(subtotal, rates);
+  /* Measured against what is actually being paid for the goods, which is what
+     `calcShipping` charges on. A code that drops the bag under the threshold
+     takes the free delivery with it, and the bar has to move when it does —
+     see the note on calcShipping in lib/pricing.ts. */
+  const remainingForFreeShipping = amountToFreeShipping(payable, rates);
   // A zero threshold means everything ships free, so the bar is already full.
   const progress =
     rates.freeShippingThreshold > 0
-      ? Math.min(100, (subtotal / rates.freeShippingThreshold) * 100)
+      ? Math.min(100, (payable / rates.freeShippingThreshold) * 100)
       : 100;
 
   const inputClass =
@@ -194,6 +246,15 @@ export function CartDrawer() {
                 <dt className="text-muted">Order number</dt>
                 <dd className="text-ink">{order.orderId.slice(0, 8).toUpperCase()}</dd>
               </div>
+              {/* From the response, not from the cart — the bag has already
+                  been emptied, and this is what was actually recorded against
+                  the order rather than what the drawer last calculated. */}
+              {order.discountAmount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="truncate text-muted">Discount · {order.discountCode}</dt>
+                  <dd className="shrink-0 text-purple">−{formatPrice(order.discountAmount)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-muted">Total paid</dt>
                 <dd className="text-ink">{formatPrice(order.totalAmount)}</dd>
@@ -320,11 +381,78 @@ export function CartDrawer() {
             </div>
 
             <div className="border-t border-line px-6 py-5">
+              {/* ── Discount code ──────────────────────────────────────────
+                  Above the totals, not below them: it is a thing to do, and
+                  the numbers under it change when it is done. Applied, the
+                  field is replaced by the code itself rather than sitting
+                  there empty inviting a second one — a bag takes one code,
+                  which is a rule enforced by a UNIQUE on the ledger. */}
+              {discount ? (
+                <div className="mb-4 flex items-center justify-between gap-3 border border-purple/30 bg-lilac px-3 py-2.5">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Tag className="h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.6} />
+                    <span className="truncate text-[12px] font-medium tracking-[0.08em] text-purple">
+                      {discount.code}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeDiscount}
+                    className="eyebrow shrink-0 cursor-pointer text-[8px] text-muted transition-colors hover:text-sale"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={submitCode} className="mb-4 flex items-center gap-2">
+                  <input
+                    name="discountCode"
+                    value={codeInput}
+                    onChange={(e) => {
+                      /* Upper-cased as it is typed, because that is how it is
+                         stored and compared. Doing it here rather than only on
+                         the server means the field shows the shopper the code
+                         that is about to be checked. */
+                      setCodeInput(e.target.value.toUpperCase());
+                      setCodeError(null);
+                    }}
+                    placeholder="Discount code"
+                    aria-label="Discount code"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={32}
+                    className="min-w-0 flex-1 border border-line bg-white px-3 py-2 text-[12px] tracking-[0.08em] text-ink placeholder-faint transition-colors focus:border-purple focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={codePending || !codeInput.trim()}
+                    className="eyebrow shrink-0 cursor-pointer border border-ink px-4 py-2.5 text-[9px] text-ink transition-colors hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:border-line disabled:text-faint disabled:hover:bg-transparent"
+                  >
+                    {codePending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                  </button>
+                </form>
+              )}
+
+              {/* One line for both, because they never coexist: a code that
+                  lapsed has already been removed, and a code being refused was
+                  never applied. */}
+              {(codeError || discountNotice) && (
+                <p role="status" className="mb-4 -mt-2 text-[11px] leading-relaxed text-sale">
+                  {codeError ?? discountNotice}
+                </p>
+              )}
+
               <dl className="space-y-2 text-[12px]">
                 <div className="flex justify-between">
                   <dt className="text-muted">Subtotal</dt>
                   <dd className="text-ink">{formatPrice(subtotal)}</dd>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="truncate text-muted">Discount · {discount?.code}</dt>
+                    <dd className="shrink-0 text-purple">−{formatPrice(discountAmount)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-muted">Delivery</dt>
                   <dd className={shipping === 0 ? "text-jade" : "text-ink"}>
@@ -512,6 +640,15 @@ export function CartDrawer() {
             </div>
 
             <div className="border-t border-line px-6 py-5">
+              {/* Carried through to the last step on purpose: the code was
+                  applied a screen ago, and a total that is lower than the
+                  subtotal with nothing to explain it reads as a mistake. */}
+              {discountAmount > 0 && (
+                <p className="mb-2 flex items-center justify-between text-[12px]">
+                  <span className="truncate text-muted">Discount · {discount?.code}</span>
+                  <span className="shrink-0 text-purple">−{formatPrice(discountAmount)}</span>
+                </p>
+              )}
               <div className="flex items-baseline justify-between">
                 <span className="eyebrow text-ink">Total</span>
                 <span className="font-[family-name:var(--font-display)] text-lg text-ink">

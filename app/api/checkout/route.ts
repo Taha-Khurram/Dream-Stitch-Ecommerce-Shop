@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth/api";
+import { isMissingInstall } from "@/lib/inbox/install";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
 import { getSettings } from "@/lib/api/settings";
+import { priceCart } from "@/lib/api/cart";
+import { previewDiscount, redeemDiscount } from "@/lib/discounts/api";
+import { DISCOUNTS_NOT_INSTALLED, outcomeMessage } from "@/lib/discounts/lifecycle";
 import { INTAKE_STATUS } from "@/lib/orders/lifecycle";
 import { z } from "zod";
 
@@ -44,63 +49,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const { items, shippingAddress } = validationResult.data;
+    const { items, shippingAddress, discountCode } = validationResult.data;
 
-    // 3. Security best practice: Fetch actual prices and verify stock directly from Database
-    const productIds = items.map((item) => item.productId);
-    const { data: dbProducts, error: productsError } = await supabase
-      .from("products")
-      .select("id, name, price, stock")
-      .in("id", productIds);
+    /* 3. Security best practice: prices come from the database, never from the
+          payload. Shared with /api/discount so a code cannot be quoted against
+          one subtotal and spent against another — see lib/api/cart.ts. */
+    const cart = await priceCart(supabase, items);
 
-    if (productsError) {
-      console.error("Failed to query products during checkout:", productsError.message);
+    if (!cart.ok) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to verify product availability",
-        },
-        { status: 500 }
+        { success: false, error: cart.error },
+        { status: cart.status }
       );
     }
 
-    if (!dbProducts || dbProducts.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "None of the requested products were found in the catalog",
-        },
-        { status: 404 }
-      );
-    }
+    const { products: productMap, ordered: orderedPerProduct, subtotal } = cart;
 
-    // Create a lookup map for products
-    const productMap = new Map(dbProducts.map((p) => [p.id, p]));
-
-    /* One product can arrive as several lines — a King, and the same design cut
-       to a bed that is not one. Stock is held per product, so it is checked
-       against the total across those lines; ordering 2 + 2 of a sheet with 3 in
-       stock has to fail, and checking each line alone would let it through. */
-    const orderedPerProduct = new Map<string, number>();
-    for (const item of items) {
-      orderedPerProduct.set(
-        item.productId,
-        (orderedPerProduct.get(item.productId) ?? 0) + item.quantity
-      );
-    }
-
+    /* Stock is held per product, so it is checked against the total across a
+       product's lines; ordering 2 + 2 of a sheet with 3 in stock has to fail,
+       and checking each line alone would let it through. */
     for (const [productId, ordered] of orderedPerProduct) {
-      const dbProduct = productMap.get(productId);
-
-      if (!dbProduct) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Product with ID ${productId} was not found`,
-          },
-          { status: 404 }
-        );
-      }
+      const dbProduct = productMap.get(productId)!;
 
       if (dbProduct.stock < ordered) {
         return NextResponse.json(
@@ -113,40 +82,75 @@ export async function POST(request: Request) {
       }
     }
 
-    // Prices always come from the database, never from the payload.
-    let subtotal = 0;
-    const verifiedOrderItems: {
-      product_id: string;
-      quantity: number;
-      unit_price: number;
-      size: string | null;
-      custom_width: number | null;
-      custom_height: number | null;
-      custom_unit: string | null;
-    }[] = [];
+    const verifiedOrderItems = items.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+      unit_price: Number(productMap.get(item.productId)!.price),
+      size: item.size ?? null,
+      custom_width: item.custom?.width ?? null,
+      custom_height: item.custom?.height ?? null,
+      custom_unit: item.custom?.unit ?? null,
+    }));
 
-    for (const item of items) {
-      const unitPrice = Number(productMap.get(item.productId)!.price);
-      subtotal += unitPrice * item.quantity;
+    /* 3b. The discount, checked before anything is written.
+     *
+     * Checked here and spent in step 5b, and it has to be both: the amount is
+     * needed to compute the total that goes on the order, and the ledger row
+     * that enforces the cap cannot be written until the order it points at
+     * exists. Between the two calls the cap is re-checked under a row lock, so
+     * the window this opens costs a rejected order rather than a coupon spent
+     * twice. See discount_codes.sql.
+     *
+     * Every refusal is a 422 carrying the reason: the payload was well-formed
+     * and understood, and what went wrong is about the code.
+     */
+    let discountAmount = 0;
 
-      verifiedOrderItems.push({
-        product_id: item.productId,
-        quantity: item.quantity,
-        unit_price: unitPrice,
-        size: item.size ?? null,
-        custom_width: item.custom?.width ?? null,
-        custom_height: item.custom?.height ?? null,
-        custom_unit: item.custom?.unit ?? null,
-      });
+    if (discountCode) {
+      const preview = await previewDiscount(supabase, discountCode, subtotal);
+
+      if (preview.status === "not_installed") {
+        return NextResponse.json(
+          { success: false, error: DISCOUNTS_NOT_INSTALLED },
+          { status: 501 }
+        );
+      }
+
+      if (preview.status === "failed") {
+        return NextResponse.json(
+          { success: false, error: "Could not check your discount code. Please try again." },
+          { status: 503 }
+        );
+      }
+
+      if (preview.value.outcome !== "ok") {
+        return NextResponse.json(
+          {
+            success: false,
+            outcome: preview.value.outcome,
+            error: outcomeMessage(preview.value.outcome, {
+              minSubtotal: preview.value.minSubtotal,
+            }),
+          },
+          { status: 422 }
+        );
+      }
+
+      discountAmount = preview.value.amount;
     }
 
     // Order maths live in lib/pricing so the cart and this route always agree
-    const totalItemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+    const totalItemCount = cart.itemCount;
     const settings = await getSettings();
-    const totalAmount = calcTotal(subtotal, totalItemCount, {
-      freeShippingThreshold: settings.free_shipping_threshold,
-      shippingFee: settings.shipping_fee,
-    });
+    const totalAmount = calcTotal(
+      subtotal,
+      totalItemCount,
+      {
+        freeShippingThreshold: settings.free_shipping_threshold,
+        shippingFee: settings.shipping_fee,
+      },
+      discountAmount
+    );
 
     // 4. Create Order in Supabase
     const { data: newOrder, error: orderInsertError } = await supabase
@@ -158,6 +162,14 @@ export async function POST(request: Request) {
         status: INTAKE_STATUS,
         total_amount: totalAmount,
         shipping_address: shippingAddress,
+        /* Spread rather than always sent: the two columns arrive with
+           discount_codes.sql, and an order that carries no code must still be
+           placeable on a deployment where that file has not been run. A code
+           cannot have got this far without it — preview_discount() would have
+           answered "not installed" above. */
+        ...(discountCode
+          ? { discount_code: discountCode, discount_amount: discountAmount }
+          : {}),
       })
       .select("id, user_id, status, total_amount, created_at")
       .single();
@@ -205,7 +217,7 @@ export async function POST(request: Request) {
         );
       }
       // Clean up the parent order on failure
-      await supabase.from("orders").delete().eq("id", newOrder.id);
+      await discardOrder(supabase, newOrder.id);
       return NextResponse.json(
         {
           success: false,
@@ -213,6 +225,71 @@ export async function POST(request: Request) {
         },
         { status: 500 }
       );
+    }
+
+    /* 5b. Spend the code, now that there is an order for it to point at.
+     *
+     * `redeem_discount()` re-runs every check against a locked rule row, so
+     * this is where a cap is actually enforced — the preview in step 3b was
+     * true when it was asked, and the last use of a coupon is exactly the kind
+     * of fact that stops being true while somebody types their address.
+     *
+     * A refusal here unwinds the order rather than quietly charging full
+     * price. The shopper asked for a total that included the code and has not
+     * been told anything yet, so the honest move is to fail and let them try
+     * again — silently taking the money without the discount is the one
+     * outcome nobody would accept.
+     *
+     * `already_redeemed` is a success. It means this order already carries its
+     * code, which is what a retried request looks like from here.
+     */
+    if (discountCode) {
+      const redemption = await redeemDiscount(supabase, discountCode, newOrder.id, subtotal);
+
+      const spent =
+        redemption.status === "ok" &&
+        (redemption.value.outcome === "ok" || redemption.value.outcome === "already_redeemed");
+
+      if (!spent) {
+        await discardOrder(supabase, newOrder.id);
+
+        if (redemption.status !== "ok") {
+          console.error("Discount redemption failed after the order was created.");
+          return NextResponse.json(
+            { success: false, error: "Could not apply your discount code. Please try again." },
+            { status: 503 }
+          );
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            outcome: redemption.value.outcome,
+            error: outcomeMessage(redemption.value.outcome),
+          },
+          { status: 409 }
+        );
+      }
+
+      /* The two figures come from one rule and one subtotal, through
+         `discount_amount_for()` and its twin `calcDiscountAmount()`, so they
+         can only disagree if the rule was edited in the half-second between
+         the preview and the lock.
+
+         Reported rather than corrected, and that is the deliberate half: a
+         customer has no UPDATE policy on `orders` (see admin_schema.sql), so
+         a repair written from here would silently touch nothing and then print
+         a total the order does not hold. What is returned below is what was
+         actually written, which keeps the confirmation and the row saying the
+         same thing — and the log says which order to reconcile. */
+      if (redemption.value.amount !== discountAmount) {
+        console.error(
+          "Order %s recorded a %d discount but the ledger spent %d — reconcile by hand.",
+          newOrder.id,
+          discountAmount,
+          redemption.value.amount
+        );
+      }
     }
 
     // 6. Decrement inventory once per product, by its total across the lines
@@ -230,9 +307,14 @@ export async function POST(request: Request) {
         success: true,
         message: "Order placed successfully",
         orderId: newOrder.id,
-        totalAmount: newOrder.total_amount,
+        /* The computed figure rather than the one that came back from the
+           insert: a corrected redemption in step 5b may have moved it, and the
+           drawer prints this on the confirmation panel. */
+        totalAmount,
+        discountCode: discountCode ?? null,
+        discountAmount,
         status: newOrder.status,
-        itemCount: items.reduce((acc, i) => acc + i.quantity, 0),
+        itemCount: totalItemCount,
       },
       { status: 201 }
     );
@@ -257,4 +339,35 @@ export async function POST(request: Request) {
  */
 function firstProblem(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Some of these details are not valid.";
+}
+
+/**
+ * Unwind an order this request created and then could not finish.
+ *
+ * A plain `.delete()` from here has never worked and never said so: there is
+ * no DELETE policy on `orders` for a customer, and RLS filters rather than
+ * raises, so PostgREST reported success at having removed nothing. Every
+ * checkout that failed after the order row was written left it behind.
+ *
+ * `discard_failed_order()` is the definer that can actually do it, and only
+ * within the narrow shape a failed checkout has — the caller's own order,
+ * placed in the last five minutes, with no redemption against it. See
+ * discount_codes.sql.
+ *
+ * The fallback is what this line did before, kept for a deployment where that
+ * migration has not been applied: it still does nothing, but it does nothing
+ * exactly as it always has rather than throwing on a missing function.
+ */
+async function discardOrder(supabase: SupabaseClient, orderId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("discard_failed_order", {
+    p_order_id: orderId,
+  });
+
+  if (!error && data === true) return;
+
+  if (error && !isMissingInstall(error)) {
+    console.error("Could not discard order %s: %s", orderId, error.message);
+  }
+
+  await supabase.from("orders").delete().eq("id", orderId);
 }

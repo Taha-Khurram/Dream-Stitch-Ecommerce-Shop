@@ -125,6 +125,7 @@ No signup path grants admin, and there is no service-role key in the app.
 | | |
 | :-- | :-- |
 | **Dashboard** | Revenue, average order value and order count; a seven-day revenue chart; open orders, low-stock alerts and the five most recent orders with the customer's name |
+| **Analytics** | Top products and revenue by category, each with units, orders and share of the total; signup→purchase conversion and the repeat-customer rate, both against the window before |
 | **Products** | Search, create, edit, delete. Price, compare-at, stock, sizes, colourways, gallery |
 | **Categories** | Inline editing of the three fabrics, with a product count per category |
 | **Orders** | Accept or delete a newly received order, filter by status, view line items and delivery address, move an accepted order through its stages |
@@ -280,6 +281,63 @@ skipped by deep-linking to the detail page.
 
 ---
 
+## Discount codes
+
+[`discount_codes.sql`](supabase/migrations/discount_codes.sql) adds coupons. Run it in the
+**Supabase SQL editor** after `admin_schema.sql` — it depends on `is_admin()`.
+Every statement is idempotent and the file ends with a five-row verification.
+
+A coupon is two things kept deliberately apart: a **rule** an admin writes in
+[`/admin/discounts`](app/admin/discounts/page.tsx), and a **ledger** of the times it was actually
+spent. There is no `times_used` counter on the rule, which is the whole design —
+a counter and a ledger disagree the first time anything goes wrong, and the
+counter is the one that gets believed. Caps are enforced by counting the ledger
+under a row lock, and every usage figure on the panel and the dashboard is an
+aggregate of it.
+
+**Nobody reads the table.** RLS is on with admin-only policies and there is no
+`SELECT` policy for `anon` or for a signed-in customer. That is not caution for
+its own sake: a read policy would let anyone holding any session list every live
+coupon in the store, cap and all. The storefront gets `preview_discount()`
+instead, which answers about one code the caller already knew and never
+enumerates. `redeem_discount()` spends it, and `discount_redemptions` has no
+`INSERT` policy at all.
+
+**The cap is enforced under a lock, at the last moment.** `/api/discount`
+previews a code against the bag so the shopper finds out when they type it
+rather than when they press Place Order — but that answer is already stale when
+it arrives. The checkout route re-runs every check inside `redeem_discount()`,
+which holds `FOR UPDATE` on the rule row while it counts. Two checkouts racing
+for the last use of a limited coupon cannot both win; the second is told it is
+exhausted, and its order is unwound rather than quietly charged full price.
+
+**One rounding rule, in two languages.** `calcDiscountAmount()` in
+[`lib/discounts/lifecycle.ts`](lib/discounts/lifecycle.ts) and `discount_amount_for()` in the
+migration are twins: whole units, clamped to the subtotal, never applied to
+delivery. The cart drawer recomputes the reduction locally as the bag changes —
+so changing a quantity costs no round trip — and Postgres computes the same
+number at checkout. A shopper is never quoted one figure and charged another.
+
+**A code that no longer qualifies comes off, and says so.** Fall below its
+minimum and the drawer removes it with a line explaining why, rather than
+leaving it on screen worth nothing, which reads as "the discount is still
+coming" right up to the total that says otherwise.
+
+**Deleting an order gives the use back.** `discount_redemptions` is
+`ON DELETE CASCADE` from `orders`, so an order an admin rejects in triage stops
+counting against the cap. The order keeps its own `discount_code` and
+`discount_amount` — denormalised on purpose, so what somebody was charged stays
+legible after the coupon is gone, and so `/admin/orders/[id]` does not start
+reporting a negative delivery charge.
+
+**Fallback.** Nothing here is required for the app to work. Without the file
+checkout places orders exactly as before, the promo field reports that codes are
+not installed rather than silently refusing a customer's valid code,
+`/admin/discounts` names the file to run, and the dashboard panel does not
+appear.
+
+---
+
 ## Customers & dashboard analytics
 
 [`dashboard_schema.sql`](supabase/migrations/dashboard_schema.sql) adds the `customers` table, links
@@ -328,6 +386,78 @@ entry bundle put together. [`RevenueChart.tsx`](components/admin/RevenueChart.ts
 defers it to its own chunk, so `/admin` stays at 108 kB First Load JS instead of
 216 kB. The day-by-day figures under the chart are server-rendered and readable
 with no JavaScript at all.
+
+---
+
+## Analytics beyond revenue
+
+`/admin/analytics` answers the four questions the dashboard does not: **what
+sells**, **which part of the range earns it**, **how many of the people who
+sign up go on to buy**, and **how many come back**.
+
+[`analytics_schema.sql`](supabase/migrations/analytics_schema.sql) installs the
+three functions behind it. Run it in the **Supabase SQL editor** after
+`dashboard_schema.sql` and `order_lifecycle.sql` — it depends on `is_admin()`,
+on `orders.customer_id`, and on the widened status vocabulary. It ends with a
+verification block, and every statement is idempotent.
+
+**Nothing new is collected.** No tracking, no events, nothing added to the
+storefront. Every figure is read out of `order_items`, `orders`, `products`,
+`categories` and `customers` exactly as they already stand, which is why the
+migration backfills nothing — apply it and the history is simply there.
+
+The window control is the dashboard's, reading the same `?range=` key through
+the same [`lib/admin/range.ts`](lib/admin/range.ts), so moving between the two
+screens keeps the window you were looking at. Every figure counts fulfilled
+orders only and is dated by `orders.created_at`, matching the revenue tile
+exactly.
+
+### The four numbers, and what each one means
+
+| | |
+| :-- | :-- |
+| **Top products** | The eight biggest earners of the window. Ranked by revenue rather than units — a cheap set that shifts forty pieces is a good line but is not the thing paying the rent — with units alongside so both readings are on screen. *Orders* counts distinct orders, not lines, so one order taking a King and a Single of the same design counts once |
+| **Revenue by category** | The same rows grouped one level up, including an **Uncategorised** bucket, so the split always adds up to the total. The category is the product's *current* one — nothing in the schema records what it was at the time — so re-filing a product moves its whole history with it |
+| **Share, in both** | Always a share of *every* fulfilled line in the window, never of the rows on screen. Category shares therefore sum to 100 and the top-eight product shares deliberately do not — what is missing is the tail the panel is not showing. One denominator across both panels is what puts a product's share and its category's share on the same scale |
+| **Signup conversion** | Of the customers who joined in the window, the share that has **since** ordered. Lifetime, not in-window: a signup on the last day has not had a week to come back, and requiring the purchase to land inside the same window would report that as a failure to convert |
+| **Repeat customers** | Of the customers who bought in the window, the share that has ever ordered more than once. Lifetime again — two orders inside one seven-day window is not what "a repeat customer" means to anybody |
+
+**Two caveats worth knowing.** The breakdowns sum `quantity × unit_price` off
+the order *lines*, so they are goods only and exclude delivery, where the
+dashboard's revenue tile sums `orders.total_amount`. A category cannot be
+charged for postage, so attributing it would be inventing a number — the
+consequence is that the category totals come to slightly less than the headline
+figure on any window carrying an order below the free-delivery threshold. And
+the older signup cohort has had longer to convert than the current one, so the
+conversion delta flatters the previous period slightly; it under-claims rather
+than over-claims.
+
+**This is signup conversion, not visit conversion.** There is no persisted
+session history to measure the latter against: `live_sessions` holds only who
+is on the site right now and prunes itself hourly, by design — see
+[Live visitors](#live-visitors). Measuring visits→orders would mean starting to
+retain traffic history, which is a different decision from this one.
+
+**Which shopper an order belongs to.** An order can identify its buyer three
+ways, and both rates need one answer. `customer_id` is the direct link
+`dashboard_schema.sql` added and backfilled; checkout does not set it, so an
+order placed since that migration is matched through `customers.user_id`
+instead; an import with neither falls back to the raw `user_id`. A `coalesce()`
+in that order — rather than a union — is what keeps one person one buyer, and
+an order matching none of the three is left out rather than counted as its own
+anonymous customer, which would inflate both denominators with rows that can
+never repeat.
+
+**Fallbacks.** The panels say plainly that the migration has not been run rather
+than rendering empty tables that read as "nothing sold" — the same choice the
+Customers screen makes. A genuine read failure is a different message and is
+logged server-side.
+
+**Bundle cost: none.** The two breakdowns are ranked HTML tables with a bar per
+row, not charts, so the screen ships no charting library and no client
+JavaScript of its own — `/admin/analytics` builds to 167 B on top of the shared
+baseline. The bars are `aria-hidden`: the share each one draws is printed beside
+it as text, so nothing is carried by colour or length alone.
 
 ---
 
@@ -538,9 +668,9 @@ app/
     wishlist/           saved sets, held in the browser
     about/  contact/    editorial pages
   admin/                the panel, deliberately outside (site) so it pays for
-                        none of the storefront chrome: dashboard, products,
-                        categories, orders, customers, contacts, newsletter,
-                        settings, and the server actions behind them
+                        none of the storefront chrome: dashboard, analytics,
+                        products, categories, orders, customers, contacts,
+                        newsletter, settings, and the server actions behind them
   (auth)/               signin, signup — over Supabase Auth
   auth/                 OAuth callback and email-confirmation routes
   api/checkout/         order placement, price-verified server-side
@@ -557,7 +687,9 @@ components/
                         OrderStatusControl, StatusPill, AdminNav,
                         MessageActions, SubscriberActions, InboxPills,
                         RevenueChart (defers recharts), RevenueChartCanvas,
-                        RevenueTable, revenue.ts (shared day/number helpers)
+                        RevenueTable, revenue.ts (shared day/number helpers),
+                        BreakdownTable (the ranked panels on /admin/analytics),
+                        Delta (movement against the window before), RangeTabs
   products/             ProductCard, QuickAdd, ProductGallery, ProductOptions,
                         FilterPanel, SortMenu, SizeGuideDialog, WishlistGrid, …
   cart/CartDrawer.tsx   bag + delivery details + confirmation
@@ -597,7 +729,10 @@ Changing the `CURRENCY` constant re-denominates the entire store.
 **Order maths** — [`lib/pricing.ts`](lib/pricing.ts). Free delivery above
 PKR 5,000, otherwise PKR 250. Shelf prices are GST-inclusive, so no tax line is
 added at checkout. The cart drawer and `app/api/checkout/route.ts` both import
-from here, so the total a customer sees is the total that gets recorded.
+from here, so the total a customer sees is the total that gets recorded. A
+discount code comes off the subtotal *before* delivery is figured, so a code
+large enough to drop the bag under the threshold takes the free delivery with
+it — the alternative lets a coupon buy the courier as well as the goods.
 
 **Bed sizes** — stocked sets carry `Single` or `King Size`; made-to-order sets
 carry `Custom Size` and are detected by `isMadeToOrder()` in

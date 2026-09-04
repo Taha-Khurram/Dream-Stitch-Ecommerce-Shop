@@ -129,7 +129,13 @@ export interface Order {
    * that module, not this one, is the list of statuses.
    */
   status: string;
+  /** Net of `discount_amount` — what the customer is actually charged. */
   total_amount: number;
+  /* ── Discount (present once discount_codes.sql has run) ────────────────── */
+  /** The code spent on this order, or null. Snapshot: the rule may be gone. */
+  discount_code?: string | null;
+  /** What that code took off. 0 on every order that carried none. */
+  discount_amount?: number;
   shipping_address: ShippingAddress;
   created_at: string;
   updated_at: string;
@@ -165,16 +171,75 @@ export interface CheckoutPayload {
     custom?: CustomSize | null;
   }[];
   shippingAddress: ShippingAddress;
+  /** The code on the bag, if any. Re-checked server-side before it is spent. */
+  discountCode?: string | null;
 }
 
 export interface CheckoutResponse {
   success: boolean;
   orderId?: string;
   totalAmount?: number;
+  discountCode?: string | null;
+  discountAmount?: number;
   status?: string;
   message?: string;
   error?: string;
+  /** A `DiscountOutcome` when the order was refused over its code. */
+  outcome?: string;
   details?: unknown;
+}
+
+/**
+ * A discount rule. Mirrors `discount_codes` in `discount_codes.sql`.
+ *
+ * `kind` is widened to `string` for the reason `Order.status` is: a row
+ * written by a migration this build has not seen still has to render, and a
+ * screen whose job is showing what is there should not type-error on it. The
+ * validation lives in `lib/discounts/lifecycle.ts`, which is the list of kinds.
+ */
+export interface DiscountCode {
+  id: string;
+  code: string;
+  kind: string;
+  value: number;
+  min_subtotal: number;
+  /** Null means unlimited, in both cases. */
+  max_uses: number | null;
+  per_customer_limit: number | null;
+  starts_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  /** The admin's own note. Never shown to a shopper. */
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * One code, with what it has actually done. Mirrors the return of
+ * `admin_discount_usage()` — a rule joined to the ledger it has generated,
+ * over all time or over a window.
+ */
+export interface DiscountUsage {
+  id: string;
+  code: string;
+  kind: string;
+  value: number;
+  is_active: boolean;
+  min_subtotal: number;
+  max_uses: number | null;
+  starts_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  /** Redemptions in the window. */
+  uses: number;
+  /** Distinct customers behind those redemptions. */
+  customers: number;
+  /** Money given away. */
+  discounted: number;
+  /** What the discounted orders came to in total — what the giveaway bought. */
+  order_total: number;
+  last_used_at: string | null;
 }
 
 /**

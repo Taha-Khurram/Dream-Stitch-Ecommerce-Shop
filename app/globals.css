@@ -705,3 +705,76 @@ body {
 @media (width >= 80rem) {
   .admin-rail { left: calc(max(0px, (100% - 1500px) / 2) + 2.5rem); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PACKING SLIP — app/(print)/admin/orders/[id]/print
+
+   On screen the slip is a preview: a sheet of paper on a tinted
+   ground, so what you check an order against and what comes out of
+   the printer are the same document. Everything below is what the
+   printer needs on top of that.
+   ══════════════════════════════════════════════════════════════ */
+.slip {
+  /* A4 minus the @page margins below, so the on-screen sheet is the
+     printed measure and nothing reflows between the two. */
+  width: 100%;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    /* Generous at the top: browsers stamp the document title and page
+       number into that band, and it should not crowd the masthead. */
+    margin: 14mm 12mm 12mm;
+  }
+
+  /* The tinted ground is a screen affordance for "this is paper"; on
+     paper it would be a full-bleed wash of ink. */
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Chrome that belongs to looking at the slip, not to the slip: the
+     way back, the button that started the print. */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  .slip {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+    /* The base for anything on the sheet that does not set its own size.
+       Points rather than pixels because the sheet is now measured in
+       millimetres and a printer's idea of a pixel is a guess. */
+    font-size: 10.5pt;
+  }
+
+  /* A measurement split across a page break is how a set gets cut to
+     the wrong height, so a line stays whole even at the cost of white
+     space at the foot of a page. Same for the sign-off block: half a
+     signature line on its own sheet is not a record of anything. */
+  .slip-line,
+  .slip-foot {
+    break-inside: avoid;
+  }
+
+  /* Colour on this sheet is not decoration. The purple rule around a
+     made-to-measure block and the red of a line that must not be cut
+     yet are the two things a workroom reads first, and browsers drop
+     backgrounds from print by default. */
+  .slip,
+  .slip * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* A URL stamped after every link is noise on a document whose links
+     are a phone number and a way back to a screen nobody printing it
+     can reach. */
+  .slip a {
+    text-decoration: none;
+    color: inherit;
+  }
+}
