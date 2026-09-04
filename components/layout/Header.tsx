@@ -20,6 +20,7 @@ import {
   LogOut,
   LayoutDashboard,
   UserPlus,
+  PackageSearch,
 } from "lucide-react";
 
 /**
@@ -274,13 +275,29 @@ function AccountMenu({
             {user ? user.email : "Not signed in"}
           </p>
 
+          {/* Only offered with a session behind it: /track looks an order up
+              against the caller's own `user_id`, so signed out there is
+              nothing for it to find — see app/(site)/track/page.tsx. */}
+          {user && (
+            <Link
+              role="menuitem"
+              href="/track"
+              onClick={() => setOpen(false)}
+              className={`${MENU_ROW} mt-4 border-t border-line pt-3`}
+            >
+              <PackageSearch className="h-3.5 w-3.5" strokeWidth={1.4} /> Track Order
+            </Link>
+          )}
+
           {/* The wishlist is kept in the browser, so it is offered either way */}
           {showWishlist && (
             <Link
               role="menuitem"
               href="/wishlist"
               onClick={() => setOpen(false)}
-              className={`${MENU_ROW} mt-4 border-t border-line pt-3`}
+              /* The rule under the email belongs to whichever row comes
+                 first — Track Order when there is a session, this otherwise. */
+              className={`${MENU_ROW} ${user ? "mt-3" : "mt-4 border-t border-line pt-3"}`}
             >
               <Heart className="h-3.5 w-3.5" strokeWidth={1.4} /> Wishlist
               {savedCount > 0 && (
@@ -526,6 +543,17 @@ export function Header({
             </div>
 
             <div className="border-t border-line px-5 py-5">
+              {content.show_account && user && (
+                <Link
+                  href="/track"
+                  onClick={() => setMobileOpen(false)}
+                  className="mb-4 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink"
+                >
+                  <PackageSearch className="h-3.5 w-3.5" strokeWidth={1.4} />
+                  Track Order
+                </Link>
+              )}
+
               {content.show_wishlist && (
                 <Link
                   href="/wishlist"
