@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { ActionForm, Field } from "@/components/admin/ActionForm";
 import { inputClass } from "@/components/admin/field-styles";
-import { ContentEditor } from "@/components/admin/ContentEditor";
+import { ContentEditor, type EditorOptions } from "@/components/admin/ContentEditor";
 import { ResetTabButton } from "@/components/admin/ResetTabButton";
 import { saveSettings, saveContent, resetContent } from "@/app/admin/actions";
 import { getSettings } from "@/lib/api/settings";
 import { getSiteContent } from "@/lib/api/content";
-import { CONTENT_TABS, findTab } from "@/lib/content/fields";
+import { getCategories } from "@/lib/api/products";
+import { CONTENT_TABS, findTab, tabOptionSources, type TabSpec } from "@/lib/content/fields";
 import { CURRENCY } from "@/lib/format";
 import { Skeleton } from "@/components/motion/Skeleton";
 
@@ -42,7 +43,7 @@ export default async function AdminSettingsPage({
         copy="Everything the storefront reads at render time — contact details, delivery rates, and the copy, imagery and switches behind each page. Saving takes effect on the next page load, no deploy."
       />
 
-      {/* Eight tabs read as one undifferentiated row, so they are grouped by
+      {/* The tabs read as one undifferentiated row, so they are grouped by
           what they actually change: the store's own details, versus the copy
           on one storefront page. */}
       <nav aria-label="Settings sections" className="mt-6 border-b border-line">
@@ -217,7 +218,7 @@ async function ContentSettings({ tabKey }: { tabKey: string }) {
   const tab = findTab(tabKey);
   if (!tab) notFound();
 
-  const content = await getSiteContent();
+  const [content, options] = await Promise.all([getSiteContent(), editorOptions(tab)]);
 
   return (
     <div>
@@ -228,9 +229,27 @@ async function ContentSettings({ tabKey }: { tabKey: string }) {
 
       <div className="mt-8">
         <ActionForm action={saveContent} submitLabel="Save Changes">
-          <ContentEditor tab={tab} content={content} />
+          <ContentEditor tab={tab} content={content} options={options} />
         </ActionForm>
       </div>
     </div>
   );
+}
+
+/**
+ * The live lists a tab's dropdowns need. Only the tabs that actually declare a
+ * `select` column pay for the query — today that is the size guide, whose
+ * charts are keyed to a category.
+ */
+async function editorOptions(tab: TabSpec): Promise<EditorOptions> {
+  const sources = tabOptionSources(tab);
+  if (!sources.includes("categories")) return {};
+
+  const categories = await getCategories();
+  return {
+    categories: categories.map((category) => ({
+      value: category.slug,
+      label: category.name,
+    })),
+  };
 }

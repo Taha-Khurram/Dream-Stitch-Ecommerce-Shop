@@ -10,6 +10,8 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { formatPrice, discountPercent } from "@/lib/format";
 import { getSettings } from "@/lib/api/settings";
+import { getSiteContent } from "@/lib/api/content";
+import { resolveSizeGuide } from "@/lib/size-guide";
 import { BRAND } from "@/lib/constants";
 import { productImages, productSubtitle } from "@/lib/product-attributes";
 import { ChevronRight, Star, Truck } from "lucide-react";
@@ -51,7 +53,11 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const settings = await getSettings();
+  const [settings, content] = await Promise.all([getSettings(), getSiteContent()]);
+
+  // The size chart is per category, and the buy box is a client component —
+  // so it is resolved here and handed over already picked.
+  const sizeGuide = resolveSizeGuide(content, product.category?.slug);
 
   const related = await getProducts({
     categorySlug: product.category?.slug,
@@ -187,7 +193,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           )}
 
           <div className="mt-7">
-            <ProductOptions product={product} />
+            <ProductOptions product={product} sizeGuide={sizeGuide} />
           </div>
 
           {/* The one promise the store actually configures: the delivery rates

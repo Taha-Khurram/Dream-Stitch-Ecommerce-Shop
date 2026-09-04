@@ -12,6 +12,9 @@ import type {
 import { siteFolder } from "@/lib/supabase/storage";
 import type { SiteContent } from "@/lib/content/defaults";
 
+/** Choices for every `select` column on a tab, by the source it named. */
+export type EditorOptions = Partial<Record<OptionSource, SelectOption[]>>;
+
 /**
  * Renders one tab of the content editor from its spec. Everything except the
  * repeaters and the image fields is plain HTML — the switches are CSS-only —
@@ -41,8 +44,6 @@ export function ContentEditor({
     </div>
   );
 }
-
-export type EditorOptions = Partial<Record<OptionSource, SelectOption[]>>;
 
 function ContentSection({
   section,

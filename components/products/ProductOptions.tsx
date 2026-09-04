@@ -8,6 +8,7 @@ import { SizeGuideDialog } from "./SizeGuideDialog";
 import { CustomSizeFields, type CustomSizeDraft } from "./CustomSizeFields";
 import { productSizes, isMadeToOrder } from "@/lib/product-attributes";
 import { CUSTOM_SIZE_LABEL, parseCustomSize } from "@/lib/custom-size";
+import type { SizeGuide } from "@/lib/size-guide";
 import { Ruler, X } from "lucide-react";
 
 /**
@@ -18,7 +19,14 @@ import { Ruler, X } from "lucide-react";
  * have no size run to pick from, and used to be told to "send us your
  * measurements" with nowhere on the page to send them.
  */
-export function ProductOptions({ product }: { product: Product }) {
+export function ProductOptions({
+  product,
+  sizeGuide,
+}: {
+  product: Product;
+  /** The chart for this product's category, or null when there is none. */
+  sizeGuide: SizeGuide | null;
+}) {
   const sizes = productSizes(product);
   const madeToOrder = isMadeToOrder(product);
 
@@ -69,7 +77,7 @@ export function ProductOptions({ product }: { product: Product }) {
             <span className="eyebrow text-ink">
               Bed Size {size && <span className="text-muted">· {size}</span>}
             </span>
-            <SizeGuideDialog />
+            {sizeGuide && <SizeGuideDialog guide={sizeGuide} />}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {sizes.map((option) => (

@@ -1,10 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { SIZE_GUIDE } from "@/lib/constants";
+import type { SizeGuide } from "@/lib/size-guide";
 import { X } from "lucide-react";
 
-export function SizeGuideDialog() {
+/**
+ * The measurement table behind the buy box's "Size Guide" link.
+ *
+ * The chart itself is resolved on the server from Settings → Product, so this
+ * renders whatever the store configured for this product's category and knows
+ * nothing about beds — a shop selling something else changes the table without
+ * touching this file.
+ */
+export function SizeGuideDialog({ guide }: { guide: SizeGuide }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -21,26 +29,29 @@ export function SizeGuideDialog() {
         onClick={() => setOpen(true)}
         className="eyebrow link-underline cursor-pointer text-muted transition-colors hover:text-ink"
       >
-        Size Guide
+        {guide.linkLabel}
       </button>
 
       {open && (
+        /* Anchored to the top rather than centred: the link that opens it sits
+           high in the buy box, and a long chart centred on a short viewport
+           has nowhere to grow. The backdrop scrolls, so it always does. */
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/45 px-5"
+          className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto overscroll-contain bg-ink/45 px-5 py-6 sm:py-10"
           onClick={() => setOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Size guide"
+          aria-label={guide.title}
         >
           <div
             className="animate-fade-up w-full max-w-lg bg-white p-8"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <span className="eyebrow text-purple">Finished Dimensions</span>
+                {guide.eyebrow && <span className="eyebrow text-purple">{guide.eyebrow}</span>}
                 <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl text-ink">
-                  Bed Size Guide
+                  {guide.title}
                 </h3>
               </div>
               <button
@@ -56,7 +67,7 @@ export function SizeGuideDialog() {
               <table className="w-full text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink">
-                    {["Size", "Bedsheet", "Pillow Cover", "Set", "Fits"].map((head) => (
+                    {guide.columns.map((head) => (
                       <th key={head} className="eyebrow pb-3 text-ink">
                         {head}
                       </th>
@@ -64,24 +75,25 @@ export function SizeGuideDialog() {
                   </tr>
                 </thead>
                 <tbody>
-                  {SIZE_GUIDE.map((row) => (
-                    <tr key={row.size} className="border-b border-line-soft">
-                      <td className="py-3 font-medium text-ink">{row.size}</td>
-                      <td className="py-3 text-ink-soft">{row.sheet}</td>
-                      <td className="py-3 text-ink-soft">{row.pillow}</td>
-                      <td className="py-3 text-ink-soft">{row.pieces}</td>
-                      <td className="py-3 text-ink-soft">{row.fits}</td>
+                  {guide.rows.map((row, index) => (
+                    <tr key={index} className="border-b border-line-soft">
+                      {row.map((value, cell) => (
+                        <td
+                          key={cell}
+                          className={`py-3 ${cell === 0 ? "font-medium text-ink" : "text-ink-soft"}`}
+                        >
+                          {value}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <p className="mt-5 text-[12px] leading-relaxed text-muted">
-              Dimensions are of the finished sheet, measured flat — the side drop is already
-              included. Allow an inch either way on hand-finished hems. Falling between two
-              sizes? We will cut it to your numbers.
-            </p>
+            {guide.note && (
+              <p className="mt-5 text-[12px] leading-relaxed text-muted">{guide.note}</p>
+            )}
           </div>
         </div>
       )}
