@@ -26,6 +26,7 @@ Optional, run at any point after their dependency:
 
 | File | Notes |
 | :-- | :-- |
+| `promote_admin.sql` | Grants admin to `dreamstitchbysk@gmail.com` and backfills the profile rows `admin_schema.sql` missed. Needs 3. |
 | `products_bedding_columns.sql` | Step 1 of `bedding_seed.sql` alone — the bedding columns without the delete-and-reinsert. Use instead of 2 to keep an existing catalogue. |
 | `dashboard_seed.sql` | Demo customers/orders for the dashboard. Needs 6. |
 | `supabase_schema.sql` | The original `todos` table demo. Unrelated to the store; nothing in `app/` reads it. |
