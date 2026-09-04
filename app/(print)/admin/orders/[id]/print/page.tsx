@@ -34,8 +34,9 @@ export async function generateMetadata({
   return { title: `Packing slip ${orderReference(id)} | ${BRAND.name}` };
 }
 
-const SELECT =
-  "id, status, total_amount, created_at, shipping_address, " +
+const ORDER_COLUMNS = "id, status, total_amount, created_at, shipping_address";
+
+const ITEMS_EMBED =
   "order_items(id, product_id, quantity, unit_price, size, custom_width, custom_height, custom_unit, " +
   "product:products(id, name, fabric, pieces, category:categories(slug)))";
 
@@ -65,7 +66,25 @@ export default async function OrderPackingSlipPage({
   /* The chart and the store details are as much a part of the sheet as the
      order is, and none of the three needs either of the others. */
   const [{ data }, settings, content] = await Promise.all([
-    supabase.from("orders").select(SELECT).eq("id", id).single(),
+    /* The two discount columns arrive with discount_codes.sql, and PostgREST
+       rejects the whole select if either is unknown — so they are asked for,
+       and a failure falls back to the shape this sheet has always read. Same
+       contract as the order screen this prints from. */
+    (async () => {
+      const withDiscount = await supabase
+        .from("orders")
+        .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
+        .eq("id", id)
+        .single();
+
+      if (!withDiscount.error) return withDiscount;
+
+      return supabase
+        .from("orders")
+        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
+        .eq("id", id)
+        .single();
+    })(),
     getSettings(),
     getSiteContent(),
   ]);
@@ -81,7 +100,12 @@ export default async function OrderPackingSlipPage({
     (sum, item) => sum + Number(item.unit_price) * item.quantity,
     0
   );
-  const delivery = Number(order.total_amount) - itemsTotal;
+  const discount = Number(order.discount_amount ?? 0);
+  /* Derived, and the discount has to come back out of it: `total_amount` is
+     net of the code (see types/ecommerce.ts), so subtracting the line total
+     alone reports a negative delivery charge on every discounted order — which
+     prints as "Free" on a sheet whose figures then do not add up. */
+  const delivery = Number(order.total_amount) - itemsTotal + discount;
   const pieces = items.reduce((count, item) => count + item.quantity, 0);
   const toMeasure = items.filter((item) => customSizeFromRow(item)).length;
 
@@ -245,6 +269,19 @@ export default async function OrderPackingSlipPage({
                 <dt className="text-muted">Items</dt>
                 <dd className="tabular-nums text-ink">{formatPrice(itemsTotal)}</dd>
               </div>
+              {/* Only when there was one. A slip is read against the money that
+                  changed hands, so the sheet has to account for the gap between
+                  the line total and what was charged. */}
+              {discount > 0 && (
+                <div className="flex justify-between gap-6">
+                  <dt className="truncate text-muted">
+                    Discount{order.discount_code ? ` · ${order.discount_code}` : ""}
+                  </dt>
+                  <dd className="shrink-0 tabular-nums text-ink">
+                    −{formatPrice(discount)}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-6">
                 <dt className="text-muted">Delivery</dt>
                 <dd className="tabular-nums text-ink">
