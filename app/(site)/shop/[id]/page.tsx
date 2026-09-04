@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductById, getProductBySlug, getProducts } from "@/lib/api/products";
+import { getProductByIdOrSlug, getProducts } from "@/lib/api/products";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductOptions } from "@/components/products/ProductOptions";
 import { ProductAccordions, type AccordionPanel } from "@/components/products/ProductAccordions";
@@ -24,7 +24,7 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = (await getProductById(id)) || (await getProductBySlug(id));
+  const product = await getProductByIdOrSlug(id);
 
   if (!product) {
     return { title: `Product Not Found | ${BRAND.name}` };
@@ -47,7 +47,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const product = (await getProductById(id)) || (await getProductBySlug(id));
+  // The same call `generateMetadata` made, answered from the request cache.
+  const product = await getProductByIdOrSlug(id);
 
   if (!product) {
     notFound();

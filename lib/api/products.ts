@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Product, Category } from "@/types/ecommerce";
 
@@ -143,6 +144,33 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
   return (data as unknown as Product) || null;
 }
+
+/**
+ * The product behind a `/shop/[id]` URL, which carries either its uuid or its
+ * slug.
+ *
+ * Cached for the length of the request, because the page asks for it twice —
+ * once in `generateMetadata`, once in the body — and each ask used to try the
+ * id first and then the slug regardless. Four round trips for one row, four
+ * chances for a dropped connection to 404 a page that exists, and on a slug
+ * URL two of them were guaranteed to fail: `id` is a uuid column, so handing
+ * it a slug is a type error rather than a miss. One shape can match, so only
+ * that one is tried.
+ */
+export const getProductByIdOrSlug = cache(
+  async (idOrSlug: string): Promise<Product | null> => {
+    if (!idOrSlug) return null;
+
+    if (UUID_PATTERN.test(idOrSlug)) {
+      const byId = await getProductById(idOrSlug);
+      // Nothing stops a slug from being uuid-shaped, so a miss still falls
+      // through — it just costs a query on the 404 path rather than every page.
+      if (byId) return byId;
+    }
+
+    return getProductBySlug(idOrSlug);
+  }
+);
 
 /**
  * Fetch a set of products by id, returned in the order the ids were given.
