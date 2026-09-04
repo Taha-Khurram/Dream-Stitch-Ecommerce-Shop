@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { PER_PAGE_OPTIONS } from "@/lib/pagination";
 import { getSiteContent } from "@/lib/api/content";
 import { DEFAULT_CONTENT, type SiteContent } from "@/lib/content/defaults";
 import { parseContentForm } from "@/lib/content/merge";
@@ -75,6 +76,37 @@ function text(value: FormDataEntryValue | null): string {
  */
 const NOT_WRITTEN =
   "Saved nothing — the database refused the write. Check that you are signed in as an admin.";
+
+/* ── Bulk selections ────────────────────────────────────────────────────── */
+
+/**
+ * A selection is at most one page of rows, so the largest page size is the cap.
+ *
+ * Not a guard against the admin — the checkboxes cannot tick more than a page —
+ * but against the argument arriving from anywhere else. A server action is a
+ * public endpoint, and `.in()` with an unbounded list is a URL long enough to
+ * be refused by PostgREST rather than by us.
+ */
+const MAX_BULK = Math.max(...PER_PAGE_OPTIONS);
+
+/** Ids off the wire, deduplicated, emptied of blanks and capped. */
+function bulkIds(ids: unknown): string[] {
+  if (!Array.isArray(ids)) return [];
+  const clean = ids.filter((id): id is string => typeof id === "string" && id.length > 0);
+  return [...new Set(clean)].slice(0, MAX_BULK);
+}
+
+/** `1 order` / `4 orders` — a count and its noun, agreed. */
+function plural(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/** What a batch of order writes stales: the list, the dashboard, each detail. */
+function revalidateOrders(ids: string[]): void {
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin");
+  for (const id of ids) revalidatePath(`/admin/orders/${id}`);
+}
 
 /* ── Products ───────────────────────────────────────────────────────────── */
 
@@ -151,6 +183,70 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
   revalidatePath("/admin/products");
   revalidatePath("/shop");
   return { ok: true, message: "Product deleted." };
+}
+
+/**
+ * Delete a ticked selection of products.
+ *
+ * `order_items` is ON DELETE RESTRICT and a DELETE is one statement, so a
+ * single product that has ever been ordered would take the whole batch down
+ * with a foreign-key error and nothing at all would go. The protected ones are
+ * therefore found first and left where they are: removing the other nine and
+ * naming the one that stayed is worth more than refusing all ten.
+ */
+export async function bulkDeleteProducts(ids: string[]): Promise<ActionResult> {
+  await requireAdmin();
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+
+  const supabase = await createClient();
+
+  const { data: lines, error: linesError } = await supabase
+    .from("order_items")
+    .select("product_id")
+    .in("product_id", targets);
+
+  if (linesError) {
+    return { ok: false, message: `Could not check for orders: ${linesError.message}` };
+  }
+
+  const onOrders = new Set((lines ?? []).map((line) => (line as { product_id: string }).product_id));
+  const removable = targets.filter((id) => !onOrders.has(id));
+
+  if (removable.length === 0) {
+    return {
+      ok: false,
+      message: `Nothing deleted — ${
+        onOrders.size === 1 ? "that product appears" : "all of these appear"
+      } on placed orders. Set the stock to 0 instead.`,
+    };
+  }
+
+  const { data: gone, error } = await supabase
+    .from("products")
+    .delete()
+    .in("id", removable)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not delete: ${error.message}` };
+
+  const deleted = gone?.length ?? 0;
+  if (deleted === 0) return { ok: false, message: NOT_WRITTEN };
+
+  revalidatePath("/admin/products");
+  revalidatePath("/shop");
+
+  return {
+    ok: true,
+    message:
+      `${plural(deleted, "product")} deleted.` +
+      (onOrders.size > 0
+        ? ` ${plural(onOrders.size, "product")} kept — ${
+            onOrders.size === 1 ? "it appears" : "they appear"
+          } on placed orders.`
+        : ""),
+  };
 }
 
 /* ── Categories ─────────────────────────────────────────────────────────── */
@@ -269,9 +365,7 @@ export async function acceptOrder(id: string): Promise<ActionResult> {
     };
   }
 
-  revalidatePath("/admin/orders");
-  revalidatePath(`/admin/orders/${id}`);
-  revalidatePath("/admin");
+  revalidateOrders([id]);
 
   const stage = STATUS_COPY[ACCEPTED_STATUS].label.toLowerCase();
   return { ok: true, message: `Order accepted — now ${stage}.` };
@@ -324,8 +418,7 @@ export async function deleteOrder(id: string): Promise<ActionResult> {
 
   const returned = returnsStock ? await restoreStock(supabase, lines ?? []) : 0;
 
-  revalidatePath("/admin/orders");
-  revalidatePath("/admin");
+  revalidateOrders([]);
   revalidatePath("/shop");
 
   return {
@@ -410,10 +503,174 @@ export async function updateOrderStatus(id: string, status: string): Promise<Act
     return { ok: false, message: "Accept this order before setting a status." };
   }
 
-  revalidatePath("/admin/orders");
-  revalidatePath(`/admin/orders/${id}`);
-  revalidatePath("/admin");
+  revalidateOrders([id]);
   return { ok: true, message: `Order marked ${statusLabel(status).toLowerCase()}.` };
+}
+
+/* ── Orders in bulk ─────────────────────────────────────────────────────── */
+
+/**
+ * The three below are the row actions above, applied to a ticked selection —
+ * and deliberately nothing more. Every guard the single-row version enforces
+ * is enforced here by the same `WHERE` clause, so a bulk action can never
+ * reach a transition an admin could not have made one row at a time. What
+ * changes is only the reporting: a batch can be partly refused, and saying
+ * "6 marked, 2 skipped" is the whole point of running it as a batch.
+ */
+
+/** Accept every selection still awaiting review. Mirrors `acceptOrder`. */
+export async function bulkAcceptOrders(ids: string[]): Promise<ActionResult> {
+  await requireAdmin();
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+
+  const supabase = await createClient();
+
+  /* Same `status` guard as the single accept, so this stays safe to click
+     twice and safe to run against a selection someone else is working on:
+     acceptance is only ever the transition out of `new`. */
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status: ACCEPTED_STATUS, updated_at: new Date().toISOString() })
+    .in("id", targets)
+    .eq("status", INTAKE_STATUS)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not accept: ${error.message}` };
+
+  const accepted = (data ?? []).map((row) => (row as { id: string }).id);
+  if (accepted.length === 0) {
+    return {
+      ok: false,
+      message: "Nothing to accept — none of these is still awaiting review.",
+    };
+  }
+
+  revalidateOrders(accepted);
+
+  const already = targets.length - accepted.length;
+  const stage = STATUS_COPY[ACCEPTED_STATUS].label.toLowerCase();
+  return {
+    ok: true,
+    message:
+      `${plural(accepted.length, "order")} accepted — now ${stage}.` +
+      (already > 0 ? ` ${plural(already, "order")} had already been accepted.` : ""),
+  };
+}
+
+/** Move a selection along the status track. Mirrors `updateOrderStatus`. */
+export async function bulkSetOrderStatus(ids: string[], status: string): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (!isOrderStatus(status)) return { ok: false, message: "Unknown order status." };
+  if (status === INTAKE_STATUS) {
+    return { ok: false, message: "An order cannot be moved back to awaiting review." };
+  }
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+
+  const supabase = await createClient();
+
+  /* `.neq(INTAKE_STATUS)` is what keeps triage from being skipped in bulk: an
+     order still sitting at `new` is passed over rather than dropped into the
+     middle of the workflow, exactly as the single-row action refuses it. */
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status, updated_at: new Date().toISOString() })
+    .in("id", targets)
+    .neq("status", INTAKE_STATUS)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not update: ${error.message}` };
+
+  const moved = (data ?? []).map((row) => (row as { id: string }).id);
+  if (moved.length === 0) {
+    return { ok: false, message: "Nothing moved — accept these orders before setting a status." };
+  }
+
+  revalidateOrders(moved);
+
+  const skipped = targets.length - moved.length;
+  return {
+    ok: true,
+    message:
+      `${plural(moved.length, "order")} marked ${statusLabel(status).toLowerCase()}.` +
+      (skipped > 0 ? ` ${plural(skipped, "order")} skipped — accept those first.` : ""),
+  };
+}
+
+/**
+ * Erase a selection of orders, returning the stock they were holding.
+ *
+ * Same rule as the single delete, applied per order rather than to the batch:
+ * an order that has not shipped gives its units back, and one that has does
+ * not — the goods really did leave, and crediting them would invent inventory.
+ * So the lines are read before the delete (order_items is ON DELETE CASCADE,
+ * and afterwards there is nothing left to say what to put back) and then
+ * narrowed to the orders that actually went.
+ */
+export async function bulkDeleteOrders(ids: string[]): Promise<ActionResult> {
+  await requireAdmin();
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase.from("orders").select("id, status").in("id", targets);
+  const orders = (rows ?? []) as { id: string; status: string }[];
+  if (orders.length === 0) return { ok: false, message: "Those orders no longer exist." };
+
+  const restorable = orders.filter((order) => !hasShipped(order.status)).map((order) => order.id);
+  const { data: lines } = restorable.length
+    ? await supabase
+        .from("order_items")
+        .select("order_id, product_id, quantity")
+        .in("order_id", restorable)
+    : { data: [] };
+
+  const { data: gone, error } = await supabase
+    .from("orders")
+    .delete()
+    .in(
+      "id",
+      orders.map((order) => order.id)
+    )
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not delete: ${error.message}` };
+
+  const deleted = new Set((gone ?? []).map((row) => (row as { id: string }).id));
+  if (deleted.size === 0) {
+    /* A DELETE no policy allows matches nothing rather than raising, so
+       without this the bar would report a batch that never happened. */
+    return {
+      ok: false,
+      message:
+        "The database refused the delete. Run order_lifecycle.sql to add the admin delete policy.",
+    };
+  }
+
+  const returned = await restoreStock(
+    supabase,
+    ((lines ?? []) as { order_id: string; product_id: string; quantity: number }[]).filter((line) =>
+      deleted.has(line.order_id)
+    )
+  );
+
+  revalidateOrders([]);
+  revalidatePath("/shop");
+
+  const missed = targets.length - deleted.size;
+  return {
+    ok: true,
+    message:
+      `${plural(deleted.size, "order")} deleted.` +
+      (returned > 0 ? ` ${plural(returned, "unit")} returned to stock.` : "") +
+      (missed > 0 ? ` ${plural(missed, "order")} could not be deleted.` : ""),
+  };
 }
 
 /* ── Settings ───────────────────────────────────────────────────────────── */

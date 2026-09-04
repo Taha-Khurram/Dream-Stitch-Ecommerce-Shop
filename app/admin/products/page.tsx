@@ -1,8 +1,9 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/AdminHeading";
-import { Plus, Search } from "lucide-react";
-import { DEFAULT_PER_PAGE, PER_PAGE_PARAM, buildPageHref, parseWindow } from "@/lib/pagination";
+import { SearchBox } from "@/components/admin/SearchBox";
+import { Plus } from "lucide-react";
+import { parseWindow } from "@/lib/pagination";
 import { ProductsTable, ProductsTableSkeleton } from "./ProductsTable";
 
 export const dynamic = "force-dynamic";
@@ -34,44 +35,13 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
         }
       />
 
-      {/* A plain GET form: no client JavaScript, and every result set stays a
-          real URL that can be bookmarked or reloaded. Submitting rebuilds the
-          query string from these fields alone, which is exactly right for
-          `page` — a new search belongs at the top — and exactly wrong for the
-          row count, hence the hidden field carrying it across. */}
-      <form className="mt-6 flex flex-wrap items-center gap-3" action="/admin/products">
-        {perPage !== DEFAULT_PER_PAGE && (
-          <input type="hidden" name={PER_PAGE_PARAM} value={perPage} />
-        )}
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-            strokeWidth={1.5}
-          />
-          <input
-            type="search"
-            name="q"
-            defaultValue={query}
-            placeholder="Search by name…"
-            aria-label="Search products"
-            className="w-full border border-line bg-white py-2.5 pl-9 pr-3 text-sm text-ink transition-colors placeholder-faint hover:border-faint focus:border-purple focus:ring-2 focus:ring-purple/15 focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          className="cursor-pointer border border-line px-4 py-2.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
-        >
-          Search
-        </button>
-        {query && (
-          <Link
-            href={buildPageHref("/admin/products", undefined, { page: 1, perPage })}
-            className="text-[13px] text-muted hover:text-purple"
-          >
-            Clear
-          </Link>
-        )}
-      </form>
+      <SearchBox
+        action="/admin/products"
+        query={query}
+        perPage={perPage}
+        placeholder="Search by name…"
+        label="Search products"
+      />
 
       {/* Keyed so a new search, page or row count remounts the boundary and
           shows the skeleton again, rather than leaving the previous rows

@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatPrice } from "@/lib/format";
-import { compact, dayLabel, fullDate, type RevenuePoint } from "./revenue";
+import { axisFormatter, compact, fullDate, tickStride, type RevenuePoint } from "./revenue";
 
 /* Brand purple, one series. There is no palette to tell apart here, so the
    only colour requirement is contrast against the white card — which #5e2b8a
@@ -53,16 +53,26 @@ function ChartTooltip({
  * One series, so no legend — the heading says what is plotted. The endpoint
  * carries the only direct label; every other value is in the hover tooltip
  * and, for anyone not using a pointer, in the table below the card.
+ *
+ * `span` is prose rather than a day count because the heading has to read
+ * "the year so far" as happily as "the last 30 days"; lib/admin/range owns
+ * that wording so the tiles above the chart and the caption below it cannot
+ * describe the window differently.
  */
-export function RevenueChartCanvas({ data }: { data: RevenuePoint[] }) {
+export function RevenueChartCanvas({ data, span }: { data: RevenuePoint[]; span: string }) {
   const total = data.reduce((sum, point) => sum + point.revenue, 0);
   const peak = Math.max(0, ...data.map((point) => point.revenue));
   const last = data.at(-1);
 
+  /* A line needs two points to be a line. Year-to-date on the 1st of January
+     is one day, and with resting dots off that plots as a blank card — so for
+     a window this short the points are drawn as points. */
+  const sparse = data.length < 3;
+
   return (
     <div className="border border-line bg-white p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="admin-section-title">Revenue, last 7 days</h2>
+        <h2 className="admin-section-title">Revenue over {span}</h2>
         <p className="text-[13px] tabular-nums text-ink-soft">{formatPrice(total)} total</p>
       </div>
       <p className="admin-hint mt-1">
@@ -85,7 +95,8 @@ export function RevenueChartCanvas({ data }: { data: RevenuePoint[] }) {
 
             <XAxis
               dataKey="day"
-              tickFormatter={dayLabel}
+              tickFormatter={axisFormatter(data.length)}
+              interval={tickStride(data.length)}
               tickLine={false}
               axisLine={false}
               tickMargin={10}
@@ -110,8 +121,9 @@ export function RevenueChartCanvas({ data }: { data: RevenuePoint[] }) {
               strokeLinejoin="round"
               fill="url(#revenue-wash)"
               /* Resting dots would be seven marks competing with the line; the
-                 active dot is the 8px marker with its 2px surface ring. */
-              dot={false}
+                 active dot is the 8px marker with its 2px surface ring. The
+                 exception is a window too short to draw a line at all. */
+              dot={sparse ? { r: 3, fill: SERIES, stroke: SURFACE, strokeWidth: 2 } : false}
               activeDot={{ r: 4, fill: SERIES, stroke: SURFACE, strokeWidth: 2 }}
               isAnimationActive={false}
             />

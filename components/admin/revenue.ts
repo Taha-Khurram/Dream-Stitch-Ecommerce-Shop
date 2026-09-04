@@ -22,12 +22,46 @@ function utcDate(iso: string): Date {
   return new Date(`${iso}T00:00:00Z`);
 }
 
-/** `Tue` — the axis tick. */
+/** `Tue` — the axis tick over a week, where the weekday is the useful handle. */
 export function dayLabel(iso: string): string {
   return utcDate(iso).toLocaleDateString("en-GB", {
     weekday: "short",
     timeZone: "UTC",
   });
+}
+
+/** `4 Sep` — the axis tick over a month or more, where a weekday says nothing. */
+export function shortDate(iso: string): string {
+  return utcDate(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Which of the two the axis should use.
+ *
+ * Up to a fortnight the weekday is the more useful label — "was Saturday quiet
+ * again?" is the question a week of trading actually asks. Past that the days
+ * repeat and stop identifying anything, so the tick becomes a date. No year:
+ * even year-to-date sits inside one calendar year by construction.
+ */
+export function axisFormatter(days: number): (iso: string) => string {
+  return days <= 14 ? dayLabel : shortDate;
+}
+
+/**
+ * recharts' `interval` — it draws every (n + 1)th tick.
+ *
+ * A tick per day is right for a week and unreadable for a quarter, where the
+ * labels overlap into a grey smear and recharts starts dropping them at
+ * whatever spacing the container happens to give. Choosing the stride here
+ * instead keeps roughly eight labels on the axis at every window, evenly
+ * spaced and always including the first day.
+ */
+export function tickStride(count: number): number {
+  return Math.max(0, Math.ceil(count / 8) - 1);
 }
 
 /** `4 Sep 2026` — the tooltip and the table. */

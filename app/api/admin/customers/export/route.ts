@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth/api";
 import { csvDocument, csvFilename, csvHeaders } from "@/lib/admin/csv";
+import { SEARCH_PARAM, customerSearchFilter } from "@/lib/admin/search";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ export const dynamic = "force-dynamic";
  *
  * A static segment, so it takes precedence over `[id]` next door and no
  * customer id can shadow it.
+ *
+ * `?q=` is honoured, and has to be: the button sits beside the search box, so
+ * an export that ignored the term would hand back the whole book while the
+ * screen showed four rows — a file that silently disagrees with what was asked
+ * for is worse than no file.
  */
 
 /**
@@ -33,15 +39,24 @@ type ExportRow = {
   orders?: { count: number }[];
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireAdminUser();
   if (!auth.ok) return auth.response;
 
-  const { data, error } = await auth.supabase
+  const query = new URL(request.url).searchParams.get(SEARCH_PARAM) ?? "";
+
+  let select = auth.supabase
     .from("customers")
     .select("name, email, phone, created_at, orders(count)")
     .order("created_at", { ascending: false })
     .range(0, MAX_ROWS - 1);
+
+  /* The same filter the list screen builds, from the same module — so the file
+     and the table can never disagree about what the term means. */
+  const search = customerSearchFilter(query);
+  if (search) select = select.or(search);
+
+  const { data, error } = await select;
 
   if (error) {
     /* The table only exists once dashboard_schema.sql has been applied \u2014 the

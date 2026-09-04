@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, cache } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
@@ -6,7 +6,10 @@ import { StatusPill } from "@/components/admin/StatusPill";
 import { LiveVisitors } from "@/components/admin/LiveVisitors";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { RevenueTable } from "@/components/admin/RevenueTable";
+import { RangeTabs } from "@/components/admin/RangeTabs";
+import { Delta } from "@/components/admin/Delta";
 import type { RevenuePoint } from "@/components/admin/revenue";
+import { parseRange, rangeDays, rangeSpan, type Range } from "@/lib/admin/range";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { OPEN_STATUSES, REVENUE_STATUSES } from "@/lib/orders/lifecycle";
@@ -23,28 +26,42 @@ const LOW_STOCK_AT = 5;
 /** The dashboard only ever shows the most recent handful. */
 const RECENT_ORDERS = 5;
 
-/** Window for the revenue chart, and for admin_revenue_series(p_days). */
-const CHART_DAYS = 7;
-
 /**
  * Four independent regions, four Suspense boundaries. The stats are one round
  * trip and land almost immediately; the chart and the two lists arrive when
  * they arrive, and none of them holds up another or the page frame.
+ *
+ * The reporting window comes out of the URL rather than out of state, so the
+ * whole screen — tiles, chart and table — is rendered on the server for the
+ * window asked for, and "the last 90 days" is an address rather than something
+ * you have to click your way back to. See lib/admin/range.
  */
-export default function AdminDashboard() {
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const range = parseRange((await searchParams).range);
+  const days = rangeDays(range);
+  const span = rangeSpan(range);
+
   return (
     <div>
       <AdminHeading
         title="Dashboard"
         copy="What needs attention today, and how the store is trading."
+        action={<RangeTabs active={range} />}
       />
 
       {/* Above the grid, not in it: the tiles are settled totals, this is a
           sample of the last minute and a half. It fetches its own number. */}
       <LiveVisitors />
 
-      <Suspense fallback={<StatsSkeleton />}>
-        <Stats />
+      {/* Keyed on the window: switching to 90 days should put the skeleton
+          back rather than leave last week's numbers on screen, unlabelled,
+          under a tab that now says something else. */}
+      <Suspense key={range} fallback={<StatsSkeleton />}>
+        <Stats days={days} />
       </Suspense>
 
       {/* Its own boundary, below the settled totals: these two are the
@@ -55,8 +72,8 @@ export default function AdminDashboard() {
       </Suspense>
 
       <div className="mt-10">
-        <Suspense fallback={<ChartSkeleton />}>
-          <Revenue />
+        <Suspense key={range} fallback={<ChartSkeleton />}>
+          <Revenue days={days} span={span} />
         </Suspense>
       </div>
 
@@ -71,16 +88,148 @@ export default function AdminDashboard() {
   );
 }
 
+/* ── The reporting window ───────────────────────────────────────────────── */
+
+/** `YYYY-MM-DD` in UTC, matching the day boundaries admin_revenue_series uses. */
+function utcDayKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** The UTC day `back` days ago. `dayKeyBack(0)` is today. */
+function dayKeyBack(back: number): string {
+  const day = new Date();
+  day.setUTCDate(day.getUTCDate() - back);
+  return utcDayKey(day);
+}
+
+/** The day spine, oldest first, so a quiet day is a zero and not a gap. */
+function emptySeries(days: number): RevenuePoint[] {
+  return Array.from({ length: days }, (_, i) => ({
+    day: dayKeyBack(days - 1 - i),
+    revenue: 0,
+    orders: 0,
+  }));
+}
+
+/** `days` days of daily revenue, ending today. */
+async function readSeries(days: number): Promise<RevenuePoint[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("admin_revenue_series", { p_days: days });
+
+  if (!error && Array.isArray(data) && data.length > 0) {
+    return (data as { day: string; revenue: string | number; orders: string | number }[]).map(
+      (row) => ({
+        day: row.day,
+        revenue: Number(row.revenue ?? 0),
+        orders: Number(row.orders ?? 0),
+      })
+    );
+  }
+
+  /* Function absent. Pull the window and bucket it here — bounded by date, so
+     it stays proportional to the window that was asked for however large the
+     order book grows. */
+  const spine = emptySeries(days);
+  const since = `${spine[0].day}T00:00:00.000Z`;
+
+  const { data: rows } = await supabase
+    .from("orders")
+    .select("created_at, total_amount")
+    .gte("created_at", since)
+    .in("status", [...REVENUE_STATUSES]);
+
+  const byDay = new Map(spine.map((point) => [point.day, point]));
+
+  for (const row of (rows ?? []) as { created_at: string; total_amount: number | string }[]) {
+    const point = byDay.get(utcDayKey(new Date(row.created_at)));
+    if (!point) continue;
+    point.revenue += Number(row.total_amount ?? 0);
+    point.orders += 1;
+  }
+
+  return spine;
+}
+
+/**
+ * The window on screen and the equal-length one before it, in one read.
+ *
+ * Asking for twice the days and cutting the result in half is what makes "vs.
+ * previous period" nearly free: `admin_revenue_series` already returns a
+ * gapless daily spine, so the comparison window is the front of the same array
+ * rather than a second query with its own date arithmetic to get subtly wrong.
+ *
+ * `cache` is what lets the tiles and the chart stay separate Suspense
+ * boundaries: neither waits on the other, both render from one round trip, and
+ * the total printed above the chart can never disagree with the revenue tile
+ * because the two are summing the same rows.
+ */
+const readWindow = cache(
+  async (days: number): Promise<{ current: RevenuePoint[]; previous: RevenuePoint[] }> => {
+    const series = await readSeries(days * 2);
+    return { current: series.slice(-days), previous: series.slice(0, -days) };
+  }
+);
+
+/** One window's trading, summed out of its days. */
+interface Period {
+  revenue: number;
+  orders: number;
+  avgOrderValue: number;
+}
+
+function sumPeriod(points: RevenuePoint[]): Period {
+  const revenue = points.reduce((total, point) => total + point.revenue, 0);
+  const orders = points.reduce((total, point) => total + point.orders, 0);
+  /* Divided by the orders that make it up, not by the days in the window —
+     the same definition avg_order_value uses in revenue_recognition.sql. */
+  return { revenue, orders, avgOrderValue: orders > 0 ? revenue / orders : 0 };
+}
+
+/**
+ * Customers acquired in the window, and in the one before it.
+ *
+ * Two head counts rather than a sum over rows: the number is all that is
+ * wanted, `idx_customers_created_at` serves both bounds, and no customer data
+ * needs to cross the wire to render an integer. The counts come back null —
+ * and so read as zero — when `customers` is not there yet, which is exactly
+ * what the tile did before there was a window to count over.
+ */
+async function readNewCustomers(days: number): Promise<{ current: number; previous: number }> {
+  const supabase = await createClient();
+
+  const opened = `${dayKeyBack(days - 1)}T00:00:00.000Z`;
+  const before = `${dayKeyBack(days * 2 - 1)}T00:00:00.000Z`;
+
+  const [current, previous] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", opened),
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", before)
+      .lt("created_at", opened),
+  ]);
+
+  return { current: current.count ?? 0, previous: previous.count ?? 0 };
+}
+
+
 /* ── Stat tiles ─────────────────────────────────────────────────────────── */
 
 function Stat({
   label,
   value,
+  delta,
   note,
   tone = "plain",
 }: {
   label: string;
   value: string;
+  /** The movement against the window before, on the tiles that measure a flow. */
+  delta?: React.ReactNode;
   note?: string;
   tone?: "plain" | "alert";
 }) {
@@ -96,6 +245,7 @@ function Stat({
       >
         {value}
       </p>
+      {delta}
       {note && <p className="admin-hint mt-2">{note}</p>}
     </div>
   );
@@ -182,35 +332,71 @@ async function readStats(): Promise<DashboardStats> {
   };
 }
 
-async function Stats() {
-  const stats = await readStats();
+/**
+ * Six tiles, of two kinds, and the difference is why only four carry a delta.
+ *
+ * The first four measure a *flow* — money taken, baskets, orders fulfilled,
+ * customers gained — which is a quantity per unit of time and therefore has a
+ * previous period to be compared against. They now read for the window the
+ * tabs select, with the all-time figure demoted to the note so nothing that
+ * used to be on this screen has been lost.
+ *
+ * The last two measure a *state*: how many orders are open, how many products
+ * are low, as of this moment. There is no such thing as the open-order count
+ * "over the last 90 days", so those two are unwindowed and carry no delta —
+ * showing one would be inventing a number to fill a slot.
+ */
+async function Stats({ days }: { days: number }) {
+  const [stats, window, customers] = await Promise.all([
+    readStats(),
+    readWindow(days),
+    readNewCustomers(days),
+  ]);
 
-  /* The three the brief leads on come first; the operational tiles follow. */
-  const revenueNote = stats.exact
-    ? "Fulfilled orders only"
-    : "Across the last 200 fulfilled orders";
+  const current = sumPeriod(window.current);
+  const previous = sumPeriod(window.previous);
 
   return (
     <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Stat label="Total revenue" value={formatPrice(stats.totalRevenue)} note={revenueNote} />
       <Stat
-        label="Average order value"
-        value={formatPrice(stats.avgOrderValue)}
+        label="Revenue"
+        value={formatPrice(current.revenue)}
+        delta={<Delta current={current.revenue} previous={previous.revenue} days={days} />}
         note={
-          stats.exact ? "Revenue ÷ fulfilled orders" : "Across the last 200 fulfilled orders"
+          stats.exact
+            ? `Fulfilled orders · ${formatPrice(stats.totalRevenue)} all time`
+            : "Fulfilled orders only"
         }
       />
       <Stat
-        label="Total orders"
-        value={String(stats.totalOrders)}
-        note="Every order ever placed"
+        label="Average order value"
+        value={formatPrice(current.avgOrderValue)}
+        delta={
+          <Delta current={current.avgOrderValue} previous={previous.avgOrderValue} days={days} />
+        }
+        note="Revenue ÷ the fulfilled orders behind it"
+      />
+      <Stat
+        label="Fulfilled orders"
+        value={String(current.orders)}
+        delta={<Delta current={current.orders} previous={previous.orders} days={days} />}
+        note={
+          stats.exact
+            ? `${stats.totalOrders.toLocaleString()} orders placed, all time`
+            : "Closed or completed, dated by when they were placed"
+        }
+      />
+      <Stat
+        label="New customers"
+        value={String(customers.current)}
+        delta={<Delta current={customers.current} previous={customers.previous} days={days} />}
+        note={`${stats.customerCount.toLocaleString()} on the books`}
       />
       <Stat
         label="Open orders"
         value={String(stats.openOrders)}
-        note="New, opened, pending or processing"
+        note="New, opened, pending or processing, right now"
       />
-      <Stat label="Customers" value={String(stats.customerCount)} note="On the books" />
       <Stat
         label="Low stock"
         value={String(stats.lowStockCount)}
@@ -228,6 +414,9 @@ function StatsSkeleton() {
         <div key={i} className="border border-line bg-white p-5">
           <Skeleton className="h-2 w-20" />
           <Skeleton className="mt-4 h-7 w-24" />
+          {/* The delta row. Reserved on all six so the grid does not resettle
+              when the four that carry one arrive. */}
+          <Skeleton className="mt-3.5 h-3.5 w-32" />
           <Skeleton className="mt-3 h-2.5 w-28" />
         </div>
       ))}
@@ -347,68 +536,17 @@ function InboxTile({
 
 /* ── Revenue chart ──────────────────────────────────────────────────────── */
 
-/** `YYYY-MM-DD` in UTC, matching the day boundaries admin_revenue_series uses. */
-function utcDayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-/** The seven-day spine, oldest first, so a quiet day is a zero and not a gap. */
-function emptySeries(days: number): RevenuePoint[] {
-  const today = new Date();
-  return Array.from({ length: days }, (_, i) => {
-    const day = new Date(today);
-    day.setUTCDate(day.getUTCDate() - (days - 1 - i));
-    return { day: utcDayKey(day), revenue: 0, orders: 0 };
-  });
-}
-
-async function readRevenueSeries(): Promise<RevenuePoint[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("admin_revenue_series", { p_days: CHART_DAYS });
-
-  if (!error && Array.isArray(data) && data.length > 0) {
-    return (data as { day: string; revenue: string | number; orders: string | number }[]).map(
-      (row) => ({
-        day: row.day,
-        revenue: Number(row.revenue ?? 0),
-        orders: Number(row.orders ?? 0),
-      })
-    );
-  }
-
-  /* Function absent. Pull the window and bucket it here — bounded by date, so
-     it stays small however large the order book grows. */
-  const spine = emptySeries(CHART_DAYS);
-  const since = `${spine[0].day}T00:00:00.000Z`;
-
-  const { data: rows } = await supabase
-    .from("orders")
-    .select("created_at, total_amount")
-    .gte("created_at", since)
-    .in("status", [...REVENUE_STATUSES]);
-
-  const byDay = new Map(spine.map((point) => [point.day, point]));
-
-  for (const row of (rows ?? []) as { created_at: string; total_amount: number | string }[]) {
-    const point = byDay.get(utcDayKey(new Date(row.created_at)));
-    if (!point) continue;
-    point.revenue += Number(row.total_amount ?? 0);
-    point.orders += 1;
-  }
-
-  return spine;
-}
-
-async function Revenue() {
+async function Revenue({ days, span }: { days: number; span: string }) {
   /* One read, two views of it: the deferred plot and the table that does not
-     need JavaScript to be readable. */
-  const series = await readRevenueSeries();
+     need JavaScript to be readable. The window before this one comes back on
+     the same read and is simply not plotted — the tiles above are what it is
+     for. See readWindow. */
+  const { current } = await readWindow(days);
 
   return (
     <figure className="m-0">
-      <RevenueChart data={series} />
-      <RevenueTable data={series} />
+      <RevenueChart data={current} span={span} />
+      <RevenueTable data={current} span={span} />
     </figure>
   );
 }

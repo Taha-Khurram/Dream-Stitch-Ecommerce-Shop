@@ -4,10 +4,17 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProductRowActions } from "@/components/admin/ProductRowActions";
+import { ProductBulkActions } from "@/components/admin/ProductBulkActions";
+import {
+  RowCheckbox,
+  SelectAllCheckbox,
+  SelectionProvider,
+} from "@/components/admin/BulkSelection";
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
+import { SEARCH_PARAM } from "@/lib/admin/search";
 import type { Product } from "@/types/ecommerce";
 
 /**
@@ -70,7 +77,7 @@ export async function ProductsTable({
    */
   if (products.length === 0 && total > 0 && page > lastPage) {
     const params = new URLSearchParams();
-    if (query) params.set("q", query);
+    if (query) params.set(SEARCH_PARAM, query);
     redirect(buildPageHref(BASE_PATH, params, { page: lastPage, perPage }));
   }
 
@@ -88,11 +95,16 @@ export async function ProductsTable({
   }
 
   return (
-    <>
+    /* The provider only knows this page's ids, which is the whole contract: a
+       bulk action reaches exactly the rows drawn below it and nothing else. */
+    <SelectionProvider ids={products.map((product) => product.id)}>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
+        <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
+              <th className="admin-th w-8 pb-3 pr-6">
+                <SelectAllCheckbox label="Select every product on this page" />
+              </th>
               {/* A gutter on every column but the last. Without it the cells
                   only look separated while their contents happen to be short:
                   a four-digit price runs straight into the stock number. */}
@@ -113,6 +125,9 @@ export async function ProductsTable({
                   key={product.id}
                   className="border-b border-line align-middle transition-colors hover:bg-frost"
                 >
+                  <td className="py-3 pr-6">
+                    <RowCheckbox id={product.id} label={`Select ${product.name}`} />
+                  </td>
                   <td className="py-3 pr-6">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-10 shrink-0 overflow-hidden bg-lilac">
@@ -174,7 +189,11 @@ export async function ProductsTable({
         perPage={perPage}
         noun="product"
       />
-    </>
+
+      {/* Last, so the sticky bar rides the foot of the list rather than
+          hovering over the middle of it. */}
+      <ProductBulkActions />
+    </SelectionProvider>
   );
 }
 
@@ -194,6 +213,7 @@ export function ProductsTableSkeleton() {
       <div className="mt-4 border border-line" aria-hidden>
         {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
+            <Skeleton className="h-4 w-4 shrink-0" />
             <Skeleton className="h-12 w-10 shrink-0" />
             <div className="min-w-0 flex-1">
               <Skeleton className="h-3 w-1/3" />

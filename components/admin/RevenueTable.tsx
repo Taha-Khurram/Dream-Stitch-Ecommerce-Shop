@@ -8,8 +8,14 @@ import { fullDate, type RevenuePoint } from "./revenue";
  * Server-rendered on purpose: it is the path to the figures that needs no
  * pointer, no colour vision and no JavaScript, so it must not sit behind the
  * same deferred chunk as the plot. `<details>` gives the disclosure for free.
+ *
+ * Every day in the window gets a row, at every window — a quarter is 90 rows
+ * and year-to-date can be 365. That is deliberate: this is the accessible path
+ * to the numbers, and summarising it into weeks would leave the one reader who
+ * depends on it unable to reach a figure the chart's tooltip hands everybody
+ * else. It is collapsed until asked for, so the cost is markup, not layout.
  */
-export function RevenueTable({ data }: { data: RevenuePoint[] }) {
+export function RevenueTable({ data, span }: { data: RevenuePoint[]; span: string }) {
   return (
     <details className="group mt-2">
       <summary className="admin-hint cursor-pointer list-none select-none text-ink-soft transition-colors hover:text-purple">
@@ -20,8 +26,8 @@ export function RevenueTable({ data }: { data: RevenuePoint[] }) {
       <div className="mt-2 overflow-x-auto border border-line bg-white">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">
-            Revenue and fulfilled order count for each of the last seven days. Orders
-            not yet fulfilled are not counted.
+            Revenue and fulfilled order count for every day in {span}. Orders not yet
+            fulfilled are not counted.
           </caption>
           <thead>
             <tr className="border-b border-line">

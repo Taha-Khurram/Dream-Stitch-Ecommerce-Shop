@@ -23,6 +23,7 @@ prefix. This table is the ordering.
 | 9 | `inbox_schema.sql` | 3 — newsletter + contact tables |
 | 10 | `order_item_variants.sql` | 1 — `order_items.size` + the made-to-measure columns |
 | 11 | `revenue_recognition.sql` | 6, 8 — dashboard revenue counts fulfilled orders only |
+| 12 | `admin_search.sql` | 1, 6 — trigram indexes for the order and customer search boxes |
 
 Optional, run at any point after their dependency:
 

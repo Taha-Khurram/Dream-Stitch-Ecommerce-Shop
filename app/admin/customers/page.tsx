@@ -6,6 +6,8 @@ import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { buildPageHref, lastPageFor, parseWindow, rangeFor, type PerPage } from "@/lib/pagination";
 import { CustomerRowActions } from "@/components/admin/CustomerActions";
+import { SearchBox } from "@/components/admin/SearchBox";
+import { SEARCH_PARAM, customerSearchFilter } from "@/lib/admin/search";
 import { Download, Mail, Phone } from "lucide-react";
 import type { Customer } from "@/types/ecommerce";
 
@@ -22,9 +24,18 @@ const BASE_PATH = "/admin/customers";
 export default async function AdminCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; per?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; per?: string }>;
 }) {
-  const { page, perPage } = parseWindow(await searchParams);
+  const { q = "", ...paging } = await searchParams;
+  const query = q.trim();
+  const { page, perPage } = parseWindow(paging);
+
+  /* The export takes the same term, so the file matches the list it was asked
+     for from. Without it, exporting off a filtered screen quietly hands back
+     the whole book. */
+  const exportHref = query
+    ? `/api/admin/customers/export?${new URLSearchParams({ [SEARCH_PARAM]: query })}`
+    : "/api/admin/customers/export";
 
   return (
     <div>
@@ -35,7 +46,7 @@ export default async function AdminCustomersPage({
           /* A plain anchor, not a Link: the response is a file, and letting the
              router try to navigate to it would do nothing at all. */
           <a
-            href="/api/admin/customers/export"
+            href={exportHref}
             className="btn-outline inline-flex items-center gap-2"
           >
             <Download className="h-4 w-4" strokeWidth={1.75} />
@@ -44,8 +55,16 @@ export default async function AdminCustomersPage({
         }
       />
 
-      <Suspense key={`${page}:${perPage}`} fallback={<CustomersTableSkeleton />}>
-        <CustomersTable page={page} perPage={perPage} />
+      <SearchBox
+        action={BASE_PATH}
+        query={query}
+        perPage={perPage}
+        placeholder="Name, email or phone…"
+        label="Search customers"
+      />
+
+      <Suspense key={`${query}:${page}:${perPage}`} fallback={<CustomersTableSkeleton />}>
+        <CustomersTable query={query} page={page} perPage={perPage} />
       </Suspense>
     </div>
   );
@@ -54,15 +73,28 @@ export default async function AdminCustomersPage({
 /** `orders(count)` is a PostgREST aggregate embed — an array of one row. */
 type CustomerRow = Customer & { orders?: { count: number }[] };
 
-async function CustomersTable({ page, perPage }: { page: number; perPage: PerPage }) {
+async function CustomersTable({
+  query,
+  page,
+  perPage,
+}: {
+  query: string;
+  page: number;
+  perPage: PerPage;
+}) {
   const supabase = await createClient();
   const { from, to } = rangeFor(page, perPage);
 
-  const { data, count, error } = await supabase
+  let request = supabase
     .from("customers")
     .select("id, name, email, phone, created_at, orders(count)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
+
+  const search = customerSearchFilter(query);
+  if (search) request = request.or(search);
+
+  const { data, count, error } = await request;
 
   /* The table only exists once dashboard_schema.sql has been applied. Say so
      plainly rather than rendering an empty list that looks like no customers. */
@@ -85,13 +117,15 @@ async function CustomersTable({ page, perPage }: { page: number; perPage: PerPag
   /* Past the end — a stale bookmark, or records removed since. Land on the
      last real page rather than an empty book. */
   if (customers.length === 0 && total > 0 && page > lastPage) {
-    redirect(buildPageHref(BASE_PATH, undefined, { page: lastPage, perPage }));
+    const params = new URLSearchParams();
+    if (query) params.set(SEARCH_PARAM, query);
+    redirect(buildPageHref(BASE_PATH, params, { page: lastPage, perPage }));
   }
 
   if (customers.length === 0) {
     return (
       <p className="mt-10 border border-line bg-white p-12 text-center text-sm text-muted">
-        No customers yet.
+        {query ? `Nobody matches “${query}”.` : "No customers yet."}
       </p>
     );
   }

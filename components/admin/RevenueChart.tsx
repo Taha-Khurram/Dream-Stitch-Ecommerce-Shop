@@ -36,6 +36,6 @@ const RevenueChartCanvas = dynamic(
   }
 );
 
-export function RevenueChart({ data }: { data: RevenuePoint[] }) {
-  return <RevenueChartCanvas data={data} />;
+export function RevenueChart({ data, span }: { data: RevenuePoint[]; span: string }) {
+  return <RevenueChartCanvas data={data} span={span} />;
 }

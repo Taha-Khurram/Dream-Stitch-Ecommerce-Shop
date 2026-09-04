@@ -4,10 +4,17 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { OrderIntakeActions } from "@/components/admin/OrderIntakeActions";
+import { OrderBulkActions } from "@/components/admin/OrderBulkActions";
+import {
+  RowCheckbox,
+  SelectAllCheckbox,
+  SelectionProvider,
+} from "@/components/admin/BulkSelection";
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
+import { SEARCH_PARAM, orderSearchFilter } from "@/lib/admin/search";
 import {
   ORDER_STATUSES,
   STATUS_COPY,
@@ -42,19 +49,26 @@ export function filterLabel(filter: OrderFilter): string {
 const COLUMNS =
   "id, status, total_amount, created_at, shipping_address, order_items(custom_width)";
 
-/** The status filter as search params — the shape the pager URLs build on. */
-export function filterParams(status: OrderFilter): URLSearchParams {
+/**
+ * The screen's filters as search params — the shape the tab and pager URLs
+ * build on. Both are carried together on purpose: switching tab while a search
+ * is running should narrow that search, not throw it away.
+ */
+export function filterParams(status: OrderFilter, query = ""): URLSearchParams {
   const params = new URLSearchParams();
   if (status !== "all") params.set("status", status);
+  if (query) params.set(SEARCH_PARAM, query);
   return params;
 }
 
 export async function OrdersTable({
   status,
+  query,
   page,
   perPage,
 }: {
   status: OrderFilter;
+  query: string;
   page: number;
   perPage: PerPage;
 }) {
@@ -69,6 +83,12 @@ export async function OrdersTable({
 
   if (status !== "all") request = request.eq("status", status);
 
+  /* Status and search compose: the tab narrows the book, the term searches
+     inside it. `.or()` is one clause against the whole set, so it stays an AND
+     with the `.eq()` above rather than widening it back out. */
+  const search = orderSearchFilter(query);
+  if (search) request = request.or(search);
+
   const { data, count } = await request;
   const orders = (data ?? []) as Order[];
   const total = count ?? 0;
@@ -77,25 +97,35 @@ export async function OrdersTable({
   /* Past the end — stale link, or the filter narrowed since. Show the last
      real page rather than an empty table implying there are no such orders. */
   if (orders.length === 0 && total > 0 && page > lastPage) {
-    redirect(buildPageHref(BASE_PATH, filterParams(status), { page: lastPage, perPage }));
+    redirect(buildPageHref(BASE_PATH, filterParams(status, query), { page: lastPage, perPage }));
   }
 
   if (orders.length === 0) {
+    /* Three different nothings, and conflating them wastes the admin's time:
+       an empty book, an empty tab, and a search that missed — the last of
+       which is usually a typo or the wrong tab, not a missing order. */
     return (
       <p className="mt-10 border border-line bg-white p-12 text-center text-sm text-muted">
-        {status === "all"
-          ? "No orders yet."
-          : `No ${filterLabel(status).toLowerCase()} orders.`}
+        {query
+          ? `Nothing matches “${query}”${status === "all" ? "" : ` under ${filterLabel(status)}`}.`
+          : status === "all"
+            ? "No orders yet."
+            : `No ${filterLabel(status).toLowerCase()} orders.`}
       </p>
     );
   }
 
   return (
-    <>
+    /* The provider only knows this page's ids, which is the whole contract: a
+       bulk action reaches exactly the rows drawn below it and nothing else. */
+    <SelectionProvider ids={orders.map((order) => order.id)}>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
+        <table className="w-full min-w-[54rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
+              <th className="admin-th w-8 pb-3">
+                <SelectAllCheckbox label="Select every order on this page" />
+              </th>
               {["Order", "Customer", "Placed", "Status", "Total"].map((head) => (
                 <th key={head} className="admin-th pb-3">
                   {head}
@@ -111,6 +141,12 @@ export async function OrdersTable({
           <tbody>
             {orders.map((order) => (
               <tr key={order.id} className="border-b border-line transition-colors hover:bg-frost">
+                <td className="py-3.5">
+                  <RowCheckbox
+                    id={order.id}
+                    label={`Select order ${orderReference(order.id)}`}
+                  />
+                </td>
                 <td className="py-3.5">
                   <Link
                     href={`/admin/orders/${order.id}`}
@@ -167,7 +203,11 @@ export async function OrdersTable({
         perPage={perPage}
         noun="order"
       />
-    </>
+
+      {/* Last, so the sticky bar rides the foot of the list rather than
+          hovering over the middle of it. */}
+      <OrderBulkActions filter={status} />
+    </SelectionProvider>
   );
 }
 
@@ -180,6 +220,7 @@ export function OrdersTableSkeleton() {
       <div className="mt-4 border border-line" aria-hidden>
         {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
+            <Skeleton className="h-4 w-4 shrink-0" />
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-3 w-32" />
             <Skeleton className="ml-auto h-3 w-24" />
