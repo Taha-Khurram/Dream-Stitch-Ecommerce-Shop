@@ -156,6 +156,7 @@ export const DEFAULT_CONTENT = {
       copy: "New prints, restocks and the occasional quiet sale. One email, now and then — never a flood.",
       placeholder: "Your email address",
       button_label: "Subscribe",
+      success_copy: "You are on the list. Look out for the first look.",
     },
   },
 

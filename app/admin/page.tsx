@@ -10,7 +10,9 @@ import type { RevenuePoint } from "@/components/admin/revenue";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { OPEN_STATUSES } from "@/lib/orders/lifecycle";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { OPEN_MESSAGE_STATUSES } from "@/lib/inbox/lifecycle";
+import { isMissingInstall } from "@/lib/inbox/install";
+import { AlertTriangle, ArrowRight, Inbox as InboxIcon, Mail } from "lucide-react";
 import type { Order, Product } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +45,13 @@ export default function AdminDashboard() {
 
       <Suspense fallback={<StatsSkeleton />}>
         <Stats />
+      </Suspense>
+
+      {/* Its own boundary, below the settled totals: these two are the
+          storefront asking for something rather than a measure of trading,
+          and neither should hold up the tiles above it. */}
+      <Suspense fallback={null}>
+        <InboxSummary />
       </Suspense>
 
       <div className="mt-10">
@@ -216,6 +225,116 @@ function StatsSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ── Inbox ──────────────────────────────────────────────────────────────── */
+
+/**
+ * What the two storefront forms have brought in.
+ *
+ * Tiles rather than rows because there is nothing to read here — the number is
+ * the whole message, and the click is the point. Both link somewhere that can
+ * be acted on: the messages tile lands on the Unanswered tab rather than the
+ * whole inbox, because "eleven messages" is trivia and "eleven still owed an
+ * answer" is a morning's work.
+ *
+ * Renders nothing at all when `inbox_schema.sql` has not been applied. The
+ * dashboard is a summary, and a summary is the wrong place to be told about a
+ * migration — the screens themselves say so, at length, where somebody has
+ * gone looking for the data.
+ */
+async function InboxSummary() {
+  const supabase = await createClient();
+
+  const [unanswered, subscribers] = await Promise.all([
+    supabase
+      .from("contact_messages")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...OPEN_MESSAGE_STATUSES]),
+    supabase
+      .from("newsletter_subscribers")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "subscribed"),
+  ]);
+
+  if (isMissingInstall(unanswered.error) || isMissingInstall(subscribers.error)) return null;
+
+  const waiting = unanswered.count ?? 0;
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <InboxTile
+        href="/admin/contacts?status=unanswered"
+        icon={<InboxIcon className="h-4 w-4" strokeWidth={1.5} />}
+        label="Messages waiting"
+        value={String(waiting)}
+        note={
+          waiting > 0
+            ? "New or read, and not yet replied to"
+            : "Everything through /contact has been answered"
+        }
+        tone={waiting > 0 ? "alert" : "plain"}
+      />
+      <InboxTile
+        href="/admin/newsletter"
+        icon={<Mail className="h-4 w-4" strokeWidth={1.5} />}
+        label="Newsletter subscribers"
+        value={String(subscribers.count ?? 0)}
+        note="Addresses currently receiving it"
+      />
+    </div>
+  );
+}
+
+function InboxTile({
+  href,
+  icon,
+  label,
+  value,
+  note,
+  tone = "plain",
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  note: string;
+  tone?: "plain" | "alert";
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group flex items-center gap-4 border p-5 transition-colors ${
+        tone === "alert"
+          ? "border-purple/40 bg-lilac hover:border-purple"
+          : "border-line bg-white hover:border-purple hover:bg-lilac"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`flex h-10 w-10 shrink-0 items-center justify-center border ${
+          tone === "alert"
+            ? "border-purple/30 bg-white text-purple"
+            : "border-line text-muted group-hover:text-purple"
+        }`}
+      >
+        {icon}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="admin-label">{label}</span>
+        <span className="mt-1 block font-[family-name:var(--font-display)] text-[26px] leading-none tabular-nums text-ink">
+          {value}
+        </span>
+        <span className="admin-hint mt-1.5 block">{note}</span>
+      </span>
+
+      <ArrowRight
+        aria-hidden
+        className="h-4 w-4 shrink-0 text-faint transition-colors group-hover:text-purple"
+      />
+    </Link>
   );
 }
 

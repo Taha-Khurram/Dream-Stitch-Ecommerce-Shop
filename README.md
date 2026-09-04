@@ -387,6 +387,66 @@ SQL has not been run instead of claiming nobody is there.
 
 ---
 
+## Contact inbox & newsletter
+
+[`inbox_schema.sql`](inbox_schema.sql) is where the two storefront forms end
+up. Run it in the **Supabase SQL editor** after `admin_schema.sql` — it depends
+on `is_admin()`. The file ends with a four-row verification, and every
+statement is idempotent.
+
+Before it, both forms were decorative: the newsletter field posted to `#` and
+the message form on `/contact` flipped a React boolean and rendered its
+thank-you panel over a message it had thrown away. Two tables and two endpoints
+later, they land in [`/admin/contacts`](app/admin/contacts/page.tsx) and
+[`/admin/newsletter`](app/admin/newsletter/page.tsx).
+
+**Nobody writes a row directly.** Following `presence_schema.sql`, RLS is on
+with **admin-only** policies and there is no `INSERT` policy for `anon` at all.
+The public writes go through two `SECURITY DEFINER` functions instead, so a
+caller supplies the fields it is entitled to supply — an address, or a name,
+subject and body — and Postgres decides the rest. An `INSERT` policy would hand
+the shape of the row to the client, and anyone able to reach PostgREST could
+post a message that arrives already marked `replied`.
+
+**Throttling is in the database, not only the route.** `submit_contact_message()`
+caps one address at five messages an hour, and treats a byte-identical repeat
+inside five minutes as the same message — returning the original id, so a
+double-clicked Send button shows the thank-you panel and the inbox holds one
+copy. An advisory lock on the address makes that check safe against two
+requests racing. [`lib/inbox/throttle.ts`](lib/inbox/throttle.ts) sits in front
+of both endpoints as a per-instance IP limiter: it stops the ordinary flood
+before it costs a round trip, and it is explicitly *not* the enforcement point.
+
+**Outcomes, not exceptions.** Neither function raises. "You are already on the
+list", "this is the same message twice", "you are sending too fast" are ordinary
+things for a public form to answer, so they come back as strings and the route
+handlers map them to a status — `429` with a `Retry-After` for a throttle, and a
+plain success for a repeat.
+
+**Replies leave from a real mail client.** There is no outbound mail here and
+there should not be: an answer sent from the care mailbox lands somewhere the
+rest of the team can search, which a row in this table never would. The message
+page's Reply button is a `mailto:` with the thread already set up, and the four
+statuses — `new → read → replied | archived` — are how the panel records what
+happened. Opening a message marks it read on its own, from a client effect
+rather than the server render, so a prefetch or a link unfurling in a chat can
+never mark the inbox read without a person having seen it.
+
+**Unsubscribing keeps the row.** It sets a status and stamps `unsubscribed_at`,
+so the list doubles as the suppression list — deleting the address would let the
+next import, or the same person signing up again out of habit, quietly put them
+back on a list they asked to leave. The CSV export defaults to `subscribed` for
+the same reason. It guards against formula injection on the way out, because
+every value in that file was typed by a member of the public into a form on the
+internet.
+
+**Fallback.** Nothing here is required for the app to work. Without the file,
+`/api/contact` and `/api/newsletter` answer `501` naming it, both admin screens
+say so instead of rendering an empty table that reads as "nobody has written
+in", and the dashboard tiles simply do not appear.
+
+---
+
 ## Product media
 
 [`product_media_schema.sql`](product_media_schema.sql) adds a public
@@ -475,11 +535,15 @@ app/
     about/  contact/    editorial pages
   admin/                the panel, deliberately outside (site) so it pays for
                         none of the storefront chrome: dashboard, products,
-                        categories, orders, customers, settings, and the
-                        server actions behind them
+                        categories, orders, customers, contacts, newsletter,
+                        settings, and the server actions behind them
   (auth)/               signin, signup — over Supabase Auth
   auth/                 OAuth callback and email-confirmation routes
   api/checkout/         order placement, price-verified server-side
+  api/contact/          the /contact form's destination
+  api/newsletter/       the homepage signup's destination
+  api/admin/            the panel's own fetches: presence, and the inbox
+                        mutations the list and detail screens fire
 components/
   layout/               Header (one-row bar, mega panel, search overlay),
                         Section (vertical rhythm), SectionHeading, SiteFooter
@@ -487,6 +551,7 @@ components/
   admin/                ActionForm, ProductForm, ProductMediaUploader,
                         CategoryEditor, ContentEditor, Repeater,
                         OrderStatusControl, StatusPill, AdminNav,
+                        MessageActions, SubscriberActions, InboxPills,
                         RevenueChart (defers recharts), RevenueChartCanvas,
                         RevenueTable, revenue.ts (shared day/number helpers)
   products/             ProductCard, QuickAdd, ProductGallery, ProductOptions,
@@ -497,6 +562,11 @@ components/
 lib/
   constants.ts          brand, navigation tree, bed sizes, colour swatches
   auth/admin.ts         admin gate for the panel
+  auth/api.ts           the same gate for route handlers — a status, not a
+                        redirect, so a fetch is answered in its own idiom
+  inbox/                the contact-message and subscriber vocabulary, the
+                        "has the migration run" test, the IP throttle, and
+                        the browser's client for the admin endpoints
   api/                  product, settings and page-content queries
   content/              default page copy, the field schema behind the
                         settings tabs, and the merge over the defaults
@@ -506,6 +576,7 @@ lib/
   product-attributes.ts fallbacks for optional bedding columns
   supabase/             browser / server / middleware clients, plus the
                         media bucket contract and its upload transport
+  validations/          the Zod schemas the forms and the routes share
 scripts/                catalogue and README asset generators
 ```
 

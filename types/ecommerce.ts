@@ -169,3 +169,45 @@ export interface ProductMedia {
   is_primary: boolean;
   created_at: string;
 }
+
+/**
+ * A message from the /contact form. Mirrors `contact_messages` in
+ * `inbox_schema.sql`.
+ *
+ * `user_id` is null for the visitor who wrote in signed out, which is most of
+ * them — it is the account link, not the identity. `email` is the identity, and
+ * it is what a reply goes to.
+ *
+ * `status` is widened to `string` for the same reason `Order.status` is: the
+ * screens render whatever the row holds, and the validation lives in
+ * `lib/inbox/lifecycle.ts`, which is the list of statuses.
+ */
+export interface ContactMessage {
+  id: string;
+  user_id: string | null;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * An address on the newsletter list. Mirrors `newsletter_subscribers` in
+ * `inbox_schema.sql`.
+ *
+ * Unsubscribing sets `status` and stamps `unsubscribed_at`; the row stays, so
+ * the list doubles as the suppression list.
+ */
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  status: string;
+  /** Where they signed up — see `SUBSCRIBER_SOURCES` in lib/inbox/lifecycle.ts. */
+  source: string;
+  created_at: string;
+  updated_at: string;
+  unsubscribed_at: string | null;
+}

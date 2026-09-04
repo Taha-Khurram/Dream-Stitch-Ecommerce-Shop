@@ -275,6 +275,18 @@
 
 .animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* ── Inline form confirmations ────────────────────────────────
+   The instant a form's success message takes the place of its
+   fields. Shorter and shallower than .animate-fade-up, which is a
+   scroll entrance: this one has to read as the *same* block
+   changing state, not as a new one arriving. */
+@keyframes confirm-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.animate-confirm { animation: confirm-in var(--duration-base) var(--ease-out-expo) both; }
+
 /* ── Auth surface motion ──────────────────────────────────────
    Sign in / sign up run chrome-free, so the entrance animation is
    what gives the page its sense of arrival. Everything is driven
@@ -562,6 +574,9 @@ body {
   /* The skeleton sheen is slowed, not removed: it is the only signal
      that something is still on its way. */
   .skeleton::after { animation-duration: 3.5s; }
+
+  /* A confirmation must still appear — instantly, without the rise. */
+  .animate-confirm { animation-duration: 1ms !important; }
 
   .btn-primary:active,
   .btn-outline:active { transform: none; }

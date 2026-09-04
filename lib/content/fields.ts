@@ -252,6 +252,7 @@ export const CONTENT_TABS: TabSpec[] = [
           { key: "copy", label: "Copy", kind: "textarea" },
           { key: "placeholder", label: "Input placeholder", kind: "text", half: true },
           { key: "button_label", label: "Button", kind: "text", half: true },
+          { key: "success_copy", label: "Thank-you line", kind: "text" },
         ],
       },
     ],

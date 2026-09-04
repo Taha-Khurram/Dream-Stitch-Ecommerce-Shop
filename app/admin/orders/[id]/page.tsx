@@ -114,29 +114,8 @@ export default async function AdminOrderDetailPage({
               </dd>
             </div>
           </dl>
-        </div>
 
-        <div className="space-y-8">
-          <section>
-            <h2 className="admin-section-title">Status</h2>
-            <div className="mt-3">
-              <StatusPill status={order.status} />
-            </div>
-
-            {/* One decision at a time. Until an order is accepted the only
-                things to do with it are accept or delete, so the status track
-                is not shown yet — offering both at once invites skipping the
-                triage step, which the server would refuse anyway. */}
-            <div className="mt-4">
-              {awaitingReview ? (
-                <OrderIntakeActions id={order.id} variant="panel" onDeleted="/admin/orders" />
-              ) : (
-                <OrderStatusControl id={order.id} current={order.status} />
-              )}
-            </div>
-          </section>
-
-          <section>
+          <section className="mt-10 border-t border-line pt-6">
             <h2 className="admin-section-title">Deliver to</h2>
             {address ? (
               <address className="mt-3 space-y-1 text-sm not-italic leading-relaxed text-ink-soft">
@@ -157,6 +136,27 @@ export default async function AdminOrderDetailPage({
             ) : (
               <p className="mt-3 text-sm text-muted">No address recorded.</p>
             )}
+          </section>
+        </div>
+
+        <div className="space-y-8">
+          <section>
+            <h2 className="admin-section-title">Status</h2>
+            <div className="mt-3">
+              <StatusPill status={order.status} />
+            </div>
+
+            {/* One decision at a time. Until an order is accepted the only
+                things to do with it are accept or delete, so the status track
+                is not shown yet — offering both at once invites skipping the
+                triage step, which the server would refuse anyway. */}
+            <div className="mt-4">
+              {awaitingReview ? (
+                <OrderIntakeActions id={order.id} variant="panel" onDeleted="/admin/orders" />
+              ) : (
+                <OrderStatusControl id={order.id} current={order.status} />
+              )}
+            </div>
           </section>
 
           {/* Intake already offers a delete of its own, so this only shows for

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, Tags, Receipt, Users, Settings } from "lucide-react";
+import { LayoutDashboard, Package, Tags, Receipt, Users, Inbox, Mail, Settings } from "lucide-react";
 
 const LINKS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -11,6 +11,11 @@ const LINKS = [
   { name: "Categories", href: "/admin/categories", icon: Tags },
   { name: "Orders", href: "/admin/orders", icon: Receipt },
   { name: "Customers", href: "/admin/customers", icon: Users },
+  /* The two storefront forms land here. Below the trading screens because
+     neither is where a morning starts, and above Settings because both are
+     day-to-day work rather than configuration. */
+  { name: "Contacts", href: "/admin/contacts", icon: Inbox },
+  { name: "Newsletter", href: "/admin/newsletter", icon: Mail },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
