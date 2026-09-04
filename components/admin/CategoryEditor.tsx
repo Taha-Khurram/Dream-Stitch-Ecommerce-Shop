@@ -52,13 +52,14 @@ function CategoryFields({ category }: { category?: Category }) {
       <Field
         label="Image"
         name={`image-${category?.id ?? "new"}`}
-        hint="The homepage tile and the shop banner. Click the thumbnail to upload one."
+        hint="Click the thumbnail to upload one, or paste a URL."
       >
         <MediaField
           key={`${category?.id ?? "new"}:${category?.image_url ?? ""}`}
           name="image_url"
           value={category?.image_url ?? ""}
           folder={siteFolder(`category-${category?.slug ?? "new"}`)}
+          spec="categoryTile"
           compact
         />
       </Field>

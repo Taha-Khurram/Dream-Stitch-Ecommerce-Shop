@@ -9,12 +9,16 @@
  * a miss in development, rather than rendering a field that saves nowhere.
  */
 
+import type { ImageSpecKey } from "@/lib/media-specs";
+
 export type FieldKind = "text" | "textarea" | "image" | "url" | "lines" | "list" | "switch";
 
 export interface ColumnSpec {
   key: string;
   label: string;
   kind?: "text" | "textarea" | "url" | "image";
+  /** `image` only — which storefront slot it fills, so the cell can say what fits. */
+  image?: ImageSpecKey;
   /** Column width inside the repeater row, in `fr` units. */
   span?: number;
 }
@@ -24,6 +28,11 @@ export interface FieldSpec {
   label: string;
   kind: FieldKind;
   hint?: string;
+  /**
+   * `image` only. Names the slot on the storefront this picture lands in,
+   * which is what lets the field print the dimensions that survive its crop.
+   */
+  image?: ImageSpecKey;
   /** `list` only. */
   columns?: ColumnSpec[];
   addLabel?: string;
@@ -200,7 +209,7 @@ export const CONTENT_TABS: TabSpec[] = [
               { key: "cta_href", label: "Button link", kind: "url", span: 3 },
               { key: "secondary_label", label: "Second button", span: 3 },
               { key: "secondary_href", label: "Second link", kind: "url", span: 3 },
-              { key: "image", label: "Image", kind: "image", span: 4 },
+              { key: "image", label: "Image", kind: "image", image: "heroSlide", span: 4 },
               { key: "align", label: "Align", span: 2 },
             ],
           },
@@ -221,7 +230,7 @@ export const CONTENT_TABS: TabSpec[] = [
           ...HEADING_FIELDS,
           { key: "cta_label", label: "Button", kind: "text", half: true },
           { key: "cta_href", label: "Button link", kind: "url", half: true },
-          { key: "image", label: "Background image", kind: "image" },
+          { key: "image", label: "Background image", kind: "image", image: "wideBanner" },
         ],
       },
       {
@@ -272,7 +281,7 @@ export const CONTENT_TABS: TabSpec[] = [
         toggle: true,
         fields: [
           ...HEADING_FIELDS,
-          { key: "image", label: "Fallback image", kind: "image" },
+          { key: "image", label: "Fallback image", kind: "image", image: "shopBanner" },
         ],
       },
       {
@@ -310,7 +319,10 @@ export const CONTENT_TABS: TabSpec[] = [
         path: "custom.hero",
         title: "Hero",
         toggle: true,
-        fields: [...HEADING_FIELDS, { key: "image", label: "Background image", kind: "image" }],
+        fields: [
+          ...HEADING_FIELDS,
+          { key: "image", label: "Background image", kind: "image", image: "pageHero" },
+        ],
       },
       {
         path: "custom.steps",
@@ -382,7 +394,7 @@ export const CONTENT_TABS: TabSpec[] = [
         fields: [
           { key: "eyebrow", label: "Eyebrow", kind: "text", half: true },
           { key: "title", label: "Heading", kind: "text", half: true },
-          { key: "image", label: "Background image", kind: "image" },
+          { key: "image", label: "Background image", kind: "image", image: "pageHero" },
         ],
       },
       {
@@ -401,7 +413,7 @@ export const CONTENT_TABS: TabSpec[] = [
         fields: [
           { key: "eyebrow", label: "Eyebrow", kind: "text", half: true },
           { key: "title", label: "Heading", kind: "text", half: true },
-          { key: "image", label: "Side image", kind: "image" },
+          { key: "image", label: "Side image", kind: "image", image: "portrait" },
           {
             key: "items",
             label: "Values",
@@ -421,7 +433,7 @@ export const CONTENT_TABS: TabSpec[] = [
         toggle: true,
         fields: [
           { key: "title", label: "Heading", kind: "text" },
-          { key: "image", label: "Background image", kind: "image" },
+          { key: "image", label: "Background image", kind: "image", image: "wideBanner" },
           { key: "cta_label", label: "Button", kind: "text", half: true },
           { key: "cta_href", label: "Button link", kind: "url", half: true },
           { key: "secondary_label", label: "Second button", kind: "text", half: true },
@@ -442,7 +454,10 @@ export const CONTENT_TABS: TabSpec[] = [
         path: "contact.hero",
         title: "Hero",
         toggle: true,
-        fields: [...HEADING_FIELDS, { key: "image", label: "Background image", kind: "image" }],
+        fields: [
+          ...HEADING_FIELDS,
+          { key: "image", label: "Background image", kind: "image", image: "pageHero" },
+        ],
       },
       {
         path: "contact.form",

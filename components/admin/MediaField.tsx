@@ -11,6 +11,8 @@ import {
   validateMediaFile,
 } from "@/lib/supabase/storage";
 import { inputClass } from "@/components/admin/field-styles";
+import { ImageGuidance } from "@/components/admin/MediaGuidance";
+import { describeSpecKey, type ImageSpecKey } from "@/lib/media-specs";
 
 /**
  * Upload controls for the places that store an image as a URL string —
@@ -103,12 +105,15 @@ export function MediaField({
   name,
   value,
   folder,
+  spec,
   placeholder = "https://… or upload",
   compact = false,
 }: {
   name: string;
   value: string;
   folder: string;
+  /** Which storefront slot this fills — decides the size advice shown. */
+  spec?: ImageSpecKey;
   placeholder?: string;
   /** Category editor: smaller preview, tighter type. */
   compact?: boolean;
@@ -148,7 +153,9 @@ export function MediaField({
             }
           }}
           aria-label="Upload an image"
-          title="Click or drop an image"
+          title={[ "Click or drop an image", describeSpecKey(spec) ]
+            .filter(Boolean)
+            .join(" — ")}
           className={`relative shrink-0 cursor-pointer overflow-hidden border bg-lilac transition-colors ${
             compact ? "h-12 w-16" : "h-16 w-24"
           } ${dragging ? "border-purple" : "border-line hover:border-faint"}`}
@@ -197,6 +204,8 @@ export function MediaField({
             {busy ? "Uploading…" : "Upload a file instead"}
           </button>
 
+          <ImageGuidance spec={spec} className="mt-1.5" />
+
           {error && <p className="mt-1 text-[12px] text-sale">{error}</p>}
         </div>
       </div>
@@ -221,9 +230,11 @@ export function MediaField({
    ──────────────────────────────────────────────────────────────────────── */
 export function MediaUploadButton({
   folder,
+  spec,
   onUploaded,
 }: {
   folder: string;
+  spec?: ImageSpecKey;
   onUploaded: (url: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -235,7 +246,7 @@ export function MediaUploadButton({
         type="button"
         onClick={() => input.current?.click()}
         disabled={busy}
-        title={error ?? "Upload an image"}
+        title={error ?? describeSpecKey(spec) ?? "Upload an image"}
         aria-label="Upload an image"
         className={`flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center border transition-colors disabled:cursor-wait ${
           error
@@ -276,10 +287,12 @@ export function MediaListField({
   name,
   value,
   folder,
+  spec,
 }: {
   name: string;
   value: string[];
   folder: string;
+  spec?: ImageSpecKey;
 }) {
   const [urls, setUrls] = useState<string[]>(value);
   const [manual, setManual] = useState("");
@@ -425,6 +438,8 @@ export function MediaListField({
             </span>
           </>
         )}
+        <ImageGuidance spec={spec} className="mt-1 max-w-md" />
+
         <span className="admin-hint">
           Stored uncompressed. The first image is the main shot; the second drives
           the hover cross-fade.

@@ -170,6 +170,7 @@ export function ProductForm({
           name="images"
           value={product?.images ?? []}
           folder={`products/${product?.id ?? draftId}`}
+          spec="product"
         />
       </Field>
 

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { inputClass } from "@/components/admin/field-styles";
 import { MediaUploadButton } from "@/components/admin/MediaField";
+import { ImageGuidance } from "@/components/admin/MediaGuidance";
 import { siteFolder } from "@/lib/supabase/storage";
 import type { ColumnSpec } from "@/lib/content/fields";
 
@@ -104,29 +105,34 @@ export function Repeater({
                       className={`${inputClass} mt-1.5 resize-y`}
                     />
                   ) : column.kind === "image" ? (
-                    /* The picture it points at, plus a way to put one there. */
-                    <span className="mt-1.5 flex items-center gap-2">
-                      <span className="h-9 w-12 shrink-0 overflow-hidden border border-line bg-lilac">
-                        {row[column.key] && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={row[column.key]}
-                            alt=""
-                            className="h-full w-full object-cover object-center"
-                          />
-                        )}
+                    /* The picture it points at, plus a way to put one there —
+                       and, in a cell this narrow, one line of what fits. */
+                    <>
+                      <span className="mt-1.5 flex items-center gap-2">
+                        <span className="h-9 w-12 shrink-0 overflow-hidden border border-line bg-lilac">
+                          {row[column.key] && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={row[column.key]}
+                              alt=""
+                              className="h-full w-full object-cover object-center"
+                            />
+                          )}
+                        </span>
+                        <input
+                          value={row[column.key] ?? ""}
+                          onChange={(e) => update(index, column.key, e.target.value)}
+                          placeholder="https://… or upload"
+                          className={`${inputClass} text-[12px]`}
+                        />
+                        <MediaUploadButton
+                          folder={siteFolder(name)}
+                          spec={column.image}
+                          onUploaded={(url) => update(index, column.key, url)}
+                        />
                       </span>
-                      <input
-                        value={row[column.key] ?? ""}
-                        onChange={(e) => update(index, column.key, e.target.value)}
-                        placeholder="https://… or upload"
-                        className={`${inputClass} text-[12px]`}
-                      />
-                      <MediaUploadButton
-                        folder={siteFolder(name)}
-                        onUploaded={(url) => update(index, column.key, url)}
-                      />
-                    </span>
+                      <ImageGuidance spec={column.image} variant="inline" className="mt-1" />
+                    </>
                   ) : (
                     <input
                       value={row[column.key] ?? ""}

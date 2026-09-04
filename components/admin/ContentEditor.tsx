@@ -122,6 +122,7 @@ function ContentField({
             name={name}
             value={String(value ?? "")}
             folder={siteFolder(name)}
+            spec={field.image}
           />
         ) : (
           <input

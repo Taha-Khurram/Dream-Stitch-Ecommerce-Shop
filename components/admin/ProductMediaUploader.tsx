@@ -26,6 +26,12 @@ import {
   validateMediaFile,
   type MediaType,
 } from "@/lib/supabase/storage";
+import {
+  IMAGE_FORMATS,
+  IMAGE_SPECS,
+  VIDEO_FORMATS,
+  describeSize,
+} from "@/lib/media-specs";
 import type { ProductMedia } from "@/types/ecommerce";
 
 /**
@@ -495,7 +501,7 @@ export function ProductMediaUploader({
             Video and full-resolution masters, tracked in <code>product_media</code>.
             The storefront gallery renders the <strong>Images</strong> list above; this
             is where footage and originals live. Up to {formatBytes(MAX_MEDIA_BYTES)} per
-            file — JPEG, PNG, WebP, AVIF, MP4, WebM, MOV.
+            file — {IMAGE_FORMATS} for stills, {VIDEO_FORMATS} for video.
           </p>
         </div>
         {attached.length > 0 && (
@@ -621,6 +627,14 @@ export function ProductMediaUploader({
         <p className="text-xs text-muted">
           Several at a time — {maxParallel} upload in parallel, video resumes after a
           dropped connection
+        </p>
+        <p className="text-xs text-muted">
+          <span className="font-medium text-ink-soft">Stills</span>{" "}
+          <span className="tabular-nums">{describeSize(IMAGE_SPECS.product)}</span> or larger,
+          cropped from the centre · {IMAGE_FORMATS}
+          {" · "}
+          <span className="font-medium text-ink-soft">Video</span> 1920 × 1080 or better,{" "}
+          {VIDEO_FORMATS}
         </p>
         <input
           ref={fileInput}
