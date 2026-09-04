@@ -117,6 +117,13 @@ export function CategoryEditor({
                 </button>
                 <DeleteButton
                   confirmMessage={`Delete “${category.name}”?`}
+                  confirmBody={
+                    <p>
+                      The category is removed from the store. Products filed under it stay in
+                      the catalogue.
+                    </p>
+                  }
+                  confirmLabel="Delete category"
                   onDelete={() => deleteCategory(category.id)}
                 />
               </div>

@@ -59,6 +59,24 @@ export const OPEN_STATUSES = ["new", "opened", "pending", "processing"] as const
  */
 export const SHIPPED_STATUSES = ["closed", "completed"] as const;
 
+/**
+ * Statuses whose money has actually been earned, which is what the dashboard's
+ * revenue tiles and the revenue chart sum.
+ *
+ * An order still in the workflow — or waiting to be accepted at all — is money
+ * on the table, not takings: it can still be cancelled, and counting it would
+ * have the total fall when that happens. Only a fulfilled order counts, so the
+ * figure only ever goes up.
+ *
+ * The same set as `SHIPPED_STATUSES` today, and for the same reason — revenue
+ * is recognised when the goods go out — but named for what it measures, so
+ * "has it shipped" and "may we bank it" can be answered, and changed,
+ * separately.
+ *
+ * Mirrors the status filter in `revenue_recognition.sql`.
+ */
+export const REVENUE_STATUSES = ["closed", "completed"] as const;
+
 /** What each status is called, and what it means, wherever one is offered. */
 export const STATUS_COPY: Record<OrderStatus, { label: string; note: string }> = {
   new: { label: "New", note: "Received, waiting to be accepted or deleted" },

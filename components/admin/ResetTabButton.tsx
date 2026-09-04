@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import type { ActionResult } from "@/app/admin/actions";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 /**
  * Puts one tab's copy, imagery and switches back to the values the site ships
@@ -22,14 +23,21 @@ export function ResetTabButton({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
   return (
     <div className="flex flex-col items-end gap-1.5">
       <button
         type="button"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm(`Restore the ${label} tab to its original content?`)) return;
+        onClick={async () => {
+          const confirmed = await confirm({
+            title: `Restore the ${label} tab to its original content?`,
+            body: <p>Every edit made to this tab is replaced by the copy the site ships with.</p>,
+            confirmLabel: "Restore defaults",
+          });
+          if (!confirmed) return;
+
           setError(null);
           startTransition(async () => {
             const result = await onReset(tabKey);
@@ -43,6 +51,7 @@ export function ResetTabButton({
         {pending ? "Restoring…" : "Restore defaults"}
       </button>
       {error && <p className="max-w-xs text-right text-[12px] text-sale">{error}</p>}
+      {confirmDialog}
     </div>
   );
 }

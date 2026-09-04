@@ -6,19 +6,22 @@ import { Header } from "@/components/layout/Header";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { getSettings } from "@/lib/api/settings";
 import { getSiteContent } from "@/lib/api/content";
-import { getProfile } from "@/lib/auth/admin";
+import { getAccount } from "@/lib/auth/admin";
 import { BackToTop } from "@/components/motion/BackToTop";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { PresenceBeacon } from "@/components/presence/PresenceBeacon";
 
 /** Storefront chrome. The (auth) and admin groups deliberately opt out of it. */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  /* One profile read answers both questions the header asks — who is signed in,
-     and may they see the admin link. `getProfile` is request-cached, so this
-     costs nothing extra anywhere else in the tree. */
-  const [settings, profile, content] = await Promise.all([
+  /* One read answers both questions the header asks — who is signed in, and
+     may they see the admin link. `getAccount` is request-cached and shares its
+     GoTrue call with `getProfile`, so this costs nothing extra elsewhere in
+     the tree. It reports the session, so an account whose `profiles` row is
+     missing still renders as signed in rather than being offered a Sign In
+     link it has no use for. */
+  const [settings, account, content] = await Promise.all([
     getSettings(),
-    getProfile(),
+    getAccount(),
     getSiteContent(),
   ]);
 
@@ -32,8 +35,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <WishlistProvider>
         <Header
           announcements={settings.announcements}
-          isAdmin={profile?.role === "admin"}
-          user={profile ? { email: profile.email } : null}
+          isAdmin={account?.isAdmin ?? false}
+          user={account ? { email: account.email } : null}
           content={content.header}
         />
         <main className="flex-1">{children}</main>

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { inputClass } from "@/components/admin/field-styles";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { MediaUploadButton } from "@/components/admin/MediaField";
 import { ImageGuidance } from "@/components/admin/MediaGuidance";
 import { siteFolder } from "@/lib/supabase/storage";
@@ -50,6 +51,8 @@ export function Repeater({
   const remove = (index: number) =>
     setItems((current) => current.filter((_, i) => i !== index));
 
+  const { confirm, confirmDialog } = useConfirm();
+
   return (
     <div>
       <input type="hidden" name={name} value={JSON.stringify(items)} />
@@ -87,9 +90,14 @@ export function Repeater({
                 </IconButton>
                 <IconButton
                   label="Remove"
-                  onClick={() => {
+                  onClick={async () => {
                     // One click otherwise deletes a whole hero slide silently.
-                    if (window.confirm("Remove this row?")) remove(index);
+                    const confirmed = await confirm({
+                      title: "Remove this row?",
+                      body: <p>Its contents go with it. Saving the tab makes it permanent.</p>,
+                      confirmLabel: "Remove row",
+                    });
+                    if (confirmed) remove(index);
                   }}
                   danger
                 >
@@ -174,6 +182,8 @@ export function Repeater({
         <Plus className="h-4 w-4" />
         {addLabel}
       </button>
+
+      {confirmDialog}
     </div>
   );
 }

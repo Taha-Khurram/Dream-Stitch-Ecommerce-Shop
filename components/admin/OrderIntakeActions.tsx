@@ -6,6 +6,7 @@ import { AlertCircle, Check, Loader2, Trash2 } from "lucide-react";
 import { acceptOrder, deleteOrder } from "@/app/admin/actions";
 import type { ActionResult } from "@/app/admin/actions";
 import { hasShipped, orderReference } from "@/lib/orders/lifecycle";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 /**
  * The accept-or-delete decision on a newly received order.
@@ -31,6 +32,7 @@ export function OrderIntakeActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
   /* Both actions revalidate the paths they touch, so a refresh is enough to
      redraw the row in its new state — no local copy of the status to keep. */
@@ -49,11 +51,18 @@ export function OrderIntakeActions({
 
   const accept = () => run(() => acceptOrder(id));
 
-  const remove = () => {
-    const confirmed = window.confirm(
-      `Delete order ${orderReference(id)} permanently?\n\nThis erases the order and its lines, ` +
-        `and returns the stock it reserved to the catalogue. Cancel the order instead if you want to keep the record.`
-    );
+  const remove = async () => {
+    const confirmed = await confirm({
+      title: `Delete order ${orderReference(id)} permanently?`,
+      body: (
+        <p>
+          This erases the order and its lines, and returns the stock it reserved to the
+          catalogue.
+        </p>
+      ),
+      hint: "Cancel the order instead if you want to keep the record.",
+      confirmLabel: "Delete order",
+    });
     if (!confirmed) return;
     run(() => deleteOrder(id), onDeleted);
   };
@@ -107,6 +116,8 @@ export function OrderIntakeActions({
           {error}
         </p>
       )}
+
+      {confirmDialog}
     </div>
   );
 }
@@ -131,6 +142,7 @@ export function OrderDeleteButton({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
   const shipped = hasShipped(status);
 
@@ -139,18 +151,24 @@ export function OrderDeleteButton({
       <button
         type="button"
         disabled={pending}
-        onClick={() => {
-          const stockLine = shipped
-            ? "This order has shipped, so its stock is not returned."
-            : "The stock it reserved goes back to the catalogue.";
-          if (
-            !window.confirm(
-              `Delete order ${orderReference(id)} permanently?\n\n${stockLine}\n\n` +
-                `Cancel the order instead if you want to keep the record.`
-            )
-          ) {
-            return;
-          }
+        onClick={async () => {
+          const confirmed = await confirm({
+            title: `Delete order ${orderReference(id)} permanently?`,
+            body: (
+              <>
+                <p>This erases the order and its lines. It cannot be undone.</p>
+                <p>
+                  {shipped
+                    ? "This order has shipped, so its stock is not returned."
+                    : "The stock it reserved goes back to the catalogue."}
+                </p>
+              </>
+            ),
+            hint: "Cancel the order instead if you want to keep the record.",
+            confirmLabel: "Delete order",
+          });
+          if (!confirmed) return;
+
           setError(null);
           startTransition(async () => {
             const result = await deleteOrder(id);
@@ -183,6 +201,8 @@ export function OrderDeleteButton({
           {shipped ? "Shipped stock is not returned." : "Its stock returns to the catalogue."}
         </p>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, RotateCcw, Trash2, UserMinus } from "lucide-react";
 import { remove, setStatus } from "@/lib/inbox/api";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 /**
  * The two things the panel can do to one subscriber, in one component because
@@ -32,6 +33,7 @@ export function SubscriberRowActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
   const endpoint = `/api/admin/subscribers/${id}`;
   const subscribed = status === "subscribed";
@@ -57,12 +59,18 @@ export function SubscriberRowActions({
       )
     );
 
-  const erase = () => {
-    const confirmed = window.confirm(
-      `Delete ${email} from the list permanently?\n\n` +
-        `Unsubscribing keeps the address on file so it is never mailed again. ` +
-        `Deleting forgets it, so a future signup or import can put it back on the list.`
-    );
+  const erase = async () => {
+    const confirmed = await confirm({
+      title: `Delete ${email} from the list permanently?`,
+      body: (
+        <p>
+          Deleting forgets the address, so a future signup or import can put it back on the
+          list.
+        </p>
+      ),
+      hint: "Unsubscribing keeps it on file instead, so it is never mailed again.",
+      confirmLabel: "Delete subscriber",
+    });
     if (!confirmed) return;
     run(() => remove(endpoint, "Could not delete the subscriber."));
   };
@@ -107,6 +115,8 @@ export function SubscriberRowActions({
           {error}
         </p>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

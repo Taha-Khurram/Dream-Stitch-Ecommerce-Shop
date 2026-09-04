@@ -9,7 +9,7 @@ import { RevenueTable } from "@/components/admin/RevenueTable";
 import type { RevenuePoint } from "@/components/admin/revenue";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
-import { OPEN_STATUSES } from "@/lib/orders/lifecycle";
+import { OPEN_STATUSES, REVENUE_STATUSES } from "@/lib/orders/lifecycle";
 import { OPEN_MESSAGE_STATUSES } from "@/lib/inbox/lifecycle";
 import { isMissingInstall } from "@/lib/inbox/install";
 import { AlertTriangle, ArrowRight, Inbox as InboxIcon, Mail } from "lucide-react";
@@ -155,7 +155,12 @@ async function readStats(): Promise<DashboardStats> {
       .select("id", { count: "exact", head: true })
       .lte("stock", LOW_STOCK_AT),
     supabase.from("customers").select("id", { count: "exact", head: true }),
-    supabase.from("orders").select("total_amount").neq("status", "cancelled").limit(200),
+    /* Fulfilled only — the same set revenue_recognition.sql sums. */
+    supabase
+      .from("orders")
+      .select("total_amount")
+      .in("status", [...REVENUE_STATUSES])
+      .limit(200),
   ]);
 
   const amounts = (billable.data ?? []).map((row: { total_amount: number | string }) =>
@@ -182,8 +187,8 @@ async function Stats() {
 
   /* The three the brief leads on come first; the operational tiles follow. */
   const revenueNote = stats.exact
-    ? "All orders, excluding cancelled"
-    : "Across the last 200 orders";
+    ? "Fulfilled orders only"
+    : "Across the last 200 fulfilled orders";
 
   return (
     <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -191,7 +196,9 @@ async function Stats() {
       <Stat
         label="Average order value"
         value={formatPrice(stats.avgOrderValue)}
-        note={stats.exact ? "Revenue ÷ orders billed" : "Across the last 200 orders"}
+        note={
+          stats.exact ? "Revenue ÷ fulfilled orders" : "Across the last 200 fulfilled orders"
+        }
       />
       <Stat
         label="Total orders"
@@ -379,7 +386,7 @@ async function readRevenueSeries(): Promise<RevenuePoint[]> {
     .from("orders")
     .select("created_at, total_amount")
     .gte("created_at", since)
-    .neq("status", "cancelled");
+    .in("status", [...REVENUE_STATUSES]);
 
   const byDay = new Map(spine.map((point) => [point.day, point]));
 

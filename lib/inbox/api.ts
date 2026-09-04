@@ -1,7 +1,11 @@
 /**
- * Calling the inbox's admin endpoints from the browser.
+ * Calling the panel's admin endpoints from the browser.
  *
- * Five client components mutate a message or a subscriber, and without this
+ * It began with the inbox and the customer book uses it too — the contract is
+ * about the shape of the answer, not about what is being changed.
+ *
+ * Several client components mutate a message, a subscriber or a customer, and
+ * without this
  * each one would carry its own copy of the same fetch: set the header, stringify
  * the body, try the JSON parse, work out whether it went through, invent a
  * sentence for the case where it did not. Copies drift, and the one that drifts
@@ -58,7 +62,7 @@ export function setStatus(url: string, status: string, fallback: string): Promis
   );
 }
 
-/** Erase a message or a subscriber. */
+/** Erase a message, a subscriber or a customer. */
 export function remove(url: string, fallback: string): Promise<InboxResult> {
   return request(url, { method: "DELETE" }, fallback);
 }

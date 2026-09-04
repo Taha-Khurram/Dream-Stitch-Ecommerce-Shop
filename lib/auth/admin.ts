@@ -17,13 +17,10 @@ import type { Profile } from "@/types/ecommerce";
  * answer one question. Same contract as `getSiteContent()`.
  */
 export const getProfile = cache(async (): Promise<Profile | null> => {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getAuthUser();
   if (!user) return null;
+
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from("profiles")
@@ -32,6 +29,48 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     .single();
 
   return (data as Profile) ?? null;
+});
+
+/** The signed-in GoTrue user, cached so the reads below share one round trip. */
+const getAuthUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
+/** What the storefront chrome needs: who is signed in, and may they see /admin. */
+export interface Account {
+  email: string | null;
+  isAdmin: boolean;
+}
+
+/**
+ * Who is signed in — answered from the *session*, not from the `profiles` row.
+ *
+ * The two are not the same thing, and treating them as one is what put the
+ * shop into a sign-in loop: a Google account created before
+ * `on_auth_user_created` existed held a perfectly valid session with no
+ * profile row behind it, `getProfile()` answered null, and the header drew
+ * itself signed-out with a Sign In link. The only move the page offered was to
+ * sign in again — which worked, produced another good session, and rendered
+ * signed-out again.
+ *
+ * A missing profile now costs the display name and the admin link, which is
+ * all it should ever have cost. `getProfile()` keeps its own contract, because
+ * the admin gate genuinely does need the row.
+ */
+export const getAccount = cache(async (): Promise<Account | null> => {
+  const user = await getAuthUser();
+  if (!user) return null;
+
+  const profile = await getProfile();
+
+  return {
+    email: profile?.email ?? user.email ?? null,
+    isAdmin: profile?.role === "admin",
+  };
 });
 
 export async function isAdmin(): Promise<boolean> {

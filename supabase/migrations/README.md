@@ -22,6 +22,7 @@ prefix. This table is the ordering.
 | 8 | `order_lifecycle.sql` | 1, 3, 6 — widened `orders.status` CHECK, admin policies |
 | 9 | `inbox_schema.sql` | 3 — newsletter + contact tables |
 | 10 | `order_item_variants.sql` | 1 — `order_items.size` + the made-to-measure columns |
+| 11 | `revenue_recognition.sql` | 6, 8 — dashboard revenue counts fulfilled orders only |
 
 Optional, run at any point after their dependency:
 

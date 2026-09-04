@@ -27,6 +27,7 @@
   --color-purple-deep: #4a2170;
   --color-aubergine: #3d1c56;
   --color-sale: #b3261e;
+  --color-sale-deep: #8f1c16;
   --color-jade: #2f6b4f;
 
   --font-display: var(--font-prata), "Prata", "Hoefler Text", Georgia, serif;
@@ -483,6 +484,23 @@ body {
 .sheet-top[data-state="open"]     { animation: sheet-in-top    var(--duration-base) var(--ease-out-expo) both; }
 .sheet-top[data-state="closed"]   { animation: sheet-out-top   var(--duration-fast) ease-in both; }
 
+/* The admin's confirmation dialog. It arrives from just below and a hair
+   small, so it reads as landing over the page rather than having always been
+   part of it — but briefly: this is a question standing between someone and
+   their work, and a slow entrance is a slow answer. Keep the closed duration
+   in step with EXIT_MS in ConfirmDialog.tsx. */
+@keyframes dialog-in {
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes dialog-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(0, 6px, 0) scale(0.985); }
+}
+
+.dialog-panel[data-state="open"]   { animation: dialog-in  var(--duration-base) var(--ease-out-expo) both; }
+.dialog-panel[data-state="closed"] { animation: dialog-out 160ms ease-in both; }
+
 /* The WhatsApp concierge panel. A keyframe pair rather than a transition
    between two class sets, because the panel is now unmounted while closed —
    a freshly mounted element has no previous value to transition from, but a
@@ -631,6 +649,7 @@ body {
   .sheet-right[data-state],
   .sheet-left[data-state],
   .sheet-top[data-state],
+  .dialog-panel[data-state],
   .wa-panel[data-state] { animation-duration: 1ms !important; }
 
   /* The skeleton sheen is slowed, not removed: it is the only signal

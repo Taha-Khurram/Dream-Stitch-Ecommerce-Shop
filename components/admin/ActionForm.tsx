@@ -4,6 +4,7 @@ import React, { useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import type { ActionResult } from "@/app/admin/actions";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 /**
  * Wraps a server action so every admin form reports success or failure the
@@ -77,22 +78,34 @@ export function DeleteButton({
   onDelete,
   label = "Delete",
   confirmMessage = "Delete this permanently?",
+  confirmBody,
+  confirmLabel,
 }: {
   onDelete: () => Promise<ActionResult>;
   label?: string;
+  /** The question itself. Kept short — it is the dialog's heading. */
   confirmMessage?: string;
+  /** What saying yes actually costs, when it is worth spelling out. */
+  confirmBody?: React.ReactNode;
+  confirmLabel?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
   return (
     <div className="flex flex-col items-end gap-1.5">
       <button
         type="button"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm(confirmMessage)) return;
+        onClick={async () => {
+          const confirmed = await confirm({
+            title: confirmMessage,
+            body: confirmBody,
+            confirmLabel: confirmLabel ?? label,
+          });
+          if (!confirmed) return;
           setError(null);
           startTransition(async () => {
             const result = await onDelete();
@@ -106,6 +119,7 @@ export function DeleteButton({
         {pending ? "Deleting…" : label}
       </button>
       {error && <p className="max-w-xs text-right text-[12px] text-sale">{error}</p>}
+      {confirmDialog}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check, Loader2, Trash2 } from "lucide-react";
 import { remove, setStatus } from "@/lib/inbox/api";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 import {
   MESSAGE_STATUSES,
   MESSAGE_OPENED_STATUS,
@@ -164,13 +165,15 @@ export function MessageDeleteButton({ id, onDeleted }: { id: string; onDeleted?:
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { confirm, confirmDialog } = useConfirm();
 
-  const confirmAndDelete = () => {
-    const confirmed = window.confirm(
-      `Delete message ${messageReference(id)} permanently?\n\n` +
-        `This erases what the customer wrote and cannot be undone. ` +
-        `Archive it instead if you only want it out of the way.`
-    );
+  const confirmAndDelete = async () => {
+    const confirmed = await confirm({
+      title: `Delete message ${messageReference(id)} permanently?`,
+      body: <p>This erases what the customer wrote, and cannot be undone.</p>,
+      hint: "Archive it instead if you only want it out of the way.",
+      confirmLabel: "Delete message",
+    });
     if (!confirmed) return;
 
     setError(null);
@@ -211,6 +214,8 @@ export function MessageDeleteButton({ id, onDeleted }: { id: string; onDeleted?:
           Erases the message for good. Archive it instead to keep the record.
         </p>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

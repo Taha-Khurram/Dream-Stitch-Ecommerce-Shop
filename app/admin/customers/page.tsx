@@ -5,7 +5,8 @@ import { AdminHeading } from "@/components/admin/AdminHeading";
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { buildPageHref, lastPageFor, parseWindow, rangeFor, type PerPage } from "@/lib/pagination";
-import { Mail, Phone } from "lucide-react";
+import { CustomerRowActions } from "@/components/admin/CustomerActions";
+import { Download, Mail, Phone } from "lucide-react";
 import type { Customer } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,17 @@ export default async function AdminCustomersPage({
       <AdminHeading
         title="Customers"
         copy="Everyone on the books, newest first. Accounts and guest records alike."
+        action={
+          /* A plain anchor, not a Link: the response is a file, and letting the
+             router try to navigate to it would do nothing at all. */
+          <a
+            href="/api/admin/customers/export"
+            className="btn-outline inline-flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" strokeWidth={1.75} />
+            Export CSV
+          </a>
+        }
       />
 
       <Suspense key={`${page}:${perPage}`} fallback={<CustomersTableSkeleton />}>
@@ -95,6 +107,9 @@ async function CustomersTable({ page, perPage }: { page: number; perPage: PerPag
                   {head}
                 </th>
               ))}
+              <th className="admin-th pb-3 text-right">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -132,6 +147,14 @@ async function CustomersTable({ page, perPage }: { page: number; perPage: PerPag
                     })}
                   </td>
                   <td className="py-3.5 tabular-nums text-ink-soft">{orderCount}</td>
+                  <td className="py-3.5 text-right">
+                    <CustomerRowActions
+                      id={customer.id}
+                      name={customer.name}
+                      email={customer.email}
+                      orderCount={orderCount}
+                    />
+                  </td>
                 </tr>
               );
             })}
@@ -163,6 +186,7 @@ function CustomersTableSkeleton() {
             <Skeleton className="h-3 w-48" />
             <Skeleton className="ml-auto h-3 w-24" />
             <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-6 w-8" />
           </div>
         ))}
       </div>

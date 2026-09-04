@@ -16,7 +16,9 @@ export function ProductRowActions({ id, name }: { id: string; name: string }) {
       </Link>
       <DeleteButton
         label="Delete"
-        confirmMessage={`Delete “${name}”? This cannot be undone.`}
+        confirmMessage={`Delete “${name}”?`}
+        confirmBody={<p>The product and its imagery leave the store. This cannot be undone.</p>}
+        confirmLabel="Delete product"
         onDelete={() => deleteProduct(id)}
       />
     </div>

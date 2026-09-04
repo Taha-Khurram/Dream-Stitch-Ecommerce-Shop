@@ -66,7 +66,7 @@ export function RevenueChartCanvas({ data }: { data: RevenuePoint[] }) {
         <p className="text-[13px] tabular-nums text-ink-soft">{formatPrice(total)} total</p>
       </div>
       <p className="admin-hint mt-1">
-        Cancelled orders excluded. Days with no orders show as zero.
+        Fulfilled orders only, dated by when they were placed. Days with none show as zero.
       </p>
 
       <div className="mt-5 h-[260px] w-full">

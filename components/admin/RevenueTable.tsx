@@ -20,8 +20,8 @@ export function RevenueTable({ data }: { data: RevenuePoint[] }) {
       <div className="mt-2 overflow-x-auto border border-line bg-white">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">
-            Revenue and order count for each of the last seven days, cancelled orders
-            excluded.
+            Revenue and fulfilled order count for each of the last seven days. Orders
+            not yet fulfilled are not counted.
           </caption>
           <thead>
             <tr className="border-b border-line">

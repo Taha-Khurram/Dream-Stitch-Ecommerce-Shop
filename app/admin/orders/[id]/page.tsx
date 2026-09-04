@@ -99,43 +99,39 @@ export default async function AdminOrderDetailPage({
             ))}
           </ul>
 
-          <dl className="mt-6 ml-auto max-w-xs space-y-2 text-sm">
-            <div className="flex justify-between gap-6">
-              <dt className="text-muted">Items</dt>
-              <dd className="tabular-nums text-ink">{formatPrice(itemsTotal)}</dd>
-            </div>
-            <div className="flex justify-between gap-6">
-              <dt className="text-muted">Delivery</dt>
-              <dd className="tabular-nums text-ink">
-                {delivery > 0 ? formatPrice(delivery) : "Free"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-6 border-t border-line pt-2">
-              <dt className="font-medium text-ink">Total</dt>
-              <dd className="font-medium tabular-nums text-ink">
-                {formatPrice(order.total_amount)}
-              </dd>
-            </div>
-          </dl>
-
           <section className="mt-10 border-t border-line pt-6">
             <h2 className="admin-section-title">Deliver to</h2>
             {address ? (
-              <address className="mt-3 space-y-1 text-sm not-italic leading-relaxed text-ink-soft">
-                <p className="text-ink">{address.fullName}</p>
-                <p>{address.streetAddress}</p>
-                <p>
-                  {address.city}
-                  {address.state ? `, ${address.state}` : ""} {address.postalCode}
-                </p>
-                <p>{address.country}</p>
-                {address.phone && <p className="pt-1">{address.phone}</p>}
-                {address.email && (
-                  <a href={`mailto:${address.email}`} className="link-rule block text-purple">
-                    {address.email}
-                  </a>
-                )}
-              </address>
+              /* Field by field, under the labels the buyer filled in at
+                 checkout. Run together as one postal block it reads fine in a
+                 country you already know and is guesswork everywhere else —
+                 "Test, Punjab 38000" does not say which line was typed as the
+                 city, and whoever packs the parcel should not have to guess. */
+              <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+                <AddressField label="Full Name" value={address.fullName} />
+                <AddressField
+                  label="Phone"
+                  value={address.phone}
+                  href={
+                    address.phone ? `tel:${address.phone.replace(/\s+/g, "")}` : undefined
+                  }
+                />
+                <AddressField
+                  label="Email"
+                  value={address.email}
+                  href={address.email ? `mailto:${address.email}` : undefined}
+                  className="sm:col-span-2"
+                />
+                <AddressField
+                  label="Address"
+                  value={address.streetAddress}
+                  className="sm:col-span-2"
+                />
+                <AddressField label="City" value={address.city} />
+                <AddressField label="Province" value={address.state} />
+                <AddressField label="Postal Code" value={address.postalCode} />
+                <AddressField label="Country" value={address.country} />
+              </dl>
             ) : (
               <p className="mt-3 text-sm text-muted">No address recorded.</p>
             )}
@@ -162,6 +158,31 @@ export default async function AdminOrderDetailPage({
             </div>
           </section>
 
+          {/* Accepting an order is a commitment to a number, so the number sits
+              next to the button that does it rather than a scroll away in the
+              items column. */}
+          <section className="border-t border-line pt-6">
+            <h2 className="admin-section-title">Summary</h2>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between gap-6">
+                <dt className="text-muted">Items</dt>
+                <dd className="tabular-nums text-ink">{formatPrice(itemsTotal)}</dd>
+              </div>
+              <div className="flex justify-between gap-6">
+                <dt className="text-muted">Delivery</dt>
+                <dd className="tabular-nums text-ink">
+                  {delivery > 0 ? formatPrice(delivery) : "Free"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-6 border-t border-line pt-2">
+                <dt className="font-medium text-ink">Total</dt>
+                <dd className="text-base font-medium tabular-nums text-ink">
+                  {formatPrice(order.total_amount)}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
           {/* Intake already offers a delete of its own, so this only shows for
               an order that is on the books — last in the column, behind a
               rule, because it is the one control here you cannot undo. */}
@@ -179,6 +200,44 @@ export default async function AdminOrderDetailPage({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One checkout field, under the label the buyer saw when they typed it.
+ *
+ * A field left blank is shown as blank rather than dropped — a hole in the
+ * record is worth seeing before you ring someone up, and a list that silently
+ * omits what it does not have looks identical to a complete one.
+ */
+function AddressField({
+  label,
+  value,
+  href,
+  className,
+}: {
+  label: string;
+  value?: string | null;
+  href?: string;
+  className?: string;
+}) {
+  const text = value?.trim();
+
+  return (
+    <div className={className}>
+      <dt className="admin-label">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-ink">
+        {!text ? (
+          <span className="text-faint">Not provided</span>
+        ) : href ? (
+          <a href={href} className="link-rule text-purple">
+            {text}
+          </a>
+        ) : (
+          text
+        )}
+      </dd>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/auth/api";
 import { INBOX_NOT_INSTALLED, isMissingInstall } from "@/lib/inbox/install";
 import { isSubscriberStatus } from "@/lib/inbox/lifecycle";
+import { csvDocument, csvHeaders } from "@/lib/admin/csv";
 
 export const dynamic = "force-dynamic";
 
@@ -60,52 +61,17 @@ export async function GET(request: Request) {
   }
 
   const rows = data ?? [];
-  const truncated = rows.length === MAX_ROWS;
 
-  const header = ["email", "status", "source", "subscribed_at", "unsubscribed_at"];
-  const lines = [header.join(",")];
-
-  for (const row of rows) {
-    lines.push(
-      [row.email, row.status, row.source, row.created_at, row.unsubscribed_at ?? ""]
-        .map(csvCell)
-        .join(",")
-    );
-  }
-
-  if (truncated) {
-    lines.push(
-      csvCell(`Truncated at ${MAX_ROWS} rows — narrow by status or export from the database.`)
-    );
-  }
+  const file = csvDocument(
+    ["email", "status", "source", "subscribed_at", "unsubscribed_at"],
+    rows.map((row) => [row.email, row.status, row.source, row.created_at, row.unsubscribed_at ?? ""]),
+    rows.length === MAX_ROWS
+      ? `Truncated at ${MAX_ROWS} rows — narrow by status or export from the database.`
+      : undefined
+  );
 
   const stamp = new Date().toISOString().slice(0, 10);
   const name = `dream-stitch-subscribers-${status ?? "all"}-${stamp}.csv`;
 
-  /* A BOM, so Excel opens it as UTF-8 rather than guessing at the codepage and
-     mangling any address with an accent in it. */
-  return new NextResponse(`\uFEFF${lines.join("\r\n")}\r\n`, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${name}"`,
-      "Cache-Control": "no-store",
-      "X-Row-Count": String(rows.length),
-    },
-  });
-}
-
-/**
- * One cell, quoted and made safe to open.
- *
- * Two separate problems. The quoting is ordinary CSV: double the quotes, wrap
- * the field. The leading apostrophe is formula injection — a cell beginning
- * `=`, `+`, `-`, `@`, tab or CR is evaluated as a formula by Excel and Sheets,
- * and every value in this file was typed by a member of the public into a form
- * on the internet. `=HYPERLINK(...)` in an address field is a real phishing
- * vector against whoever opens the export.
- */
-function csvCell(value: string | null | undefined): string {
-  const raw = String(value ?? "");
-  const guarded = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
-  return `"${guarded.replace(/"/g, '""')}"`;
+  return new NextResponse(file, { headers: csvHeaders(name, rows.length) });
 }
