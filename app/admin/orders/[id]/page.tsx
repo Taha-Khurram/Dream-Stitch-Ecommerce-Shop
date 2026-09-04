@@ -90,6 +90,18 @@ export default async function AdminOrderDetailPage({
               <Printer className="h-4 w-4" strokeWidth={1.75} />
               Packing slip
             </Link>
+            {/* The other sheet this order produces: the customer's copy, with
+                the workroom's half left off and the prices put on. Same tab
+                behaviour, and named for who it is for rather than what it is,
+                because that is the choice being made at this button. */}
+            <Link
+              href={`/admin/orders/${order.id}/receipt`}
+              target="_blank"
+              className="btn-outline inline-flex items-center gap-2"
+            >
+              <Printer className="h-4 w-4" strokeWidth={1.75} />
+              Customer receipt
+            </Link>
             <Link href="/admin/orders" className="btn-outline">
               Back
             </Link>

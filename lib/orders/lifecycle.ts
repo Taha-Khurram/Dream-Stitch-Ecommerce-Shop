@@ -107,6 +107,46 @@ export function statusLabel(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+/**
+ * The same six states, said to the person who placed the order.
+ *
+ * `STATUS_COPY` above is written for the panel, and it is written about the
+ * panel's work: "Opened" means an admin accepted the order into the workflow,
+ * and "New — waiting to be accepted or deleted" is a sentence about a queue the
+ * customer cannot see and should not be reading about their own purchase. None
+ * of it is secret, exactly; it is simply internal, and a receipt that prints it
+ * is a receipt that leaks how the shop is run.
+ *
+ * So the vocabulary is translated once, here, next to the thing it translates —
+ * the same arrangement `lib/discounts/lifecycle.ts` uses for outcomes the
+ * shopper sees versus the ones the panel does.
+ *
+ * `pending` is the one worth reading twice. Internally it covers stock, payment
+ * and "waiting on the customer", which are three different conversations; to
+ * the customer it is one fact — the order has paused and somebody will be in
+ * touch — because which of the three it is arrives by phone, not on paper.
+ */
+export const CUSTOMER_STATUS_COPY: Record<OrderStatus, string> = {
+  new: "Order received",
+  opened: "Being prepared",
+  pending: "On hold — we will be in touch",
+  processing: "Being packed",
+  closed: "Delivered",
+  cancelled: "Cancelled",
+};
+
+/**
+ * How a status reads on a customer-facing document.
+ *
+ * Falls back to the internal label for a status written by a migration this
+ * build has not seen, on the same grounds as `statusLabel()`: a row that does
+ * not fit the vocabulary still has to print something true.
+ */
+export function customerStatusLabel(status: string): string {
+  if (isOrderStatus(status)) return CUSTOMER_STATUS_COPY[status];
+  return statusLabel(status);
+}
+
 /** `#3F9A21C4` — the short reference the panel identifies an order by. */
 export function orderReference(id: string): string {
   return `#${id.slice(0, 8).toUpperCase()}`;

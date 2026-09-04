@@ -707,9 +707,13 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PACKING SLIP — app/(print)/admin/orders/[id]/print
+   PRINTED SHEETS — app/(print)/admin/orders/[id]/…
 
-   On screen the slip is a preview: a sheet of paper on a tinted
+   Two documents come off an order and both are built on these
+   rules: /print, the packing slip the workroom cuts from, and
+   /receipt, the customer's copy that goes in the parcel.
+
+   On screen either one is a preview: a sheet of paper on a tinted
    ground, so what you check an order against and what comes out of
    the printer are the same document. Everything below is what the
    printer needs on top of that.

@@ -8,6 +8,7 @@ import { getSiteContent } from "@/lib/api/content";
 import { resolveCutSpec, type CutSpec } from "@/lib/size-guide";
 import { formatPrice } from "@/lib/format";
 import { orderReference, statusLabel } from "@/lib/orders/lifecycle";
+import { readOrderDocument, orderTotals } from "@/lib/admin/order-document";
 import {
   convertCustomSize,
   customSizeFromRow,
@@ -17,7 +18,7 @@ import {
 import { BRAND } from "@/lib/constants";
 import { PrintButton } from "@/components/admin/PrintButton";
 import type { SiteContent } from "@/lib/content/defaults";
-import type { CustomSize, Order, OrderItem } from "@/types/ecommerce";
+import type { CustomSize, OrderItem } from "@/types/ecommerce";
 import { ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,6 @@ export async function generateMetadata({
   return { title: `Packing slip ${orderReference(id)} | ${BRAND.name}` };
 }
 
-const ORDER_COLUMNS = "id, status, total_amount, created_at, shipping_address";
-
-const ITEMS_EMBED =
-  "order_items(id, product_id, quantity, unit_price, size, custom_width, custom_height, custom_unit, " +
-  "product:products(id, name, fabric, pieces, category:categories(slug)))";
 
 /**
  * The order as a sheet of paper.
@@ -65,47 +61,21 @@ export default async function OrderPackingSlipPage({
 
   /* The chart and the store details are as much a part of the sheet as the
      order is, and none of the three needs either of the others. */
-  const [{ data }, settings, content] = await Promise.all([
-    /* The two discount columns arrive with discount_codes.sql, and PostgREST
-       rejects the whole select if either is unknown — so they are asked for,
-       and a failure falls back to the shape this sheet has always read. Same
-       contract as the order screen this prints from. */
-    (async () => {
-      const withDiscount = await supabase
-        .from("orders")
-        .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
-        .eq("id", id)
-        .single();
-
-      if (!withDiscount.error) return withDiscount;
-
-      return supabase
-        .from("orders")
-        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
-        .eq("id", id)
-        .single();
-    })(),
+  const [order, settings, content] = await Promise.all([
+    readOrderDocument(supabase, id),
     getSettings(),
     getSiteContent(),
   ]);
 
-  if (!data) notFound();
+  if (!order) notFound();
 
-  const order = data as unknown as Order;
   const items = order.order_items ?? [];
   const address = order.shipping_address;
   const reference = orderReference(order.id);
 
-  const itemsTotal = items.reduce(
-    (sum, item) => sum + Number(item.unit_price) * item.quantity,
-    0
-  );
-  const discount = Number(order.discount_amount ?? 0);
-  /* Derived, and the discount has to come back out of it: `total_amount` is
-     net of the code (see types/ecommerce.ts), so subtracting the line total
-     alone reports a negative delivery charge on every discounted order — which
-     prints as "Free" on a sheet whose figures then do not add up. */
-  const delivery = Number(order.total_amount) - itemsTotal + discount;
+  /* Shared with the customer's receipt, so the two sheets that come off one
+     order cannot disagree about what it was worth. See lib/admin/order-document. */
+  const { itemsTotal, discount, delivery } = orderTotals(order);
   const pieces = items.reduce((count, item) => count + item.quantity, 0);
   const toMeasure = items.filter((item) => customSizeFromRow(item)).length;
 
