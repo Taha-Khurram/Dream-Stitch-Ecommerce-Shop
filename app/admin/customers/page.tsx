@@ -1,14 +1,16 @@
 import React, { Suspense } from "react";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
+import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
+import { buildPageHref, lastPageFor, parseWindow, rangeFor, type PerPage } from "@/lib/pagination";
 import { Mail, Phone } from "lucide-react";
 import type { Customer } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 25;
+const BASE_PATH = "/admin/customers";
 
 /**
  * The customer book — everyone the store has a record for, whether or not
@@ -19,10 +21,9 @@ const PAGE_SIZE = 25;
 export default async function AdminCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; per?: string }>;
 }) {
-  const { page = "1" } = await searchParams;
-  const current = Math.max(1, Number(page) || 1);
+  const { page, perPage } = parseWindow(await searchParams);
 
   return (
     <div>
@@ -31,8 +32,8 @@ export default async function AdminCustomersPage({
         copy="Everyone on the books, newest first. Accounts and guest records alike."
       />
 
-      <Suspense key={current} fallback={<CustomersTableSkeleton />}>
-        <CustomersTable page={current} />
+      <Suspense key={`${page}:${perPage}`} fallback={<CustomersTableSkeleton />}>
+        <CustomersTable page={page} perPage={perPage} />
       </Suspense>
     </div>
   );
@@ -41,15 +42,15 @@ export default async function AdminCustomersPage({
 /** `orders(count)` is a PostgREST aggregate embed — an array of one row. */
 type CustomerRow = Customer & { orders?: { count: number }[] };
 
-async function CustomersTable({ page }: { page: number }) {
+async function CustomersTable({ page, perPage }: { page: number; perPage: PerPage }) {
   const supabase = await createClient();
-  const from = (page - 1) * PAGE_SIZE;
+  const { from, to } = rangeFor(page, perPage);
 
   const { data, count, error } = await supabase
     .from("customers")
     .select("id, name, email, phone, created_at, orders(count)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+    .range(from, to);
 
   /* The table only exists once dashboard_schema.sql has been applied. Say so
      plainly rather than rendering an empty list that looks like no customers. */
@@ -67,7 +68,13 @@ async function CustomersTable({ page }: { page: number }) {
 
   const customers = (data ?? []) as CustomerRow[];
   const total = count ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const lastPage = lastPageFor(total, perPage);
+
+  /* Past the end — a stale bookmark, or records removed since. Land on the
+     last real page rather than an empty book. */
+  if (customers.length === 0 && total > 0 && page > lastPage) {
+    redirect(buildPageHref(BASE_PATH, undefined, { page: lastPage, perPage }));
+  }
 
   if (customers.length === 0) {
     return (
@@ -79,12 +86,7 @@ async function CustomersTable({ page }: { page: number }) {
 
   return (
     <>
-      <p className="admin-hint mt-4 text-right">
-        {total} {total === 1 ? "customer" : "customers"}
-        {lastPage > 1 && ` · page ${page} of ${lastPage}`}
-      </p>
-
-      <div className="mt-2 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
@@ -137,54 +139,34 @@ async function CustomersTable({ page }: { page: number }) {
         </table>
       </div>
 
-      {lastPage > 1 && (
-        <div className="mt-6 flex items-center justify-between gap-4">
-          <PageLink page={page - 1} disabled={page <= 1}>
-            Previous
-          </PageLink>
-          <PageLink page={page + 1} disabled={page >= lastPage}>
-            Next
-          </PageLink>
-        </div>
-      )}
+      <Pagination
+        basePath={BASE_PATH}
+        total={total}
+        page={page}
+        perPage={perPage}
+        noun="customer"
+      />
     </>
   );
 }
 
-function PageLink({
-  page,
-  disabled,
-  children,
-}: {
-  page: number;
-  disabled: boolean;
-  children: React.ReactNode;
-}) {
-  if (disabled) {
-    return <span className="text-[13px] text-faint">{children}</span>;
-  }
-
-  return (
-    <Link
-      href={page <= 1 ? "/admin/customers" : `/admin/customers?page=${page}`}
-      className="text-[13px] font-medium text-ink-soft transition-colors hover:text-purple"
-    >
-      {children}
-    </Link>
-  );
-}
+/* Capped rather than tracking `perPage`: see the note in ProductsTable. */
+const SKELETON_ROWS = 10;
 
 function CustomersTableSkeleton() {
   return (
-    <div className="mt-8 border border-line" aria-hidden>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
-          <Skeleton className="h-3 w-32" />
-          <Skeleton className="h-3 w-48" />
-          <Skeleton className="ml-auto h-3 w-24" />
-          <Skeleton className="h-3 w-8" />
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="mt-4 border border-line" aria-hidden>
+        {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-48" />
+            <Skeleton className="ml-auto h-3 w-24" />
+            <Skeleton className="h-3 w-8" />
+          </div>
+        ))}
+      </div>
+      <PaginationSkeleton />
+    </>
   );
 }

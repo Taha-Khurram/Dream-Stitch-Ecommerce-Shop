@@ -1,10 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProductRowActions } from "@/components/admin/ProductRowActions";
+import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
+import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
 import type { Product } from "@/types/ecommerce";
 
 /**
@@ -14,9 +17,12 @@ import type { Product } from "@/types/ecommerce";
  * into a 40x48 box. Two changes fix that: the query is a page at a time, and
  * the thumbnails go through next/image so the browser is handed something the
  * size of the box it is being painted into.
+ *
+ * How big that page is now comes from the URL rather than a constant here, so
+ * the window belongs to whoever is reading the list — see lib/pagination.
  */
 
-export const PAGE_SIZE = 25;
+const BASE_PATH = "/admin/products";
 
 /* Exactly what the table renders. `slug` was being fetched and never read. */
 const COLUMNS =
@@ -29,9 +35,17 @@ const LOW_STOCK_AT = 5;
 const THUMB_W = 40;
 const THUMB_H = 48;
 
-export async function ProductsTable({ query, page }: { query: string; page: number }) {
+export async function ProductsTable({
+  query,
+  page,
+  perPage,
+}: {
+  query: string;
+  page: number;
+  perPage: PerPage;
+}) {
   const supabase = await createClient();
-  const from = (page - 1) * PAGE_SIZE;
+  const { from, to } = rangeFor(page, perPage);
 
   /* `count: "exact"` rides along on the same request, so the pager is sized
      without a second round trip. */
@@ -39,14 +53,26 @@ export async function ProductsTable({ query, page }: { query: string; page: numb
     .from("products")
     .select(COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+    .range(from, to);
 
   if (query) request = request.ilike("name", `%${query}%`);
 
   const { data, count } = await request;
   const products = (data ?? []) as unknown as Product[];
   const total = count ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const lastPage = lastPageFor(total, perPage);
+
+  /**
+   * Asked for a page past the end — a stale bookmark, a hand-edited URL, or
+   * rows deleted since the link was made. Land on the last real page instead
+   * of an empty table claiming there is no catalogue. Terminates: the page we
+   * redirect to exists by definition, since `total > 0`.
+   */
+  if (products.length === 0 && total > 0 && page > lastPage) {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    redirect(buildPageHref(BASE_PATH, params, { page: lastPage, perPage }));
+  }
 
   if (products.length === 0) {
     return (
@@ -63,12 +89,7 @@ export async function ProductsTable({ query, page }: { query: string; page: numb
 
   return (
     <>
-      <p className="admin-hint mt-4 text-right">
-        {total} {total === 1 ? "product" : "products"}
-        {lastPage > 1 && ` · page ${page} of ${lastPage}`}
-      </p>
-
-      <div className="mt-2 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[46rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
@@ -143,57 +164,44 @@ export async function ProductsTable({ query, page }: { query: string; page: numb
         </table>
       </div>
 
-      {lastPage > 1 && <Pager query={query} page={page} lastPage={lastPage} />}
+      <Pagination
+        basePath={BASE_PATH}
+        total={total}
+        page={page}
+        perPage={perPage}
+        noun="product"
+      />
     </>
   );
 }
 
-/** Plain links, so paging costs no client JavaScript and each page is a URL. */
-function Pager({ query, page, lastPage }: { query: string; page: number; lastPage: number }) {
-  const href = (n: number) => {
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (n > 1) params.set("page", String(n));
-    const search = params.toString();
-    return search ? `/admin/products?${search}` : "/admin/products";
-  };
+/**
+ * Matches the real table's row rhythm so the swap does not jump.
+ *
+ * The row count is capped rather than tracking `perPage` exactly: at 50 rows a
+ * faithful skeleton is several screens of placeholder nobody scrolls to, and
+ * the extra nodes are paid for on every single navigation. Ten fills the fold,
+ * which is the only part that has to look right.
+ */
+const SKELETON_ROWS = 10;
 
-  const step =
-    "border border-line px-4 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple";
-
-  return (
-    <nav aria-label="Pagination" className="mt-6 flex items-center justify-between gap-4">
-      {page > 1 ? (
-        <Link href={href(page - 1)} className={step} rel="prev">
-          Previous
-        </Link>
-      ) : (
-        <span aria-hidden />
-      )}
-      {page < lastPage && (
-        <Link href={href(page + 1)} className={`${step} ml-auto`} rel="next">
-          Next
-        </Link>
-      )}
-    </nav>
-  );
-}
-
-/** Matches the real table's row rhythm so the swap does not jump. */
 export function ProductsTableSkeleton() {
   return (
-    <div className="mt-6 border border-line" aria-hidden>
-      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
-          <Skeleton className="h-12 w-10 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <Skeleton className="h-3 w-1/3" />
-            <Skeleton className="mt-2 h-2.5 w-20" />
+    <>
+      <div className="mt-4 border border-line" aria-hidden>
+        {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
+            <Skeleton className="h-12 w-10 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="mt-2 h-2.5 w-20" />
+            </div>
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-5 w-16" />
           </div>
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-5 w-16" />
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      <PaginationSkeleton />
+    </>
   );
 }

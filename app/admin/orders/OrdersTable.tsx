@@ -1,12 +1,15 @@
 import React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusPill } from "@/components/admin/StatusPill";
+import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
+import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
 import type { Order } from "@/types/ecommerce";
 
-export const PAGE_SIZE = 25;
+export const BASE_PATH = "/admin/orders";
 
 /** `all` is not a column value — it means "no status filter". */
 export const FILTERS = ["all", "pending", "processing", "completed", "cancelled"] as const;
@@ -14,22 +17,43 @@ export type OrderFilter = (typeof FILTERS)[number];
 
 const COLUMNS = "id, status, total_amount, created_at, shipping_address";
 
-export async function OrdersTable({ status, page }: { status: OrderFilter; page: number }) {
+/** The status filter as search params — the shape the pager URLs build on. */
+export function filterParams(status: OrderFilter): URLSearchParams {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  return params;
+}
+
+export async function OrdersTable({
+  status,
+  page,
+  perPage,
+}: {
+  status: OrderFilter;
+  page: number;
+  perPage: PerPage;
+}) {
   const supabase = await createClient();
-  const from = (page - 1) * PAGE_SIZE;
+  const { from, to } = rangeFor(page, perPage);
 
   let request = supabase
     .from("orders")
     .select(COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+    .range(from, to);
 
   if (status !== "all") request = request.eq("status", status);
 
   const { data, count } = await request;
   const orders = (data ?? []) as Order[];
   const total = count ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const lastPage = lastPageFor(total, perPage);
+
+  /* Past the end — stale link, or the filter narrowed since. Show the last
+     real page rather than an empty table implying there are no such orders. */
+  if (orders.length === 0 && total > 0 && page > lastPage) {
+    redirect(buildPageHref(BASE_PATH, filterParams(status), { page: lastPage, perPage }));
+  }
 
   if (orders.length === 0) {
     return (
@@ -41,12 +65,7 @@ export async function OrdersTable({ status, page }: { status: OrderFilter; page:
 
   return (
     <>
-      <p className="admin-hint mt-4 text-right">
-        {total} {total === 1 ? "order" : "orders"}
-        {lastPage > 1 && ` · page ${page} of ${lastPage}`}
-      </p>
-
-      <div className="mt-2 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
@@ -86,61 +105,35 @@ export async function OrdersTable({ status, page }: { status: OrderFilter; page:
         </table>
       </div>
 
-      {lastPage > 1 && <Pager status={status} page={page} lastPage={lastPage} />}
+      <Pagination
+        basePath={BASE_PATH}
+        total={total}
+        page={page}
+        perPage={perPage}
+        noun="order"
+      />
     </>
   );
 }
 
-function Pager({
-  status,
-  page,
-  lastPage,
-}: {
-  status: OrderFilter;
-  page: number;
-  lastPage: number;
-}) {
-  const href = (n: number) => {
-    const params = new URLSearchParams();
-    if (status !== "all") params.set("status", status);
-    if (n > 1) params.set("page", String(n));
-    const search = params.toString();
-    return search ? `/admin/orders?${search}` : "/admin/orders";
-  };
-
-  const step =
-    "border border-line px-4 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple";
-
-  return (
-    <nav aria-label="Pagination" className="mt-6 flex items-center justify-between gap-4">
-      {page > 1 ? (
-        <Link href={href(page - 1)} className={step} rel="prev">
-          Previous
-        </Link>
-      ) : (
-        <span aria-hidden />
-      )}
-      {page < lastPage && (
-        <Link href={href(page + 1)} className={`${step} ml-auto`} rel="next">
-          Next
-        </Link>
-      )}
-    </nav>
-  );
-}
+/* Capped rather than tracking `perPage`: see the note in ProductsTable. */
+const SKELETON_ROWS = 10;
 
 export function OrdersTableSkeleton() {
   return (
-    <div className="mt-6 border border-line" aria-hidden>
-      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3 w-32" />
-          <Skeleton className="ml-auto h-3 w-24" />
-          <Skeleton className="h-5 w-20" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="mt-4 border border-line" aria-hidden>
+        {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-4">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="ml-auto h-3 w-24" />
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </div>
+      <PaginationSkeleton />
+    </>
   );
 }

@@ -1,10 +1,13 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/AdminHeading";
+import { buildPageHref, parseWindow } from "@/lib/pagination";
 import {
+  BASE_PATH,
   FILTERS,
   OrdersTable,
   OrdersTableSkeleton,
+  filterParams,
   type OrderFilter,
 } from "./OrdersTable";
 
@@ -14,13 +17,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; per?: string }>;
 }) {
-  const { status, page = "1" } = await searchParams;
+  const { status, ...paging } = await searchParams;
   const active: OrderFilter = FILTERS.includes(status as OrderFilter)
     ? (status as OrderFilter)
     : "all";
-  const current = Math.max(1, Number(page) || 1);
+  const { page, perPage } = parseWindow(paging);
 
   return (
     <div>
@@ -30,7 +33,10 @@ export default async function AdminOrdersPage({
         {FILTERS.map((filter) => (
           <Link
             key={filter}
-            href={filter === "all" ? "/admin/orders" : `/admin/orders?status=${filter}`}
+            /* Switching filter starts at page 1 — the old page number means
+               nothing against a different set — but keeps the row count, which
+               is a preference about this screen rather than about these rows. */
+            href={buildPageHref(BASE_PATH, filterParams(filter), { page: 1, perPage })}
             aria-current={active === filter ? "page" : undefined}
             className={`px-3.5 py-2 text-[13px] font-medium capitalize transition-colors ${
               active === filter
@@ -43,8 +49,8 @@ export default async function AdminOrdersPage({
         ))}
       </div>
 
-      <Suspense key={`${active}:${current}`} fallback={<OrdersTableSkeleton />}>
-        <OrdersTable status={active} page={current} />
+      <Suspense key={`${active}:${page}:${perPage}`} fallback={<OrdersTableSkeleton />}>
+        <OrdersTable status={active} page={page} perPage={perPage} />
       </Suspense>
     </div>
   );

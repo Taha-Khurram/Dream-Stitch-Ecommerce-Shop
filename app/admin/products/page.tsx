@@ -2,12 +2,13 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { Plus, Search } from "lucide-react";
-import { ProductsTable, ProductsTableSkeleton, PAGE_SIZE } from "./ProductsTable";
+import { DEFAULT_PER_PAGE, PER_PAGE_PARAM, buildPageHref, parseWindow } from "@/lib/pagination";
+import { ProductsTable, ProductsTableSkeleton } from "./ProductsTable";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; per?: string }>;
 }
 
 /**
@@ -17,9 +18,9 @@ interface PageProps {
  * Postgres is still working. The table streams in behind the boundary.
  */
 export default async function AdminProductsPage({ searchParams }: PageProps) {
-  const { q = "", page = "1" } = await searchParams;
+  const { q = "", ...paging } = await searchParams;
   const query = q.trim();
-  const current = Math.max(1, Number(page) || 1);
+  const { page, perPage } = parseWindow(paging);
 
   return (
     <div>
@@ -34,8 +35,14 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
       />
 
       {/* A plain GET form: no client JavaScript, and every result set stays a
-          real URL that can be bookmarked or reloaded. */}
+          real URL that can be bookmarked or reloaded. Submitting rebuilds the
+          query string from these fields alone, which is exactly right for
+          `page` — a new search belongs at the top — and exactly wrong for the
+          row count, hence the hidden field carrying it across. */}
       <form className="mt-6 flex flex-wrap items-center gap-3" action="/admin/products">
+        {perPage !== DEFAULT_PER_PAGE && (
+          <input type="hidden" name={PER_PAGE_PARAM} value={perPage} />
+        )}
         <div className="relative w-full max-w-sm">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
@@ -57,17 +64,20 @@ export default async function AdminProductsPage({ searchParams }: PageProps) {
           Search
         </button>
         {query && (
-          <Link href="/admin/products" className="text-[13px] text-muted hover:text-purple">
+          <Link
+            href={buildPageHref("/admin/products", undefined, { page: 1, perPage })}
+            className="text-[13px] text-muted hover:text-purple"
+          >
             Clear
           </Link>
         )}
       </form>
 
-      {/* Keyed so a new search or page remounts the boundary and shows the
-          skeleton again, rather than leaving the previous rows sitting there
-          looking like live results. */}
-      <Suspense key={`${query}:${current}`} fallback={<ProductsTableSkeleton />}>
-        <ProductsTable query={query} page={current} />
+      {/* Keyed so a new search, page or row count remounts the boundary and
+          shows the skeleton again, rather than leaving the previous rows
+          sitting there looking like live results. */}
+      <Suspense key={`${query}:${page}:${perPage}`} fallback={<ProductsTableSkeleton />}>
+        <ProductsTable query={query} page={page} perPage={perPage} />
       </Suspense>
     </div>
   );
