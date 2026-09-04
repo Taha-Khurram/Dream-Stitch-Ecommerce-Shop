@@ -5,14 +5,14 @@ import type { Metadata } from "next";
 import { getProductById, getProductBySlug, getProducts } from "@/lib/api/products";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductOptions } from "@/components/products/ProductOptions";
-import { ProductAccordions } from "@/components/products/ProductAccordions";
+import { ProductAccordions, type AccordionPanel } from "@/components/products/ProductAccordions";
 import { ProductCard } from "@/components/products/ProductCard";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { formatPrice, discountPercent } from "@/lib/format";
 import { getSettings } from "@/lib/api/settings";
 import { BRAND } from "@/lib/constants";
-import { productImages, productSubtitle, isMadeToOrder } from "@/lib/product-attributes";
-import { ChevronRight, Star, Truck, RotateCcw, Scissors } from "lucide-react";
+import { productImages, productSubtitle } from "@/lib/product-attributes";
+import { ChevronRight, Star, Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +30,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   return {
     title: `${product.name} | ${BRAND.name}`,
+    // The fallback used to quote a PKR 5,000 delivery threshold that no longer
+    // came from anywhere — Settings owns that number, and a search snippet is
+    // no place to hardcode a second copy of it.
     description:
-      product.description ||
-      `Shop ${product.name} at ${BRAND.name} ${BRAND.suffix}. Free delivery over PKR 5,000. Custom sizes made to order.`,
+      product.description || `${product.name} — ${BRAND.name} ${BRAND.suffix}.`,
     openGraph: {
       title: product.name,
       description: product.description || undefined,
@@ -58,12 +60,51 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   const images = productImages(product);
   const subtitle = productSubtitle(product);
-  const madeToOrder = isMadeToOrder(product);
   const discount = discountPercent(Number(product.price), product.compare_at_price);
   const soldOut = product.stock <= 0;
   const lowStock = product.stock > 0 && product.stock <= 3;
 
   const articleCode = product.id.replace(/-/g, "").slice(0, 10).toUpperCase();
+
+  // Both numbers come from Settings → General, so a threshold of 0 really does
+  // mean every order ships free and there is no fee to name.
+  const deliveryPromise =
+    settings.free_shipping_threshold > 0
+      ? `Free delivery on orders above ${formatPrice(settings.free_shipping_threshold)} · ${formatPrice(
+          settings.shipping_fee
+        )} below that`
+      : "Free delivery on every order";
+
+  /* Only the attributes this product actually carries. A row with nothing
+     behind it is dropped, and a panel with no rows left never renders — the
+     page says what the catalogue knows and stops there. */
+  const specs = [
+    { label: "Fabric", value: product.fabric },
+    { label: "Set includes", value: product.pieces },
+    { label: "Sizing", value: product.sizes?.length ? product.sizes.join(", ") : null },
+  ].filter((spec): spec is { label: string; value: string } => Boolean(spec.value));
+
+  const panels: AccordionPanel[] = [];
+
+  if (product.description) {
+    panels.push({ title: "Description", body: <p>{product.description}</p> });
+  }
+
+  if (specs.length > 0) {
+    panels.push({
+      title: "Fabric & Size",
+      body: (
+        <dl className="space-y-2.5">
+          {specs.map((spec) => (
+            <div key={spec.label} className="flex justify-between gap-6">
+              <dt className="text-muted">{spec.label}</dt>
+              <dd className="text-right text-ink">{spec.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ),
+    });
+  }
 
   return (
     <div className="pb-20">
@@ -140,7 +181,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           {(soldOut || lowStock) && (
             <p className={`mt-5 text-[12px] ${soldOut ? "text-muted" : "text-purple"}`}>
               {soldOut
-                ? "Sold out for now — or have this cut to your size on order."
+                ? "Sold out."
                 : `Only ${product.stock} left in stock.`}
             </p>
           )}
@@ -149,93 +190,23 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
             <ProductOptions product={product} />
           </div>
 
-          {/* Service promises */}
+          {/* The one promise the store actually configures: the delivery rates
+              from Settings → General. Transit times, the exchange window and
+              the made-to-measure offer used to sit here too, invented in this
+              file with nothing behind them — a claim the shop could not change
+              and could not honour. */}
           <ul className="mt-8 space-y-3 border-y border-line py-6 text-[12px] text-ink-soft">
             <li className="flex items-start gap-3">
               <Truck className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
-              <span>
-                Free nationwide delivery on orders above {formatPrice(settings.free_shipping_threshold)} ·
-                3–5 working days
-              </span>
-            </li>
-            <li className="flex items-start gap-3">
-              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
-              <span>7-day exchange — unused and in its original packing</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <Scissors className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.3} />
-              <span>
-                {madeToOrder
-                  ? "Cut to your measurements — dispatched in 7–10 working days"
-                  : "Need a different size? We stitch this fabric to any bed"}
-              </span>
+              <span>{deliveryPromise}</span>
             </li>
           </ul>
 
-          <div className="mt-8">
-            <ProductAccordions
-              panels={[
-                {
-                  title: "Description",
-                  body: (
-                    <p>
-                      {product.description ||
-                        "A considered everyday set from the Dream Stitch table — cut generously, hemmed twice and checked by hand before it is folded."}
-                    </p>
-                  ),
-                },
-                {
-                  title: "Fabric & Size",
-                  body: (
-                    <dl className="space-y-2.5">
-                      <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Fabric</dt>
-                        <dd className="text-right text-ink">{product.fabric ?? "Pure Cotton"}</dd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Set includes</dt>
-                        <dd className="text-right text-ink">
-                          {product.pieces ?? "1 bedsheet + 2 pillow covers"}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Sizing</dt>
-                        <dd className="text-right text-ink">
-                          {madeToOrder ? "Cut to your measurements" : "King and single in stock"}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-6">
-                        <dt className="text-muted">Custom sizing</dt>
-                        <dd className="text-right text-ink">Available on request</dd>
-                      </div>
-                    </dl>
-                  ),
-                },
-                {
-                  title: "Care",
-                  body: (
-                    <ul className="list-inside list-disc space-y-1.5">
-                      <li>Machine wash cold with like colours, mild detergent, no bleach</li>
-                      <li>Tumble dry low, or line dry in shade — direct sun fades colour</li>
-                      <li>Warm iron if needed; satin weaves press best on the reverse</li>
-                      <li>Wash before first use to bring the cotton to its softest</li>
-                    </ul>
-                  ),
-                },
-                {
-                  title: "Delivery & Exchange",
-                  body: (
-                    <p>
-                      Dispatched within 24 hours from Karachi. Delivery in 3–5 working days
-                      nationwide, free above {formatPrice(settings.free_shipping_threshold)}. Exchange
-                      within 7 days, unused and in its original packing. Made-to-order sets are cut
-                      for one bed only, so they are not exchangeable.
-                    </p>
-                  ),
-                },
-              ]}
-            />
-          </div>
+          {panels.length > 0 && (
+            <div className="mt-8">
+              <ProductAccordions panels={panels} />
+            </div>
+          )}
         </div>
       </div>
 
