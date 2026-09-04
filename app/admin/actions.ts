@@ -67,6 +67,15 @@ function text(value: FormDataEntryValue | null): string {
   return String(value ?? "").trim();
 }
 
+/**
+ * A write that Postgres accepted but that touched no row. RLS filters rather
+ * than raises, so this is what a rejected policy looks like from here — and
+ * reporting it beats the alternative the settings form used to show: "saved",
+ * followed by the old values on the next render.
+ */
+const NOT_WRITTEN =
+  "Saved nothing — the database refused the write. Check that you are signed in as an admin.";
+
 /* ── Products ───────────────────────────────────────────────────────────── */
 
 export async function saveProduct(formData: FormData): Promise<ActionResult> {
@@ -428,21 +437,32 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: "Keep at least one announcement line." };
   }
 
-  const { error } = await supabase
+  // Upsert, not update: a database whose `store_settings` seed never ran has
+  // no row 1, and `UPDATE ... WHERE id = 1` against it matches nothing and
+  // reports no error — the save looked fine and the form came back showing
+  // the compiled-in defaults again.
+  const { data: saved, error } = await supabase
     .from("store_settings")
-    .update({
-      brand_email: text(formData.get("brand_email")) || null,
-      brand_phone: text(formData.get("brand_phone")) || null,
-      brand_whatsapp: text(formData.get("brand_whatsapp")) || null,
-      brand_address: text(formData.get("brand_address")) || null,
-      free_shipping_threshold: threshold,
-      shipping_fee: fee,
-      announcements,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", 1);
+    .upsert(
+      {
+        id: 1,
+        brand_email: text(formData.get("brand_email")) || null,
+        brand_phone: text(formData.get("brand_phone")) || null,
+        brand_whatsapp: text(formData.get("brand_whatsapp")) || null,
+        brand_address: text(formData.get("brand_address")) || null,
+        free_shipping_threshold: threshold,
+        shipping_fee: fee,
+        announcements,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    )
+    .select("id");
 
   if (error) return { ok: false, message: `Could not save: ${error.message}` };
+  if (!saved || saved.length === 0) {
+    return { ok: false, message: NOT_WRITTEN };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true, message: "Settings saved." };
@@ -458,10 +478,10 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
 async function writeContent(content: SiteContent, message: string): Promise<ActionResult> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("store_settings")
-    .update({ content, updated_at: new Date().toISOString() })
-    .eq("id", 1);
+    .upsert({ id: 1, content, updated_at: new Date().toISOString() }, { onConflict: "id" })
+    .select("id");
 
   if (error) {
     return {
@@ -471,6 +491,10 @@ async function writeContent(content: SiteContent, message: string): Promise<Acti
           ? "The content column is missing — run admin_schema.sql against this database first."
           : `Could not save: ${error.message}`,
     };
+  }
+
+  if (!saved || saved.length === 0) {
+    return { ok: false, message: NOT_WRITTEN };
   }
 
   // Header, footer and every page read this, so the whole tree is stale.
