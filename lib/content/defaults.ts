@@ -111,11 +111,12 @@ export const DEFAULT_CONTENT = {
         },
       ],
     },
-    fabrics: {
+    featured: {
       enabled: true,
-      eyebrow: "Shop By",
-      title: "Fabric",
-      copy: "Three weaves, one standard. Photographed on the same bed, in the same light, so the cloth is the only thing that changes.",
+      eyebrow: "Featured",
+      title: "Picked For You",
+      copy: "The sets we would put on our own beds — photographed on the same bed, in the same light, so the cloth is the only thing that changes.",
+      action_label: "View All Bedsheets",
     },
     custom_banner: {
       enabled: true,

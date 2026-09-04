@@ -222,17 +222,17 @@
   }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
 
-  /* Fabric rail: an unbroken right-to-left drift that rests under the cursor */
-  .fabric-rail-viewport { overflow: hidden; }
-  .fabric-rail {
+  /* Featured rail: an unbroken right-to-left drift that rests under the cursor */
+  .featured-rail-viewport { overflow: hidden; }
+  .featured-rail {
     display: flex;
     width: max-content;
     gap: var(--rail-gap);
-    animation: fabric-drift var(--rail-duration, 40s) linear infinite;
+    animation: featured-drift var(--rail-duration, 40s) linear infinite;
     will-change: transform;
   }
-  .fabric-rail-viewport:hover .fabric-rail,
-  .fabric-rail-viewport:focus-within .fabric-rail {
+  .featured-rail-viewport:hover .featured-rail,
+  .featured-rail-viewport:focus-within .featured-rail {
     animation-play-state: paused;
   }
 
@@ -258,7 +258,7 @@
 
 /* Half the track is a copy of the other half, so landing one half to the left
    is seamless — the extra half-gap is what the shared column gap adds. */
-@keyframes fabric-drift {
+@keyframes featured-drift {
   from { transform: translate3d(0, 0, 0); }
   to   { transform: translate3d(calc(-50% - (var(--rail-gap) / 2)), 0, 0); }
 }
@@ -543,8 +543,8 @@ body {
   html { scroll-behavior: auto; }
 
   .marquee-track { animation: none; }
-  .fabric-rail { animation: none; }
-  .fabric-rail-viewport { overflow-x: auto; }
+  .featured-rail { animation: none; }
+  .featured-rail-viewport { overflow-x: auto; }
   .animate-fade-up { animation: none; }
   .auth-rise,
   .auth-panel-in,

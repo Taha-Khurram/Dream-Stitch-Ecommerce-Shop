@@ -216,11 +216,11 @@ export const CONTENT_TABS: TabSpec[] = [
         ],
       },
       {
-        path: "home.fabrics",
-        title: "Shop by fabric",
-        copy: "The tiles themselves come from your categories.",
+        path: "home.featured",
+        title: "Featured rail",
+        copy: "The cards are the products you tick as Featured under Products.",
         toggle: true,
-        fields: HEADING_FIELDS,
+        fields: [...HEADING_FIELDS, { key: "action_label", label: "Link label", kind: "text" }],
       },
       {
         path: "home.custom_banner",

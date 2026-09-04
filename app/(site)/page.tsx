@@ -1,12 +1,12 @@
 import React from "react";
 import Link from "next/link";
-import { getCategories } from "@/lib/api/products";
+import { getFeaturedProducts } from "@/lib/api/products";
 import { getSiteContent } from "@/lib/api/content";
 import { HeroCarousel, type HeroSlide } from "@/components/home/HeroCarousel";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Section, HEADING_GAP } from "@/components/layout/Section";
 import { HomeClosing } from "@/components/home/HomeClosing";
-import { FabricCarousel, type FabricTile } from "@/components/home/FabricCarousel";
+import { FeaturedRail } from "@/components/home/FeaturedRail";
 import { Ruler, Droplets, Layers, Hand } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,14 @@ export const dynamic = "force-dynamic";
 const PROMISE_ICONS = [Layers, Ruler, Droplets, Hand];
 
 export default async function HomePage() {
-  const [categories, content] = await Promise.all([getCategories(), getSiteContent()]);
-  const { hero, fabrics, custom_banner: banner, promises, newsletter } = content.home;
+  /* 12 is two full passes of the rail on the widest layout — past that the
+     drift is long enough that nobody reaches the end anyway. */
+  const [featured, content] = await Promise.all([
+    getFeaturedProducts(12),
+    getSiteContent(),
+  ]);
+  const { hero, featured: featuredCopy, custom_banner: banner, promises, newsletter } =
+    content.home;
 
   const slides: HeroSlide[] = hero.slides.map((slide) => ({
     eyebrow: slide.eyebrow,
@@ -31,30 +37,31 @@ export default async function HomePage() {
     align: slide.align === "center" ? "center" : "left",
   }));
 
-  /* The rail is the categories table and nothing else — every card's name,
-     blurb and photo is whatever /admin/categories holds, in the order
-     `getCategories` returns (by name). A category with no image yet shows its
-     card without one rather than borrowing a stock photo. */
-  const tiles: FabricTile[] = categories.map((c) => ({
-    name: c.name,
-    slug: c.slug,
-    imageUrl: c.image_url,
-    blurb: c.description ?? "",
-  }));
-
   return (
     <>
       {hero.enabled && slides.length > 0 && <HeroCarousel slides={slides} />}
 
-      {/* ── Shop by fabric ──────────────────────────────────── plain ── */}
-      {/* No categories means no rail — a heading over an empty track reads as
-          a broken section, so the whole block sits out until one exists. */}
-      {fabrics.enabled && tiles.length > 0 && (
+      {/* ── Featured ────────────────────────────────────────── plain ── */}
+      {/* Nothing featured means no rail — a heading over an empty track reads
+          as a broken section, so the whole block sits out until a product is
+          marked featured in the admin. */}
+      {featuredCopy.enabled && featured.length > 0 && (
         <Section>
-          <SectionHeading eyebrow={fabrics.eyebrow} title={fabrics.title} copy={fabrics.copy} />
+          <SectionHeading
+            eyebrow={featuredCopy.eyebrow}
+            title={featuredCopy.title}
+            copy={featuredCopy.copy}
+            /* Blank the label in the admin and the link goes away, rather
+               than rendering an empty one. */
+            action={
+              featuredCopy.action_label
+                ? { label: featuredCopy.action_label, href: "/shop" }
+                : undefined
+            }
+          />
 
           <div className={HEADING_GAP} data-reveal="fade" suppressHydrationWarning>
-            <FabricCarousel tiles={tiles} />
+            <FeaturedRail products={featured} />
           </div>
         </Section>
       )}
