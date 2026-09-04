@@ -12,7 +12,9 @@ import {
 } from "@/components/admin/OrderIntakeActions";
 import { formatPrice } from "@/lib/format";
 import { isAwaitingReview, orderReference } from "@/lib/orders/lifecycle";
-import type { Order } from "@/types/ecommerce";
+import { customSizeFromRow, formatCustomSize } from "@/lib/custom-size";
+import type { Order, OrderItem } from "@/types/ecommerce";
+import { Ruler } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,7 @@ export default async function AdminOrderDetailPage({
   const { data } = await supabase
     .from("orders")
     .select(
-      "id, status, total_amount, created_at, updated_at, shipping_address, order_items(id, quantity, unit_price, product:products(id, name, image_url, fabric))"
+      "id, status, total_amount, created_at, updated_at, shipping_address, order_items(id, quantity, unit_price, size, custom_width, custom_height, custom_unit, product:products(id, name, image_url, fabric))"
     )
     .eq("id", id)
     .single();
@@ -88,6 +90,7 @@ export default async function AdminOrderDetailPage({
                   <p className="mt-0.5 text-[12px] text-muted">
                     {item.product?.fabric} · {formatPrice(item.unit_price)} × {item.quantity}
                   </p>
+                  <ItemVariant item={item} />
                 </div>
                 <span className="shrink-0 text-sm tabular-nums text-ink">
                   {formatPrice(Number(item.unit_price) * item.quantity)}
@@ -178,4 +181,32 @@ export default async function AdminOrderDetailPage({
       </div>
     </div>
   );
+}
+
+/**
+ * What was actually ordered on this line.
+ *
+ * Measurements are the whole point of a made-to-measure order, so they are
+ * called out rather than tucked into the grey subtitle — this is the number
+ * someone reads off the screen and cuts against. Lines from before
+ * `order_item_variants.sql` carry no size at all, and say so instead of
+ * silently implying a standard one.
+ */
+function ItemVariant({ item }: { item: OrderItem }) {
+  const custom = customSizeFromRow(item);
+
+  if (custom) {
+    return (
+      <p className="mt-1.5 inline-flex items-center gap-1.5 border border-purple/30 bg-lilac px-2 py-1 text-[11px] font-medium text-purple">
+        <Ruler className="h-3 w-3" />
+        Cut to measure · {formatCustomSize(custom)}
+      </p>
+    );
+  }
+
+  if (item.size) {
+    return <p className="mt-1 text-[12px] text-ink-soft">Size {item.size}</p>;
+  }
+
+  return <p className="mt-1 text-[12px] text-faint">Size not recorded</p>;
 }

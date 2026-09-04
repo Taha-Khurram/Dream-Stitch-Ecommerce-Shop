@@ -15,6 +15,7 @@ import {
   orderReference,
 } from "@/lib/orders/lifecycle";
 import type { Order } from "@/types/ecommerce";
+import { Ruler } from "lucide-react";
 
 export const BASE_PATH = "/admin/orders";
 
@@ -34,7 +35,12 @@ export function filterLabel(filter: OrderFilter): string {
   return filter === "all" ? "All" : STATUS_COPY[filter].label;
 }
 
-const COLUMNS = "id, status, total_amount, created_at, shipping_address";
+/* `order_items(custom_width)` is joined for one reason: an order that has to
+   be cut to measurement is handled differently from one that ships off the
+   shelf, and the admin should see which is which while scanning the queue
+   rather than by opening every row. */
+const COLUMNS =
+  "id, status, total_amount, created_at, shipping_address, order_items(custom_width)";
 
 /** The status filter as search params — the shape the pager URLs build on. */
 export function filterParams(status: OrderFilter): URLSearchParams {
@@ -112,6 +118,12 @@ export async function OrdersTable({
                   >
                     {orderReference(order.id)}
                   </Link>
+                  {order.order_items?.some((item) => item.custom_width != null) && (
+                    <span className="ml-2 inline-flex items-center gap-1 border border-purple/30 bg-lilac px-1.5 py-0.5 align-middle text-[10px] font-medium text-purple">
+                      <Ruler className="h-2.5 w-2.5" />
+                      Custom
+                    </span>
+                  )}
                 </td>
                 <td className="py-3.5 text-ink-soft">{order.shipping_address?.fullName ?? "—"}</td>
                 <td className="py-3.5 text-muted">

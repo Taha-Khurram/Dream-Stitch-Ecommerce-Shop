@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import { amountToFreeShipping } from "@/lib/pricing";
+import { formatCustomSize } from "@/lib/custom-size";
 import { BRAND } from "@/lib/constants";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import {
@@ -77,17 +78,20 @@ export function CartDrawer() {
     setLoading(true);
 
     try {
-      // Cart lines are per size; the order API works per product, so merge them
-      const merged = new Map<string, number>();
-      items.forEach((item) => {
-        merged.set(item.productId, (merged.get(item.productId) ?? 0) + item.quantity);
-      });
-
+      /* One payload entry per cart *line*. These used to be merged down to one
+         entry per product, which threw away the size — and would throw away a
+         set of measurements, leaving an order nobody could cut. The server
+         re-checks stock across the lines of a product. */
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: [...merged].map(([productId, quantity]) => ({ productId, quantity })),
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            size: item.size ?? null,
+            custom: item.custom ?? null,
+          })),
           shippingAddress: address,
         }),
       });
@@ -267,7 +271,13 @@ export function CartDrawer() {
                           {item.name}
                         </Link>
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-                          {item.size && <span>Size {item.size}</span>}
+                          {item.custom ? (
+                            <span className="text-purple">
+                              Custom · {formatCustomSize(item.custom)}
+                            </span>
+                          ) : (
+                            item.size && <span>Size {item.size}</span>
+                          )}
                         </div>
                       </div>
 

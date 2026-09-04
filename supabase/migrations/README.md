@@ -21,6 +21,7 @@ prefix. This table is the ordering.
 | 7 | `presence_schema.sql` | 3 — live visitor table |
 | 8 | `order_lifecycle.sql` | 1, 3, 6 — widened `orders.status` CHECK, admin policies |
 | 9 | `inbox_schema.sql` | 3 — newsletter + contact tables |
+| 10 | `order_item_variants.sql` | 1 — `order_items.size` + the made-to-measure columns |
 
 Optional, run at any point after their dependency:
 

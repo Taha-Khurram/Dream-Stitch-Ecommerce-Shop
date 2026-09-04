@@ -5,13 +5,18 @@ import type { Product } from "@/types/ecommerce";
 import { AddToCartButton } from "./AddToCartButton";
 import { WishlistButton } from "./WishlistButton";
 import { SizeGuideDialog } from "./SizeGuideDialog";
-import Link from "next/link";
+import { CustomSizeFields, type CustomSizeDraft } from "./CustomSizeFields";
 import { productSizes, isMadeToOrder } from "@/lib/product-attributes";
+import { CUSTOM_SIZE_LABEL, parseCustomSize } from "@/lib/custom-size";
+import { Ruler, X } from "lucide-react";
 
 /**
- * Bed-size selection for the product page. A size must be chosen before the bag
- * accepts a stocked set; made-to-order sets skip the run and go through the
- * Custom Demand flow instead.
+ * Bed-size selection for the product page.
+ *
+ * Two ways to buy: a stocked size off the run, or this same design cut to the
+ * buyer's own mattress. Made-to-order products only have the second — they
+ * have no size run to pick from, and used to be told to "send us your
+ * measurements" with nowhere on the page to send them.
  */
 export function ProductOptions({ product }: { product: Product }) {
   const sizes = productSizes(product);
@@ -21,11 +26,44 @@ export function ProductOptions({ product }: { product: Product }) {
     madeToOrder || sizes.length === 1 ? sizes[0] : null
   );
 
+  // A made-to-order product is in custom mode from the start and cannot leave.
+  const [customOpen, setCustomOpen] = useState(madeToOrder);
+  const [draft, setDraft] = useState<CustomSizeDraft>({
+    width: "",
+    height: "",
+    unit: "in",
+  });
+  /* The measurement error only appears once they have actually tried to add —
+     typing the first digit of a width should not turn the field red. */
+  const [showError, setShowError] = useState(false);
+
   const soldOut = product.stock <= 0;
+  const parsed = customOpen ? parseCustomSize(draft.width, draft.height, draft.unit) : null;
+  const customSize = parsed?.ok ? parsed.value : null;
+
+  const openCustom = () => {
+    setCustomOpen(true);
+    setShowError(false);
+  };
+
+  const closeCustom = () => {
+    setCustomOpen(false);
+    setShowError(false);
+  };
+
+  /* What blocks the bag, in the order the buyer would hit it. `null` means the
+     line is ready to add. */
+  const blocker = customOpen
+    ? parsed && !parsed.ok
+      ? parsed.message
+      : null
+    : !size && !soldOut
+      ? "Please choose a bed size first."
+      : null;
 
   return (
     <div className="space-y-7">
-      {!madeToOrder && (
+      {!madeToOrder && !customOpen && (
         <div>
           <div className="flex items-center justify-between">
             <span className="eyebrow text-ink">
@@ -52,17 +90,47 @@ export function ProductOptions({ product }: { product: Product }) {
         </div>
       )}
 
-      {madeToOrder ? (
-        <p className="border-l-2 border-purple bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
-          Made to order. Send us your mattress width, length and the drop you want — we cut this
-          fabric to your numbers and dispatch in 7–10 working days.
-        </p>
+      {customOpen ? (
+        <div className="space-y-3">
+          {madeToOrder && (
+            <p className="border-l-2 border-purple bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
+              Made to order — this design is cut to your bed rather than to a stocked size.
+            </p>
+          )}
+
+          <CustomSizeFields
+            draft={draft}
+            onChange={(next) => {
+              setDraft(next);
+              setShowError(false);
+            }}
+            error={showError ? blocker : null}
+          />
+
+          {/* A stocked product can change its mind; a made-to-order one has no
+              size run to fall back to, so it gets no way out. */}
+          {!madeToOrder && (
+            <button
+              type="button"
+              onClick={closeCustom}
+              className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted transition-colors hover:text-ink"
+            >
+              <X className="h-3 w-3" />
+              Back to stocked sizes
+            </button>
+          )}
+        </div>
       ) : (
         <p className="border-l-2 border-purple bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
           Bed an odd size?{" "}
-          <Link href="/custom" className="link-rule font-medium text-purple">
+          <button
+            type="button"
+            onClick={openCustom}
+            className="link-rule inline-flex cursor-pointer items-center gap-1 font-medium text-purple"
+          >
+            <Ruler className="h-3 w-3" />
             Order this in a custom size
-          </Link>{" "}
+          </button>{" "}
           — same fabric, same finish, cut to your exact measurements.
         </p>
       )}
@@ -70,10 +138,16 @@ export function ProductOptions({ product }: { product: Product }) {
       <div className="flex items-stretch gap-3">
         <AddToCartButton
           product={product}
-          variant={{ size }}
-          requireSelection={
-            !madeToOrder && !size && !soldOut ? "Please choose a bed size first." : null
+          variant={
+            customOpen
+              ? { size: CUSTOM_SIZE_LABEL, custom: customSize }
+              : { size }
           }
+          label={customOpen ? "Add Custom Size to Bag" : "Add to Bag"}
+          requireSelection={blocker}
+          /* In custom mode the reason belongs against the fields it is about,
+             so the button hands it over instead of printing its own copy. */
+          onBlocked={customOpen ? () => setShowError(true) : undefined}
         />
         <div className="shrink-0">
           <WishlistButton productId={product.id} size="lg" />

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import type { CartItem, Product } from "@/types/ecommerce";
+import type { CartItem, CustomSize, Product } from "@/types/ecommerce";
+import { formatCustomSize } from "@/lib/custom-size";
 import {
   calcTax,
   calcShipping,
@@ -12,6 +13,8 @@ import {
 
 export interface VariantOptions {
   size?: string | null;
+  /** Set when the buyer asked for this design cut to their own bed. */
+  custom?: CustomSize | null;
 }
 
 interface CartContextType {
@@ -41,9 +44,15 @@ const CART_STORAGE_KEY = "dreamstitch_cart_v1";
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-/** Lines are keyed by product *and* size so two sizes stay separate rows. */
+/**
+ * Lines are keyed by product *and* variant so two sizes stay separate rows —
+ * and two different sets of measurements do too. Without the dimensions in the
+ * key, ordering an 82×78 and a 90×80 of the same sheet would collapse into one
+ * line of quantity 2, and only one of the two beds would get a sheet that fits.
+ */
 function lineIdFor(productId: string, variant?: VariantOptions): string {
-  return `${productId}::${variant?.size ?? ""}`;
+  const custom = variant?.custom ? formatCustomSize(variant.custom) : "";
+  return `${productId}::${variant?.size ?? ""}::${custom}`;
 }
 
 export function CartProvider({
@@ -124,6 +133,7 @@ export function CartProvider({
           maxStock: stockCap,
           categoryName: product.category?.name || null,
           size: variant?.size ?? null,
+          custom: variant?.custom ?? null,
         };
         return [...prevItems, newItem];
       });

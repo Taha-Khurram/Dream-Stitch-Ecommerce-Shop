@@ -73,28 +73,32 @@ export async function POST(request: Request) {
     // Create a lookup map for products
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    // Check inventory and calculate verified total amount
-    let subtotal = 0;
-    const verifiedOrderItems: {
-      product_id: string;
-      quantity: number;
-      unit_price: number;
-    }[] = [];
-
+    /* One product can arrive as several lines — a King, and the same design cut
+       to a bed that is not one. Stock is held per product, so it is checked
+       against the total across those lines; ordering 2 + 2 of a sheet with 3 in
+       stock has to fail, and checking each line alone would let it through. */
+    const orderedPerProduct = new Map<string, number>();
     for (const item of items) {
-      const dbProduct = productMap.get(item.productId);
+      orderedPerProduct.set(
+        item.productId,
+        (orderedPerProduct.get(item.productId) ?? 0) + item.quantity
+      );
+    }
+
+    for (const [productId, ordered] of orderedPerProduct) {
+      const dbProduct = productMap.get(productId);
 
       if (!dbProduct) {
         return NextResponse.json(
           {
             success: false,
-            error: `Product with ID ${item.productId} was not found`,
+            error: `Product with ID ${productId} was not found`,
           },
           { status: 404 }
         );
       }
 
-      if (dbProduct.stock < item.quantity) {
+      if (dbProduct.stock < ordered) {
         return NextResponse.json(
           {
             success: false,
@@ -103,14 +107,32 @@ export async function POST(request: Request) {
           { status: 409 }
         );
       }
+    }
 
-      const unitPrice = Number(dbProduct.price);
+    // Prices always come from the database, never from the payload.
+    let subtotal = 0;
+    const verifiedOrderItems: {
+      product_id: string;
+      quantity: number;
+      unit_price: number;
+      size: string | null;
+      custom_width: number | null;
+      custom_height: number | null;
+      custom_unit: string | null;
+    }[] = [];
+
+    for (const item of items) {
+      const unitPrice = Number(productMap.get(item.productId)!.price);
       subtotal += unitPrice * item.quantity;
 
       verifiedOrderItems.push({
         product_id: item.productId,
         quantity: item.quantity,
         unit_price: unitPrice,
+        size: item.size ?? null,
+        custom_width: item.custom?.width ?? null,
+        custom_height: item.custom?.height ?? null,
+        custom_unit: item.custom?.unit ?? null,
       });
     }
 
@@ -161,9 +183,7 @@ export async function POST(request: Request) {
     // 5. Insert Order Items attached to the created order
     const orderItemsWithOrderId = verifiedOrderItems.map((item) => ({
       order_id: newOrder.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
+      ...item,
     }));
 
     const { error: itemsInsertError } = await supabase
@@ -172,6 +192,14 @@ export async function POST(request: Request) {
 
     if (itemsInsertError) {
       console.error("Order items insertion failed:", itemsInsertError.message);
+
+      /* Same shape of problem as the status CHECK above: the variant columns
+         arrived after the table did, and without them every checkout fails. */
+      if (itemsInsertError.code === "42703" || itemsInsertError.code === "PGRST204") {
+        console.error(
+          "order_items rejected the variant columns. Run order_item_variants.sql."
+        );
+      }
       // Clean up the parent order on failure
       await supabase.from("orders").delete().eq("id", newOrder.id);
       return NextResponse.json(
@@ -183,15 +211,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Decrement product inventory for ordered items
-    for (const item of items) {
-      const dbProduct = productMap.get(item.productId);
+    // 6. Decrement inventory once per product, by its total across the lines
+    for (const [productId, ordered] of orderedPerProduct) {
+      const dbProduct = productMap.get(productId);
       if (dbProduct) {
-        const newStock = Math.max(0, dbProduct.stock - item.quantity);
-        await supabase
-          .from("products")
-          .update({ stock: newStock })
-          .eq("id", item.productId);
+        const newStock = Math.max(0, dbProduct.stock - ordered);
+        await supabase.from("products").update({ stock: newStock }).eq("id", productId);
       }
     }
 

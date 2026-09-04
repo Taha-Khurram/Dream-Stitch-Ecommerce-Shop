@@ -60,12 +60,29 @@ export interface Product {
   category?: Category | null;
 }
 
+/** Unit a made-to-measure order was given in. */
+export type CustomSizeUnit = "in" | "cm";
+
+/** Dimensions for a set cut to the buyer's own bed. See lib/custom-size.ts. */
+export interface CustomSize {
+  width: number;
+  height: number;
+  unit: CustomSizeUnit;
+}
+
 export interface OrderItem {
   id?: string;
   order_id?: string;
   product_id: string;
   quantity: number;
   unit_price: number;
+  /* ── Variant (present once order_item_variants.sql has run) ────────────── */
+  /** Bed size ordered, or `CUSTOM_SIZE_LABEL` when cut to measurement. Null on
+   *  rows written before the migration — unknown, rather than "no size". */
+  size?: string | null;
+  custom_width?: number | null;
+  custom_height?: number | null;
+  custom_unit?: CustomSizeUnit | null;
   product?: Product;
 }
 
@@ -131,14 +148,21 @@ export interface CartItem {
   quantity: number;
   maxStock: number;
   categoryName?: string | null;
-  /** Chosen variant, carried for display only — checkout aggregates by product. */
+  /** Chosen bed size, or `CUSTOM_SIZE_LABEL` for a made-to-measure line. */
   size?: string | null;
+  /** The buyer's own measurements, when `size` is `CUSTOM_SIZE_LABEL`. */
+  custom?: CustomSize | null;
 }
 
 export interface CheckoutPayload {
+  /** One entry per cart *line*, not per product: two sizes of the same sheet
+   *  are two orderable things, and the admin has to be able to tell them
+   *  apart on the packing slip. */
   items: {
     productId: string;
     quantity: number;
+    size?: string | null;
+    custom?: CustomSize | null;
   }[];
   shippingAddress: ShippingAddress;
 }

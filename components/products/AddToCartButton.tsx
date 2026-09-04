@@ -11,6 +11,9 @@ interface AddToCartButtonProps {
   variant?: VariantOptions;
   /** Blocks the click and shows this message instead of adding. */
   requireSelection?: string | null;
+  /** Called instead of showing the message inline, when the caller displays it
+   *  somewhere more useful — beside the field the buyer has to fix. */
+  onBlocked?: () => void;
   label?: string;
   size?: "sm" | "lg";
   fullWidth?: boolean;
@@ -21,6 +24,7 @@ export function AddToCartButton({
   product,
   variant,
   requireSelection = null,
+  onBlocked,
   label = "Add to Bag",
   size = "lg",
   fullWidth = true,
@@ -39,8 +43,12 @@ export function AddToCartButton({
     if (isOutOfStock || isMaxed) return;
 
     if (requireSelection) {
-      setWarning(requireSelection);
-      setTimeout(() => setWarning(null), 2400);
+      if (onBlocked) {
+        onBlocked();
+      } else {
+        setWarning(requireSelection);
+        setTimeout(() => setWarning(null), 2400);
+      }
       return;
     }
 

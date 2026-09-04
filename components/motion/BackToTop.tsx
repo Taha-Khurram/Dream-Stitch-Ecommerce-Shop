@@ -45,7 +45,7 @@ export function BackToTop() {
       aria-label="Back to top"
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
-      className={`fixed bottom-6 right-6 z-40 flex h-11 w-11 cursor-pointer items-center justify-center border border-line bg-white text-ink shadow-[0_16px_34px_-24px_rgba(42,27,51,0.7)] transition-[opacity,transform,background-color,color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-ink hover:text-white ${
+      className={`fixed right-[1.875rem] bottom-[5.75rem] z-40 flex h-11 w-11 cursor-pointer items-center justify-center border border-line bg-white text-ink shadow-[0_16px_34px_-24px_rgba(42,27,51,0.7)] transition-[opacity,transform,background-color,color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-ink hover:text-white ${
         visible
           ? "pointer-events-auto translate-y-0 opacity-100"
           : "pointer-events-none translate-y-3 opacity-0"

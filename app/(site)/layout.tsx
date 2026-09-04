@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/api/settings";
 import { getSiteContent } from "@/lib/api/content";
 import { getProfile } from "@/lib/auth/admin";
 import { BackToTop } from "@/components/motion/BackToTop";
+import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { PresenceBeacon } from "@/components/presence/PresenceBeacon";
 
 /** Storefront chrome. The (auth) and admin groups deliberately opt out of it. */
@@ -39,6 +40,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <CartDrawer />
         {content.footer.enabled && <SiteFooter settings={settings} content={content.footer} />}
         <BackToTop />
+        {/* Owner's number comes from /admin/settings, so it can change
+            without a deploy; the compiled-in constant is the fallback. */}
+        <WhatsAppFab phone={settings.brand_whatsapp} />
         {/* Renders nothing. Says "a tab is open here" so /admin can count it.
             Mounted on the layout rather than per page, so moving around the
             shop does not restart its clock. */}
