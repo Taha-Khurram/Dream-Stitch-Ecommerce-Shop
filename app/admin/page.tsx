@@ -9,7 +9,7 @@ import { RevenueTable } from "@/components/admin/RevenueTable";
 import { RangeTabs } from "@/components/admin/RangeTabs";
 import { Delta } from "@/components/admin/Delta";
 import type { RevenuePoint } from "@/components/admin/revenue";
-import { parseRange, rangeDays, rangeSpan, type Range } from "@/lib/admin/range";
+import { parseRange, rangeDays, rangeSpan } from "@/lib/admin/range";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { OPEN_STATUSES, REVENUE_STATUSES } from "@/lib/orders/lifecycle";
@@ -27,9 +27,9 @@ const LOW_STOCK_AT = 5;
 const RECENT_ORDERS = 5;
 
 /**
- * Four independent regions, four Suspense boundaries. The stats are one round
- * trip and land almost immediately; the chart and the two lists arrive when
- * they arrive, and none of them holds up another or the page frame.
+ * Four independent regions, four Suspense boundaries. The stats go in parallel
+ * and land almost immediately; the chart and the two lists arrive when they
+ * arrive, and none of them holds up another or the page frame.
  *
  * The reporting window comes out of the URL rather than out of state, so the
  * whole screen — tiles, chart and table — is rendered on the server for the

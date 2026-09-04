@@ -123,7 +123,7 @@ export async function OrdersTable({
         <table className="w-full min-w-[54rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
-              <th className="admin-th w-8 pb-3">
+              <th className="admin-th w-8 pb-3 pr-4">
                 <SelectAllCheckbox label="Select every order on this page" />
               </th>
               {["Order", "Customer", "Placed", "Status", "Total"].map((head) => (
@@ -141,11 +141,8 @@ export async function OrdersTable({
           <tbody>
             {orders.map((order) => (
               <tr key={order.id} className="border-b border-line transition-colors hover:bg-frost">
-                <td className="py-3.5">
-                  <RowCheckbox
-                    id={order.id}
-                    label={`Select order ${orderReference(order.id)}`}
-                  />
+                <td className="py-3.5 pr-4">
+                  <RowCheckbox id={order.id} label={`Select order ${orderReference(order.id)}`} />
                 </td>
                 <td className="py-3.5">
                   <Link
