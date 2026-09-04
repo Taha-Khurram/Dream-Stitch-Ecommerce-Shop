@@ -1,6 +1,7 @@
 import React from "react";
 import { ActionForm, Field } from "./ActionForm";
 import { MediaListField } from "./MediaField";
+import { SelectField } from "./SelectField";
 import { inputClass } from "./field-styles";
 import { saveProduct } from "@/app/admin/actions";
 import { CURRENCY } from "@/lib/format";
@@ -106,19 +107,12 @@ export function ProductForm({
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Field label="Category" name="category_id">
-          <select
+          <SelectField
             id="category_id"
             name="category_id"
             defaultValue={product?.category_id ?? ""}
-            className={inputClass}
-          >
-            <option value="">— none —</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+            options={categories.map((cat) => ({ value: cat.id, label: cat.name }))}
+          />
         </Field>
 
         <Field label="Fabric" name="fabric" hint="Shown above the product name.">
