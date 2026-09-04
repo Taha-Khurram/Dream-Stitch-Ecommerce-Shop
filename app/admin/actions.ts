@@ -7,6 +7,15 @@ import { getSiteContent } from "@/lib/api/content";
 import { DEFAULT_CONTENT, type SiteContent } from "@/lib/content/defaults";
 import { parseContentForm } from "@/lib/content/merge";
 import { findTab } from "@/lib/content/fields";
+import {
+  ACCEPTED_STATUS,
+  INTAKE_STATUS,
+  STATUS_COPY,
+  hasShipped,
+  isOrderStatus,
+  statusLabel,
+  type OrderStatus,
+} from "@/lib/orders/lifecycle";
 
 /**
  * Every mutation runs through the caller's own Supabase session, so the RLS
@@ -199,27 +208,203 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
 /* ── Orders ─────────────────────────────────────────────────────────────── */
 
-const ORDER_STATUSES = ["pending", "processing", "completed", "cancelled"] as const;
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
+/**
+ * The status vocabulary lives in `lib/orders/lifecycle.ts` — shared with the
+ * pill, the filter rail and the dashboard so none of them can drift from the
+ * CHECK constraint in `order_lifecycle.sql`.
+ */
+export type { OrderStatus };
 
-export async function updateOrderStatus(id: string, status: string): Promise<ActionResult> {
+type AdminClient = Awaited<ReturnType<typeof createClient>>;
+
+/** The one field every order action has to branch on, read once. */
+async function readOrder(
+  supabase: AdminClient,
+  id: string
+): Promise<{ id: string; status: string } | null> {
+  const { data } = await supabase.from("orders").select("id, status").eq("id", id).single();
+  return (data as { id: string; status: string }) ?? null;
+}
+
+/**
+ * Accept a newly received order into the workflow.
+ *
+ * The `status` guard on the UPDATE is what makes this safe to click twice, or
+ * to click from two browsers at once: acceptance is only ever the transition
+ * out of `new`, so a second write matches no row instead of resetting an order
+ * someone has already moved along.
+ */
+export async function acceptOrder(id: string): Promise<ActionResult> {
   await requireAdmin();
-
-  if (!ORDER_STATUSES.includes(status as OrderStatus)) {
-    return { ok: false, message: "Unknown order status." };
-  }
-
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("orders")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", id);
 
-  if (error) return { ok: false, message: `Could not update: ${error.message}` };
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status: ACCEPTED_STATUS, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", INTAKE_STATUS)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not accept: ${error.message}` };
+
+  if (!data || data.length === 0) {
+    /* Nothing moved. Either the order is gone or it was never `new` — say
+       which, because "no rows affected" is not an answer anyone can act on. */
+    const current = await readOrder(supabase, id);
+    if (!current) return { ok: false, message: "That order no longer exists." };
+    return {
+      ok: false,
+      message: `This order has already been accepted — it is ${statusLabel(
+        current.status
+      ).toLowerCase()}.`,
+    };
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${id}`);
-  return { ok: true, message: `Order marked ${status}.` };
+  revalidatePath("/admin");
+
+  const stage = STATUS_COPY[ACCEPTED_STATUS].label.toLowerCase();
+  return { ok: true, message: `Order accepted — now ${stage}.` };
+}
+
+/**
+ * Erase an order and its lines.
+ *
+ * Deleting is not cancelling. A cancelled order stays on the book as the
+ * record of something that was called off; a deleted one is a row that should
+ * never have been there — a test order, a duplicate, an obvious fake.
+ *
+ * So the units it took out of the catalogue go back. Checkout decrements stock
+ * the moment the order is written, and an order being erased has no claim on
+ * that stock at all. The exception is an order that already shipped, where the
+ * goods really did leave: there the record is being tidied away rather than
+ * undone, and adding the stock back would invent inventory that does not exist.
+ */
+export async function deleteOrder(id: string): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const order = await readOrder(supabase, id);
+  if (!order) return { ok: false, message: "That order no longer exists." };
+
+  /* Read the lines before the row goes: order_items is ON DELETE CASCADE, so
+     afterwards nothing is left to say what to put back. */
+  const returnsStock = !hasShipped(order.status);
+  const lines = returnsStock
+    ? (await supabase.from("order_items").select("product_id, quantity").eq("order_id", id)).data
+    : [];
+
+  const { data: deleted, error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not delete: ${error.message}` };
+
+  if (!deleted || deleted.length === 0) {
+    /* A DELETE that no policy allows is not an error in PostgREST — it simply
+       matches nothing. Without this check the button would report success. */
+    return {
+      ok: false,
+      message:
+        "The database refused the delete. Run order_lifecycle.sql to add the admin delete policy.",
+    };
+  }
+
+  const returned = returnsStock ? await restoreStock(supabase, lines ?? []) : 0;
+
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin");
+  revalidatePath("/shop");
+
+  return {
+    ok: true,
+    message:
+      returned > 0
+        ? `Order deleted. ${returned} unit${returned === 1 ? "" : "s"} returned to stock.`
+        : "Order deleted.",
+  };
+}
+
+/**
+ * Put an erased order's units back on the shelf, and report how many landed.
+ *
+ * Read-then-write per product, like the decrement in the checkout route — the
+ * same trade for the same reason: there is no RPC to add stock in place. Two
+ * lines of one order can name the same product, so the quantities are summed
+ * first and each product is written exactly once.
+ */
+async function restoreStock(
+  supabase: AdminClient,
+  lines: { product_id: string; quantity: number }[]
+): Promise<number> {
+  if (lines.length === 0) return 0;
+
+  const owed = new Map<string, number>();
+  for (const line of lines) {
+    owed.set(line.product_id, (owed.get(line.product_id) ?? 0) + line.quantity);
+  }
+
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, stock")
+    .in("id", [...owed.keys()]);
+
+  let returned = 0;
+  for (const product of (products ?? []) as { id: string; stock: number }[]) {
+    const quantity = owed.get(product.id) ?? 0;
+    const { error } = await supabase
+      .from("products")
+      .update({ stock: product.stock + quantity, updated_at: new Date().toISOString() })
+      .eq("id", product.id);
+    if (!error) returned += quantity;
+  }
+
+  return returned;
+}
+
+/**
+ * Move an accepted order to another stage.
+ *
+ * Two things are refused rather than written. `new` is not a destination — an
+ * order cannot be un-received, and acceptance is `acceptOrder`'s job. And an
+ * order still sitting at `new` cannot be dropped into the middle of the
+ * workflow, so the triage step cannot be skipped by an admin who deep-links to
+ * the detail page.
+ */
+export async function updateOrderStatus(id: string, status: string): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (!isOrderStatus(status)) {
+    return { ok: false, message: "Unknown order status." };
+  }
+
+  if (status === INTAKE_STATUS) {
+    return { ok: false, message: "An order cannot be moved back to awaiting review." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .neq("status", INTAKE_STATUS)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not update: ${error.message}` };
+
+  if (!data || data.length === 0) {
+    const current = await readOrder(supabase, id);
+    if (!current) return { ok: false, message: "That order no longer exists." };
+    return { ok: false, message: "Accept this order before setting a status." };
+  }
+
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin");
+  return { ok: true, message: `Order marked ${statusLabel(status).toLowerCase()}.` };
 }
 
 /* ── Settings ───────────────────────────────────────────────────────────── */

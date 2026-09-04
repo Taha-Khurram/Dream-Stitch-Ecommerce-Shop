@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/api";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
 import { getSettings } from "@/lib/api/settings";
+import { INTAKE_STATUS } from "@/lib/orders/lifecycle";
 import { z } from "zod";
 
 export async function POST(request: Request) {
@@ -125,8 +126,10 @@ export async function POST(request: Request) {
     const { data: newOrder, error: orderInsertError } = await supabase
       .from("orders")
       .insert({
+        /* Received, not yet triaged. An admin accepts it into the workflow
+           (or deletes it) from /admin/orders — see lib/orders/lifecycle.ts. */
         user_id: user.id,
-        status: "pending",
+        status: INTAKE_STATUS,
         total_amount: totalAmount,
         shipping_address: shippingAddress,
       })
@@ -135,6 +138,17 @@ export async function POST(request: Request) {
 
     if (orderInsertError || !newOrder) {
       console.error("Order creation failed in Supabase:", orderInsertError?.message);
+
+      /* 23514 on this insert means one thing in practice: the status CHECK
+         constraint still predates the lifecycle, so it has never heard of
+         `new`. Worth naming, because every checkout fails until it is run. */
+      if (orderInsertError?.code === "23514") {
+        console.error(
+          "orders.status rejected '%s'. Run order_lifecycle.sql to widen the CHECK constraint.",
+          INTAKE_STATUS
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,

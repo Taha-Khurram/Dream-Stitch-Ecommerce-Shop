@@ -123,7 +123,7 @@ No signup path grants admin, and there is no service-role key in the app.
 | **Dashboard** | Revenue, average order value and order count; a seven-day revenue chart; open orders, low-stock alerts and the five most recent orders with the customer's name |
 | **Products** | Search, create, edit, delete. Price, compare-at, stock, sizes, colourways, gallery |
 | **Categories** | Inline editing of the three fabrics, with a product count per category |
-| **Orders** | Filter by status, view line items and delivery address, move an order through its states |
+| **Orders** | Accept or delete a newly received order, filter by status, view line items and delivery address, move an accepted order through its stages |
 | **Customers** | Everyone on the books — accounts and guest records alike — with contact details and an order count |
 | **Settings** | Contact details, free-delivery threshold, delivery fee, announcement bar copy |
 | **Settings → page tabs** | Copy, imagery and a show/hide switch for every section of the home, shop, custom, about and contact pages, plus what the header and footer carry |
@@ -204,6 +204,75 @@ const { user, supabase } = auth;
 
 None of this displaces RLS as the enforcement point. It buys an honest status
 code instead of a silently empty result.
+
+---
+
+## Order lifecycle
+
+An order does not arrive as work in progress. It arrives as **New** and waits
+there until an admin makes one decision about it:
+
+```
+new ──accept──▶ opened ──▶ pending ──▶ processing ──▶ closed
+ │                 └──────────┴────────────┴───────▶ cancelled
+ └──delete──▶ (gone, and its stock goes back)
+```
+
+**Accept** moves the order to *Opened* and hands it to the status track, which
+is the only place the later stages can be set. **Delete** erases the order and
+its line items outright — for a test order, a duplicate, an obvious fake — and
+returns the units it reserved to the catalogue, because checkout decrements
+stock the moment the order is written and an erased order has no claim on it.
+An order that already shipped is the exception: there the record is being tidied
+away rather than undone, so the stock is left alone.
+
+Deleting is not cancelling. **Cancelled** keeps the order on the book as the
+record of something called off; deleted leaves nothing behind. Both are offered,
+and the confirmation for each says which you are about to do.
+
+Accept and delete sit in the row itself on `/admin/orders`, so a morning's
+orders can be triaged without opening one — the **New** tab of the filter rail
+is the queue. Everything past that point lives on the detail page.
+
+| Status | Means |
+| :-- | :-- |
+| **New** | Received, waiting to be accepted or deleted |
+| **Opened** | Accepted and being put together |
+| **Pending** | Waiting on stock, payment or the customer |
+| **Processing** | Being packed and dispatched |
+| **Closed** | Delivered and done |
+| **Cancelled** | Called off — no longer being fulfilled |
+
+### How to run it
+
+[`order_lifecycle.sql`](order_lifecycle.sql) widens the `orders.status` CHECK
+constraint to these six, makes `new` the column default, renames the old
+`completed` rows to `closed`, and adds the admin **DELETE** policy that
+`admin_schema.sql` never granted. Run it in the **Supabase SQL editor** after
+`admin_schema.sql` and `dashboard_schema.sql` — it depends on `is_admin()` and
+it replaces `admin_dashboard_stats()` so a new order counts as open work the
+moment it lands. The file ends with a three-row verification, and every
+statement is idempotent.
+
+> **This one is not optional.** Unlike the dashboard and presence files, there
+> is no fallback path: until the constraint is widened, Postgres rejects every
+> order checkout tries to write. The route logs exactly that if it happens.
+
+`pending`, `processing` and `cancelled` carry straight over with their meanings
+intact, so no existing order is disturbed and nothing has to be re-triaged.
+
+**One vocabulary.** [`lib/orders/lifecycle.ts`](lib/orders/lifecycle.ts) is the
+single definition of what an order can be, what each status means and where it
+may go next. The filter rail, the status pill, the dashboard's open-orders
+count and the server actions all read from it, so the UI cannot drift from the
+CHECK constraint it mirrors.
+
+**What the server refuses.** `new` is not a destination — an order cannot be
+un-received, and acceptance is `acceptOrder`'s job alone. Acceptance is scoped
+to rows still sitting at `new`, so a double click or two admins at once cannot
+reset an order someone has already moved along. And an order still at `new`
+cannot be dropped into the middle of the workflow, so the triage step cannot be
+skipped by deep-linking to the detail page.
 
 ---
 

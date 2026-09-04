@@ -7,6 +7,7 @@ import {
   FILTERS,
   OrdersTable,
   OrdersTableSkeleton,
+  filterLabel,
   filterParams,
   type OrderFilter,
 } from "./OrdersTable";
@@ -27,7 +28,10 @@ export default async function AdminOrdersPage({
 
   return (
     <div>
-      <AdminHeading title="Orders" copy="Every order placed through checkout, newest first." />
+      <AdminHeading
+        title="Orders"
+        copy="Every order placed through checkout, newest first. A new order waits under New until it is accepted or deleted."
+      />
 
       <div className="mt-6 flex flex-wrap gap-2 border-b border-line pb-4">
         {FILTERS.map((filter) => (
@@ -38,13 +42,13 @@ export default async function AdminOrdersPage({
                is a preference about this screen rather than about these rows. */
             href={buildPageHref(BASE_PATH, filterParams(filter), { page: 1, perPage })}
             aria-current={active === filter ? "page" : undefined}
-            className={`px-3.5 py-2 text-[13px] font-medium capitalize transition-colors ${
+            className={`px-3.5 py-2 text-[13px] font-medium transition-colors ${
               active === filter
                 ? "bg-purple text-white"
                 : "border border-line text-ink-soft hover:border-purple hover:bg-lilac hover:text-purple"
             }`}
           >
-            {filter}
+            {filterLabel(filter)}
           </Link>
         ))}
       </div>

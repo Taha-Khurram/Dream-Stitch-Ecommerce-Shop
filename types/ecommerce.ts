@@ -103,7 +103,15 @@ export interface Order {
   user_id: string | null;
   /** Set by dashboard_schema.sql; null on orders placed before it was applied. */
   customer_id?: string | null;
-  status: "pending" | "processing" | "completed" | "cancelled";
+  /**
+   * Where the order sits in its lifecycle. Widened to `string` on purpose:
+   * a row written before order_lifecycle.sql ran can still say `completed`,
+   * and a screen that renders whatever the database holds is more useful than
+   * one that type-errors on history. Writes go through the server actions,
+   * which validate against `ORDER_STATUSES` in `lib/orders/lifecycle.ts` —
+   * that module, not this one, is the list of statuses.
+   */
+  status: string;
   total_amount: number;
   shipping_address: ShippingAddress;
   created_at: string;

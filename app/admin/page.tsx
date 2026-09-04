@@ -9,6 +9,7 @@ import { RevenueTable } from "@/components/admin/RevenueTable";
 import type { RevenuePoint } from "@/components/admin/revenue";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
+import { OPEN_STATUSES } from "@/lib/orders/lifecycle";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import type { Order, Product } from "@/types/ecommerce";
 
@@ -137,7 +138,9 @@ async function readStats(): Promise<DashboardStats> {
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .in("status", ["pending", "processing"]),
+      /* Same set as admin_dashboard_stats in order_lifecycle.sql — a new
+         order is open work from the moment it lands, not once accepted. */
+      .in("status", [...OPEN_STATUSES]),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
@@ -186,7 +189,11 @@ async function Stats() {
         value={String(stats.totalOrders)}
         note="Every order ever placed"
       />
-      <Stat label="Open orders" value={String(stats.openOrders)} note="Pending or processing" />
+      <Stat
+        label="Open orders"
+        value={String(stats.openOrders)}
+        note="New, opened, pending or processing"
+      />
       <Stat label="Customers" value={String(stats.customerCount)} note="On the books" />
       <Stat
         label="Low stock"

@@ -6,7 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
+import {
+  OrderDeleteButton,
+  OrderIntakeActions,
+} from "@/components/admin/OrderIntakeActions";
 import { formatPrice } from "@/lib/format";
+import { isAwaitingReview, orderReference } from "@/lib/orders/lifecycle";
 import type { Order } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
@@ -38,11 +43,12 @@ export default async function AdminOrderDetailPage({
     0
   );
   const delivery = Number(order.total_amount) - itemsTotal;
+  const awaitingReview = isAwaitingReview(order.status);
 
   return (
     <div>
       <AdminHeading
-        title={`Order #${order.id.slice(0, 8).toUpperCase()}`}
+        title={`Order ${orderReference(order.id)}`}
         copy={`Placed ${new Date(order.created_at).toLocaleString("en-GB", {
           day: "numeric",
           month: "long",
@@ -116,8 +122,17 @@ export default async function AdminOrderDetailPage({
             <div className="mt-3">
               <StatusPill status={order.status} />
             </div>
+
+            {/* One decision at a time. Until an order is accepted the only
+                things to do with it are accept or delete, so the status track
+                is not shown yet — offering both at once invites skipping the
+                triage step, which the server would refuse anyway. */}
             <div className="mt-4">
-              <OrderStatusControl id={order.id} current={order.status} />
+              {awaitingReview ? (
+                <OrderIntakeActions id={order.id} variant="panel" onDeleted="/admin/orders" />
+              ) : (
+                <OrderStatusControl id={order.id} current={order.status} />
+              )}
             </div>
           </section>
 
@@ -143,6 +158,22 @@ export default async function AdminOrderDetailPage({
               <p className="mt-3 text-sm text-muted">No address recorded.</p>
             )}
           </section>
+
+          {/* Intake already offers a delete of its own, so this only shows for
+              an order that is on the books — last in the column, behind a
+              rule, because it is the one control here you cannot undo. */}
+          {!awaitingReview && (
+            <section className="border-t border-line pt-6">
+              <h2 className="admin-section-title">Danger zone</h2>
+              <div className="mt-3">
+                <OrderDeleteButton
+                  id={order.id}
+                  status={order.status}
+                  onDeleted="/admin/orders"
+                />
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>

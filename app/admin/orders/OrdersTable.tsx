@@ -3,17 +3,36 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusPill } from "@/components/admin/StatusPill";
+import { OrderIntakeActions } from "@/components/admin/OrderIntakeActions";
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
+import {
+  ORDER_STATUSES,
+  STATUS_COPY,
+  isAwaitingReview,
+  orderReference,
+} from "@/lib/orders/lifecycle";
 import type { Order } from "@/types/ecommerce";
 
 export const BASE_PATH = "/admin/orders";
 
-/** `all` is not a column value — it means "no status filter". */
-export const FILTERS = ["all", "pending", "processing", "completed", "cancelled"] as const;
+/**
+ * The filter rail: every status, plus `all`.
+ *
+ * Derived from `ORDER_STATUSES` rather than hand-listed, so a status added to
+ * the lifecycle cannot end up unreachable here. `all` is not a column value —
+ * it means "no status filter" — and `new` leads because it is the only tab
+ * with anything waiting on the admin.
+ */
+export const FILTERS = ["all", ...ORDER_STATUSES] as const;
 export type OrderFilter = (typeof FILTERS)[number];
+
+/** How a filter tab reads, and what an empty result under it should say. */
+export function filterLabel(filter: OrderFilter): string {
+  return filter === "all" ? "All" : STATUS_COPY[filter].label;
+}
 
 const COLUMNS = "id, status, total_amount, created_at, shipping_address";
 
@@ -58,7 +77,9 @@ export async function OrdersTable({
   if (orders.length === 0) {
     return (
       <p className="mt-10 border border-line bg-white p-12 text-center text-sm text-muted">
-        {status === "all" ? "No orders yet." : `No ${status} orders.`}
+        {status === "all"
+          ? "No orders yet."
+          : `No ${filterLabel(status).toLowerCase()} orders.`}
       </p>
     );
   }
@@ -66,7 +87,7 @@ export async function OrdersTable({
   return (
     <>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
+        <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
               {["Order", "Customer", "Placed", "Status", "Total"].map((head) => (
@@ -74,6 +95,11 @@ export async function OrdersTable({
                   {head}
                 </th>
               ))}
+              {/* The heading is for screen readers only — a visible "Actions"
+                  label over two buttons earns nothing but width. */}
+              <th className="admin-th pb-3 text-right">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -84,7 +110,7 @@ export async function OrdersTable({
                     href={`/admin/orders/${order.id}`}
                     className="font-medium text-ink transition-colors hover:text-purple"
                   >
-                    #{order.id.slice(0, 8).toUpperCase()}
+                    {orderReference(order.id)}
                   </Link>
                 </td>
                 <td className="py-3.5 text-ink-soft">{order.shipping_address?.fullName ?? "—"}</td>
@@ -99,6 +125,23 @@ export async function OrdersTable({
                   <StatusPill status={order.status} />
                 </td>
                 <td className="py-3.5 tabular-nums text-ink">{formatPrice(order.total_amount)}</td>
+                {/* Accept-or-delete belongs to the intake step only. Once an
+                    order is on the books its stage is a track, not a yes/no,
+                    so the row sends you to the detail page for it. */}
+                <td className="py-3.5 text-right">
+                  {isAwaitingReview(order.status) ? (
+                    <div className="flex justify-end">
+                      <OrderIntakeActions id={order.id} />
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="text-[12px] font-medium text-muted transition-colors hover:text-purple"
+                    >
+                      Manage
+                    </Link>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -130,6 +173,7 @@ export function OrdersTableSkeleton() {
             <Skeleton className="ml-auto h-3 w-24" />
             <Skeleton className="h-5 w-20" />
             <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-6 w-28" />
           </div>
         ))}
       </div>
