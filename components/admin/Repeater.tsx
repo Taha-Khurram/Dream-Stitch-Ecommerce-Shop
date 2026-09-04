@@ -6,7 +6,7 @@ import { inputClass } from "@/components/admin/field-styles";
 import { MediaUploadButton } from "@/components/admin/MediaField";
 import { ImageGuidance } from "@/components/admin/MediaGuidance";
 import { siteFolder } from "@/lib/supabase/storage";
-import type { ColumnSpec } from "@/lib/content/fields";
+import type { ColumnSpec, OptionSource, SelectOption } from "@/lib/content/fields";
 
 /**
  * A repeatable list of flat rows — hero slides, footer links, FAQs.
@@ -20,11 +20,14 @@ export function Repeater({
   columns,
   rows,
   addLabel = "Add row",
+  options,
 }: {
   name: string;
   columns: ColumnSpec[];
   rows: Record<string, string>[];
   addLabel?: string;
+  /** Choices for `select` columns, by the source they named. */
+  options?: Partial<Record<OptionSource, SelectOption[]>>;
 }) {
   const [items, setItems] = useState<Record<string, string>[]>(rows);
 
@@ -62,7 +65,9 @@ export function Repeater({
                 {/* Six identical numbered cards are impossible to tell apart —
                     echo the row's own first filled value as its title. */}
                 <span className="truncate text-[13px] text-ink-soft">
-                  {preview(row, columns) || <em className="text-faint not-italic">Empty row</em>}
+                  {preview(row, columns, options) || (
+                    <em className="text-faint not-italic">Empty row</em>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -133,6 +138,13 @@ export function Repeater({
                       </span>
                       <ImageGuidance spec={column.image} variant="inline" className="mt-1" />
                     </>
+                  ) : column.kind === "select" ? (
+                    <Select
+                      value={row[column.key] ?? ""}
+                      choices={options?.[column.options ?? "categories"] ?? []}
+                      emptyLabel={column.emptyLabel ?? "—"}
+                      onChange={(value) => update(index, column.key, value)}
+                    />
                   ) : (
                     <input
                       value={row[column.key] ?? ""}
@@ -166,11 +178,58 @@ export function Repeater({
   );
 }
 
+/**
+ * A choice from a list the editor was handed at request time — the store's
+ * categories, today. A value that is no longer in the list (its category was
+ * renamed or deleted) is kept as an option of its own, so opening the row does
+ * not silently retarget the chart to something else.
+ */
+function Select({
+  value,
+  choices,
+  emptyLabel,
+  onChange,
+}: {
+  value: string;
+  choices: SelectOption[];
+  emptyLabel: string;
+  onChange: (value: string) => void;
+}) {
+  const missing = value !== "" && !choices.some((choice) => choice.value === value);
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${inputClass} mt-1.5 cursor-pointer`}
+    >
+      <option value="">{emptyLabel}</option>
+      {choices.map((choice) => (
+        <option key={choice.value} value={choice.value}>
+          {choice.label}
+        </option>
+      ))}
+      {missing && <option value={value}>{value} (no longer a category)</option>}
+    </select>
+  );
+}
+
 /** The row's first filled value, used as its heading in the card. */
-function preview(row: Record<string, string>, columns: ColumnSpec[]): string {
+function preview(
+  row: Record<string, string>,
+  columns: ColumnSpec[],
+  options?: Partial<Record<OptionSource, SelectOption[]>>
+): string {
   for (const column of columns) {
     const value = row[column.key]?.trim();
-    if (value) return value.length > 60 ? `${value.slice(0, 60)}…` : value;
+    if (!value) continue;
+    // A slug is not what the row was called in the dropdown.
+    const label =
+      column.kind === "select"
+        ? options?.[column.options ?? "categories"]?.find((choice) => choice.value === value)
+            ?.label ?? value
+        : value;
+    return label.length > 60 ? `${label.slice(0, 60)}…` : label;
   }
   return "";
 }

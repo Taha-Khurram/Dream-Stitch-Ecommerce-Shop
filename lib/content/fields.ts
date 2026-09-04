@@ -16,11 +16,27 @@ export type FieldKind = "text" | "textarea" | "image" | "url" | "lines" | "list"
 export interface ColumnSpec {
   key: string;
   label: string;
-  kind?: "text" | "textarea" | "url" | "image";
+  kind?: "text" | "textarea" | "url" | "image" | "select";
   /** `image` only — which storefront slot it fills, so the cell can say what fits. */
   image?: ImageSpecKey;
+  /**
+   * `select` only. Names a list the editor cannot know at build time — the
+   * page fetches it and hands it to the editor, so a column can offer the
+   * store's live categories without this file importing the database.
+   */
+  options?: OptionSource;
+  /** `select` only. The label for the empty value, e.g. "Every category". */
+  emptyLabel?: string;
   /** Column width inside the repeater row, in `fr` units. */
   span?: number;
+}
+
+/** Lists resolved at request time and passed into the editor by key. */
+export type OptionSource = "categories";
+
+export interface SelectOption {
+  value: string;
+  label: string;
 }
 
 export interface FieldSpec {
@@ -308,6 +324,76 @@ export const CONTENT_TABS: TabSpec[] = [
     ],
   },
 
+  /* ── Product ──────────────────────────────────────────────────────────── */
+  {
+    key: "product",
+    label: "Product",
+    title: "Product page",
+    copy: "The measurement table behind the Size Guide link in the buy box.",
+    sections: [
+      {
+        path: "product.size_guide",
+        title: "Size guide",
+        copy:
+          "One chart per category, or one chart for the whole shop. A product shows the chart matching its category, and falls back to the chart left on Every category when it has none of its own.",
+        toggle: true,
+        toggleHint: "Off removes the Size Guide link from every product page.",
+        fields: [
+          { key: "link_label", label: "Link label", kind: "text", half: true },
+          {
+            key: "charts",
+            label: "Charts",
+            kind: "list",
+            addLabel: "Add chart",
+            hint:
+              "The heading above the table, its five column headings (comma separated) and the note under it. Add one row per category whose chart should differ.",
+            columns: [
+              {
+                key: "category",
+                label: "Category",
+                kind: "select",
+                options: "categories",
+                emptyLabel: "Every category (default)",
+                span: 2,
+              },
+              { key: "eyebrow", label: "Eyebrow", span: 2 },
+              { key: "title", label: "Heading", span: 2 },
+              {
+                key: "headings",
+                label: "Column headings, comma separated",
+                span: 6,
+              },
+              { key: "note", label: "Note under the table", kind: "textarea", span: 6 },
+            ],
+          },
+          {
+            key: "rows",
+            label: "Rows",
+            kind: "list",
+            addLabel: "Add row",
+            hint:
+              "Every row of every chart, tagged with the category it belongs to. Column headings come from the chart above, and a column no row fills in is dropped from the table.",
+            columns: [
+              {
+                key: "category",
+                label: "Category",
+                kind: "select",
+                options: "categories",
+                emptyLabel: "Every category (default)",
+                span: 2,
+              },
+              { key: "size", label: "Column 1 — Size", span: 2 },
+              { key: "sheet", label: "Column 2 — Bedsheet", span: 2 },
+              { key: "pillow", label: "Column 3 — Pillow cover", span: 2 },
+              { key: "set", label: "Column 4 — Set", span: 2 },
+              { key: "fits", label: "Column 5 — Fits", span: 2 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
   /* ── Custom ───────────────────────────────────────────────────────────── */
   {
     key: "custom",
@@ -501,3 +587,17 @@ export const CONTENT_TABS: TabSpec[] = [
 export function findTab(key: string | undefined): TabSpec | undefined {
   return CONTENT_TABS.find((tab) => tab.key === key);
 }
+
+/** Which live lists a tab needs fetched before it can render. */
+export function tabOptionSources(tab: TabSpec): OptionSource[] {
+  const sources = new Set<OptionSource>();
+  for (const section of tab.sections) {
+    for (const field of section.fields) {
+      for (const column of field.columns ?? []) {
+        if (column.options) sources.add(column.options);
+      }
+    }
+  }
+  return [...sources];
+}
+

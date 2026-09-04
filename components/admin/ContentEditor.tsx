@@ -2,7 +2,13 @@ import React from "react";
 import { inputClass } from "@/components/admin/field-styles";
 import { Repeater } from "@/components/admin/Repeater";
 import { MediaField } from "@/components/admin/MediaField";
-import type { FieldSpec, SectionSpec, TabSpec } from "@/lib/content/fields";
+import type {
+  FieldSpec,
+  OptionSource,
+  SectionSpec,
+  SelectOption,
+  TabSpec,
+} from "@/lib/content/fields";
 import { siteFolder } from "@/lib/supabase/storage";
 import type { SiteContent } from "@/lib/content/defaults";
 
@@ -12,22 +18,40 @@ import type { SiteContent } from "@/lib/content/defaults";
  * so a tab of forty fields ships client JavaScript only for the controls that
  * genuinely need it: reorderable lists, and anything that uploads.
  */
-export function ContentEditor({ tab, content }: { tab: TabSpec; content: SiteContent }) {
+export function ContentEditor({
+  tab,
+  content,
+  options,
+}: {
+  tab: TabSpec;
+  content: SiteContent;
+  /** Choices for `select` columns — see `tabOptionSources`. */
+  options?: EditorOptions;
+}) {
   return (
     <div className="space-y-10">
       {tab.sections.map((section, index) => (
-        <ContentSection key={`${section.path}-${index}`} section={section} content={content} />
+        <ContentSection
+          key={`${section.path}-${index}`}
+          section={section}
+          content={content}
+          options={options}
+        />
       ))}
     </div>
   );
 }
 
+export type EditorOptions = Partial<Record<OptionSource, SelectOption[]>>;
+
 function ContentSection({
   section,
   content,
+  options,
 }: {
   section: SectionSpec;
   content: SiteContent;
+  options?: EditorOptions;
 }) {
   const values = resolve(content, section.path);
 
@@ -59,6 +83,7 @@ function ContentSection({
             field={field}
             name={`${section.path}.${field.key}`}
             value={values[field.key]}
+            options={options}
           />
         ))}
       </div>
@@ -70,10 +95,12 @@ function ContentField({
   field,
   name,
   value,
+  options,
 }: {
   field: FieldSpec;
   name: string;
   value: unknown;
+  options?: EditorOptions;
 }) {
   if (field.kind === "switch") {
     return (
@@ -99,6 +126,7 @@ function ContentField({
             columns={field.columns ?? []}
             rows={asRows(value)}
             addLabel={field.addLabel}
+            options={options}
           />
         ) : field.kind === "lines" ? (
           <textarea

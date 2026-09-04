@@ -1,5 +1,5 @@
 import { IMG, img } from "@/lib/imagery";
-import { BRAND, NAV_ITEMS } from "@/lib/constants";
+import { BRAND, NAV_ITEMS, SIZE_GUIDE } from "@/lib/constants";
 
 /**
  * Every piece of storefront copy, imagery and chrome an admin can change from
@@ -187,6 +187,40 @@ export const DEFAULT_CONTENT = {
       title: "Bestsellers",
       copy: "The sets our customers come back for a second time.",
       action_label: "Shop All",
+    },
+  },
+
+  /* ── Product page ─────────────────────────────────────────────────────── */
+  product: {
+    /**
+     * The measurement table behind the "Size Guide" link in the buy box.
+     *
+     * Two flat lists rather than one nested one, because a repeater row cannot
+     * hold a repeater: `charts` is the heading and note per category, `rows`
+     * is every table row tagged with the category it belongs to. A blank
+     * `category` on either is the fallback used by any category without its
+     * own — which is how a single store-wide chart stays a two-field edit.
+     */
+    size_guide: {
+      enabled: true,
+      link_label: "Size Guide",
+      charts: [
+        {
+          category: "",
+          eyebrow: "Finished Dimensions",
+          title: "Bed Size Guide",
+          headings: "Size, Bedsheet, Pillow Cover, Set, Fits",
+          note: "Dimensions are of the finished sheet, measured flat — the side drop is already included. Allow an inch either way on hand-finished hems. Falling between two sizes? We will cut it to your numbers.",
+        },
+      ],
+      rows: SIZE_GUIDE.map((row) => ({
+        category: "",
+        size: row.size,
+        sheet: row.sheet,
+        pillow: row.pillow,
+        set: row.pieces,
+        fits: row.fits,
+      })),
     },
   },
 
