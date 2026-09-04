@@ -236,6 +236,35 @@
     animation-play-state: paused;
   }
 
+  /* Touch: there is nothing to hover with, so the rail never paused and a tap
+     landed on whichever card had drifted under the finger — the cards read as
+     dead. Swiping is what a thumb reaches for here anyway, so the drift gives
+     way to a snapping scroller. The loop's duplicate half goes with it: it
+     only ever existed to hide the seam of an animation that is no longer
+     running, and left in it would just repeat the same bedsheets. */
+  @media (hover: none) {
+    .featured-rail-viewport {
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      /* The cards are the affordance; a bar under them is just noise. */
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .featured-rail-viewport::-webkit-scrollbar { display: none; }
+
+    .featured-rail {
+      animation: none;
+      /* max-content was sized for the doubled track. */
+      width: auto;
+      /* Snapping to a centred card needs room to bring the first and last
+         ones to the middle. */
+      scroll-padding-inline: 11vw;
+      padding-inline: 11vw;
+    }
+    .featured-rail > * { scroll-snap-align: center; }
+    .featured-rail > [data-rail-duplicate] { display: none; }
+  }
+
   /* Product image cross-fade on hover */
   .img-swap > .img-back { opacity: 0; transition: opacity 0.7s ease; }
   .img-swap:hover > .img-back { opacity: 1; }
@@ -454,6 +483,23 @@ body {
 .sheet-top[data-state="open"]     { animation: sheet-in-top    var(--duration-base) var(--ease-out-expo) both; }
 .sheet-top[data-state="closed"]   { animation: sheet-out-top   var(--duration-fast) ease-in both; }
 
+/* The WhatsApp concierge panel. A keyframe pair rather than a transition
+   between two class sets, because the panel is now unmounted while closed —
+   a freshly mounted element has no previous value to transition from, but a
+   CSS animation plays from its own first keyframe on the first paint. Keep
+   the closed duration in step with PANEL_EXIT_MS in WhatsAppFab.tsx. */
+@keyframes wa-panel-in {
+  from { opacity: 0; transform: translate3d(0, 0.75rem, 0) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes wa-panel-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(0, 0.75rem, 0) scale(0.97); }
+}
+
+.wa-panel[data-state="open"]   { animation: wa-panel-in  var(--duration-base) var(--ease-out-quint) both; }
+.wa-panel[data-state="closed"] { animation: wa-panel-out 200ms ease-in both; }
+
 /* ── Page transition ──────────────────────────────────────────
    Deliberately short. A long fade layered on an already-slow dynamic
    page just adds latency the shopper can feel. */
@@ -584,7 +630,8 @@ body {
   .veil[data-state],
   .sheet-right[data-state],
   .sheet-left[data-state],
-  .sheet-top[data-state] { animation-duration: 1ms !important; }
+  .sheet-top[data-state],
+  .wa-panel[data-state] { animation-duration: 1ms !important; }
 
   /* The skeleton sheen is slowed, not removed: it is the only signal
      that something is still on its way. */

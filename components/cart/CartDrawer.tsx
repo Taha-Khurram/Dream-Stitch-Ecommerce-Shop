@@ -376,6 +376,8 @@ export function CartDrawer() {
                   id="fullName"
                   name="fullName"
                   required
+                  minLength={2}
+                  maxLength={100}
                   value={address.fullName}
                   onChange={handleChange}
                   placeholder="Ayesha Khan"
@@ -406,6 +408,7 @@ export function CartDrawer() {
                 <input
                   id="phone"
                   name="phone"
+                  maxLength={30}
                   value={address.phone}
                   onChange={handleChange}
                   placeholder="+92 300 1234567"
@@ -421,6 +424,8 @@ export function CartDrawer() {
                   id="streetAddress"
                   name="streetAddress"
                   required
+                  minLength={5}
+                  maxLength={200}
                   value={address.streetAddress}
                   onChange={handleChange}
                   placeholder="House 12, Street 4, Block B"
@@ -437,6 +442,8 @@ export function CartDrawer() {
                     id="city"
                     name="city"
                     required
+                    minLength={2}
+                    maxLength={100}
                     value={address.city}
                     onChange={handleChange}
                     placeholder="Karachi"
@@ -451,6 +458,8 @@ export function CartDrawer() {
                     id="state"
                     name="state"
                     required
+                    minLength={2}
+                    maxLength={100}
                     value={address.state}
                     onChange={handleChange}
                     placeholder="Sindh"
@@ -468,6 +477,8 @@ export function CartDrawer() {
                     id="postalCode"
                     name="postalCode"
                     required
+                    minLength={3}
+                    maxLength={20}
                     value={address.postalCode}
                     onChange={handleChange}
                     placeholder="75500"
@@ -482,6 +493,8 @@ export function CartDrawer() {
                     id="country"
                     name="country"
                     required
+                    minLength={2}
+                    maxLength={100}
                     value={address.country}
                     onChange={handleChange}
                     className={inputClass}

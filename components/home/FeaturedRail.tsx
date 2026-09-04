@@ -34,6 +34,14 @@ const CARD_WIDTH = "w-[78vw] shrink-0 sm:w-[22rem] lg:w-[26rem]";
  * the cursor — and on keyboard focus — which is also what makes the cards
  * clickable: by the time a pointer reaches one, the rail has already stopped.
  *
+ * That last part is only true where there *is* a cursor. A finger cannot hover,
+ * so on touch the rail never stopped and a tap landed on whichever card had
+ * slid under the finger in the meantime — the cards read as unclickable. There
+ * is no touch equivalent of "pause on approach", so on those devices the drift
+ * is dropped for a swipeable, snapping row and the duplicate half is hidden
+ * (nothing is looping, so a repeated bedsheet would just be a repeated
+ * bedsheet). Both live in the `(hover: none)` block in globals.css.
+ *
  * The cards are deliberately lighter than `ProductCard`: no quick-add, no
  * wishlist button. Every card past the first pass is a duplicate marked
  * `inert`, and duplicating live controls would put a second, unreachable Add
@@ -115,6 +123,10 @@ function FeaturedCard({
          screen readers are entitled to resolve either way. */
       inert={duplicate || undefined}
       aria-hidden={duplicate}
+      /* Also a styling hook: on touch the drift is replaced by a swipeable
+         row, and the loop's second half has to come out of it. See the
+         `(hover: none)` block in globals.css. */
+      data-rail-duplicate={duplicate || undefined}
       tabIndex={duplicate ? -1 : undefined}
       className={`img-swap group ${CARD_WIDTH} text-center`}
     >

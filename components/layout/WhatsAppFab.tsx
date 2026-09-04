@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, MessageCircle, Package, Ruler, Scissors, Sparkles, X } from "lucide-react";
 import { BRAND } from "@/lib/constants";
 import { WHATSAPP_TOPICS, waLink, type WhatsAppTopic } from "@/lib/whatsapp";
+import { usePresence } from "@/components/motion/usePresence";
 
 /**
  * Floating WhatsApp concierge.
@@ -23,8 +24,14 @@ const ICONS: Record<WhatsAppTopic["icon"], IconComponent> = {
   chat: Sparkles,
 };
 
+/** Must match the .wa-panel exit animation in globals.css. */
+const PANEL_EXIT_MS = 200;
+
 export function WhatsAppFab({ phone }: { phone: string | null }) {
   const [open, setOpen] = useState(false);
+  /* The panel is only in the DOM while it is open or animating out — see the
+     note on the wrapper below for why it may not linger. */
+  const { mounted, state } = usePresence(open, PANEL_EXIT_MS);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -55,25 +62,46 @@ export function WhatsAppFab({ phone }: { phone: string | null }) {
     };
   }, [open, close]);
 
-  // Opening by keyboard should land inside the panel, not leave focus behind it.
+  /* Opening by keyboard should land inside the panel, not leave focus behind
+     it. `mounted` has to be in here as well as `open`: usePresence raises it
+     from its own effect, so the commit that flips `open` renders before the
+     panel exists — keyed on `open` alone this fired against a null ref and
+     focus stayed on the button. */
   useEffect(() => {
-    if (open) firstRowRef.current?.focus();
-  }, [open]);
+    if (open && mounted) firstRowRef.current?.focus();
+  }, [open, mounted]);
 
   // No number configured means no button — better than a dead chat link.
   if (!phone) return null;
 
   return (
-    <div ref={rootRef} className="fixed right-6 bottom-6 z-40 flex flex-col items-end gap-3">
+    /* This wrapper is fixed to the corner, so whatever box it has is a box
+       laid over the page for the whole life of every route.
+       
+       The panel therefore may not stay laid out while closed. It used to, and
+       on a phone that parked an invisible 336x465 div over the bottom 55% of
+       the screen — 86% of its width — which is most of the shop grid, the
+       featured rail and the whole footer. `pointer-events: none` is what kept
+       that survivable, and leaning on it is too thin a thread for something
+       this large: anything that fails to inherit it, or any engine that
+       hit-tests a composited layer anyway, silently eats every tap down there.
+       Mounted only while open (plus its exit), the wrapper is the 56px button
+       and nothing else, so there is no dead zone to neutralise in the first
+       place. The pointer-events pair below stays as a second line of defence —
+       it is also what keeps the flex column's own gap from catching clicks. */
+    <div
+      ref={rootRef}
+      className="pointer-events-none fixed right-6 bottom-6 z-40 flex flex-col items-end gap-3"
+    >
+      {mounted && (
       <div
         id={panelId}
         role="dialog"
         aria-label="WhatsApp concierge"
         aria-hidden={!open}
-        className={`w-[min(21rem,calc(100vw-3rem))] origin-bottom-right overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_30px_60px_-28px_rgba(42,27,51,0.55)] transition-[opacity,transform] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          open
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-3 scale-[0.97] opacity-0"
+        data-state={state}
+        className={`wa-panel w-[min(21rem,calc(100vw-3rem))] origin-bottom-right overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_30px_60px_-28px_rgba(42,27,51,0.55)] ${
+          open ? "pointer-events-auto" : "pointer-events-none"
         }`}
       >
         {/* Header — who is on the other end, and how soon they answer. */}
@@ -149,6 +177,7 @@ export function WhatsAppFab({ phone }: { phone: string | null }) {
           </a>
         </div>
       </div>
+      )}
 
       <button
         ref={buttonRef}
@@ -157,7 +186,7 @@ export function WhatsAppFab({ phone }: { phone: string | null }) {
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={open ? "Close WhatsApp concierge" : "Order directly on WhatsApp"}
-        className="group relative flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_18px_34px_-14px_rgba(18,140,126,0.75)] transition-[transform,box-shadow,background-color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-[#1ebe5b] hover:shadow-[0_22px_40px_-14px_rgba(18,140,126,0.85)] focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none active:translate-y-0"
+        className="group pointer-events-auto relative flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_18px_34px_-14px_rgba(18,140,126,0.75)] transition-[transform,box-shadow,background-color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-[#1ebe5b] hover:shadow-[0_22px_40px_-14px_rgba(18,140,126,0.85)] focus-visible:ring-2 focus-visible:ring-[#128c7e] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none active:translate-y-0"
       >
         {/* A quiet halo that draws the eye once. It stops while the panel is
             open, where it would only be noise. */}

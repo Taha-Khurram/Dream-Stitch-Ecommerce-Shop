@@ -33,7 +33,11 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Validation failed",
+          /* The rule that was actually broken, not the fact that one was. The
+             drawer prints this verbatim, and "Validation failed" left a
+             shopper whose address was a character short staring at a button
+             that refused with no way to know why. */
+          error: firstProblem(validationResult.error),
           details: validationResult.error.flatten().fieldErrors,
         },
         { status: 400 }
@@ -242,4 +246,15 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * The first rule the payload broke, phrased for the person who broke it.
+ *
+ * Every message in `lib/validations/checkout` already names its own field
+ * ("Street address must be at least 5 characters"), so the issue text needs no
+ * prefix to make sense on its own in the cart drawer.
+ */
+function firstProblem(error: z.ZodError): string {
+  return error.issues[0]?.message ?? "Some of these details are not valid.";
 }
