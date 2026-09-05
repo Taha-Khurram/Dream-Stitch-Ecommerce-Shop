@@ -46,6 +46,25 @@ export function isMissingInstall(error: QueryError | null | undefined): boolean 
   );
 }
 
+/**
+ * True when the table is there but one column on it is not.
+ *
+ * Kept separate from `isMissingInstall` deliberately. That one answers "is
+ * this table or function installed"; a missing column is a different question
+ * with a different remedy — the table is there, one migration against it is
+ * not — and the two are handled differently at every call site: a missing
+ * install is a screen that says so, a missing column is usually a write that
+ * retries without the field and logs which file to run.
+ *
+ * Two codes for one fact: PostgREST answers PGRST204 off its cached schema,
+ * and Postgres raises 42703 (undefined_column) when the planner gets there
+ * first — which is what happens in the window after a migration runs but
+ * before the cache catches up.
+ */
+export function isMissingColumn(error: QueryError | null | undefined): boolean {
+  return error?.code === "PGRST204" || error?.code === "42703";
+}
+
 /** The one sentence every surface uses to say the migration has not been run. */
 export const INBOX_NOT_INSTALLED =
   "The inbox is not installed. Run inbox_schema.sql in the Supabase SQL editor.";

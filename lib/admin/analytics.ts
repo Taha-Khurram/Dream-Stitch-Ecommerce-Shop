@@ -4,18 +4,24 @@ import { isMissingInstall, type QueryError } from "@/lib/inbox/install";
 /**
  * The numbers behind /admin/analytics.
  *
- * The dashboard answers "how much did we take". This module answers the four
- * questions that come next: **what sold**, **which part of the range earned
- * it**, **how many of the people who arrive go on to buy**, and **how many
- * come back**. Every one of them is read out of tables the store has been
- * writing all along — no new collection, no tracking, nothing added to the
- * storefront.
+ * The dashboard answers "how much did we take". This module answers the five
+ * questions that come next: **how many people came**, **what sold**, **which
+ * part of the range earned it**, **how many of the people who arrive go on to
+ * buy**, and **how many come back**.
+ *
+ * Four of the five are read out of tables the store has been writing all
+ * along — no new collection to answer them. The fifth is footfall, and it is
+ * the exception worth knowing about: nothing in the order book records a
+ * visit that did not become an order, and `live_sessions` forgets within the
+ * hour by design, so `visit_analytics.sql` adds one row per visitor per day
+ * and the storefront beacon fills it. One row, one date, no page paths and no
+ * identifier that outlives the browser session — see that file.
  *
  * The arithmetic lives in `analytics_schema.sql`, for the same reason the
  * revenue series does: PostgREST has aggregate functions disabled on Supabase,
  * so summing over `order_items` from here would mean pulling every line of
- * every fulfilled order into a server render to add up in JavaScript. Three
- * RPCs, three round trips, no order data crossing the wire.
+ * every fulfilled order into a server render to add up in JavaScript. Four
+ * RPCs, four round trips, no order data crossing the wire.
  *
  * Windows are the dashboard's windows — see lib/admin/range. `p_days` means
  * exactly what it means to `admin_revenue_series`, so a figure here and a
@@ -90,6 +96,36 @@ export interface ShopperStats {
   repeatBuyers: number;
   priorBuyers: number;
   priorRepeatBuyers: number;
+}
+
+/**
+ * One window of footfall, and the equal-length window before it.
+ *
+ * Two counts rather than one, because "how many people visited" has two
+ * honest answers over anything longer than a day and they diverge exactly
+ * where it matters. `visitors` is distinct visitors; `visits` is visitor-days,
+ * so a shopper who came back on three days of the week is one visitor and
+ * three visits. Over the daily window they are necessarily the same number.
+ *
+ * "Distinct visitor" means a distinct browser session, not a distinct person:
+ * the id is the session cookie /api/presence mints, so somebody who closes
+ * their browser and comes back tomorrow arrives as a new one. The weekly and
+ * monthly figures therefore lean generous. See visit_analytics.sql, which
+ * explains why that is the trade and what the alternative would cost.
+ */
+export interface VisitWindow {
+  /** `day`, `week` or `month` — what the tile is labelled. */
+  bucket: string;
+  /** The window's length. `previousSpan(days)` describes what it compares to. */
+  days: number;
+  /** Distinct visitors in the window — browser sessions, see above. */
+  visitors: number;
+  /** Visitor-days — the same person on two days is two. */
+  visits: number;
+  /** Of `visitors`, how many were signed in at some point that day. */
+  signedIn: number;
+  priorVisitors: number;
+  priorVisits: number;
 }
 
 /* ── Reads ──────────────────────────────────────────────────────────────── */
@@ -195,6 +231,42 @@ export async function readShopperStats(days: number): Promise<Panel<ShopperStats
       priorBuyers: Number(row.prior_buyers ?? 0),
       priorRepeatBuyers: Number(row.prior_repeat_buyers ?? 0),
     },
+    missing: false,
+  };
+}
+
+/**
+ * Footfall at three lengths — today, the last 7 days, the last 30 — in one
+ * round trip.
+ *
+ * The only figure on this screen that is not read out of the order book, and
+ * the only one that ignores the range tabs: "daily, weekly and monthly" is
+ * the question, so the three windows are the panel rather than something the
+ * reader has to click between. The windows are still the dashboard's
+ * arithmetic — `n` days ending today, in UTC — so today's visits and today's
+ * revenue mean the same today.
+ *
+ * Rows arrive shortest-window first and are handed on in that order.
+ */
+export async function readVisits(): Promise<Panel<VisitWindow[]>> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("admin_visit_stats");
+
+  if (error) return failed("admin_visit_stats", error);
+
+  const rows = (data ?? []) as Record<string, string | number | null>[];
+
+  return {
+    data: rows.map((row) => ({
+      bucket: String(row.bucket ?? ""),
+      days: Number(row.days ?? 0),
+      visitors: Number(row.visitors ?? 0),
+      visits: Number(row.visits ?? 0),
+      signedIn: Number(row.signed_in ?? 0),
+      priorVisitors: Number(row.prior_visitors ?? 0),
+      priorVisits: Number(row.prior_visits ?? 0),
+    })),
     missing: false,
   };
 }

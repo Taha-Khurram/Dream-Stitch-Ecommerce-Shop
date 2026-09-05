@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth/api";
-import { isMissingInstall } from "@/lib/inbox/install";
+import { isMissingColumn, isMissingInstall } from "@/lib/inbox/install";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
 import { getSettings } from "@/lib/api/settings";
@@ -83,6 +83,10 @@ export async function POST(request: Request) {
       }
     }
 
+    /* What each line cost us is deliberately absent: it is stamped onto the
+       row by a trigger in Postgres rather than sent from here, because this
+       request runs as the shopper and the shopper must never be able to read
+       a cost. See product_cost_price.sql. */
     const verifiedOrderItems = items.map((item) => ({
       product_id: item.productId,
       quantity: item.quantity,
@@ -382,22 +386,6 @@ export async function POST(request: Request) {
  */
 function firstProblem(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Some of these details are not valid.";
-}
-
-/**
- * True when an insert failed because a column does not exist yet.
- *
- * Two codes for one fact, the way `isMissingInstall` needs five: PostgREST
- * answers PGRST204 off its cached schema, and Postgres raises 42703
- * (undefined_column) when the planner gets there first — which is what happens
- * in the window after a migration runs but before the cache catches up.
- *
- * Kept separate from `isMissingInstall` deliberately. That one answers "is this
- * table or function installed", and a missing column is a different question
- * with a different remedy: the table is there, one migration against it is not.
- */
-function isMissingColumn(error: { code?: string } | null | undefined): boolean {
-  return error?.code === "PGRST204" || error?.code === "42703";
 }
 
 /**

@@ -32,6 +32,16 @@ export interface Category {
   updated_at: string;
 }
 
+/**
+ * One row of `product_costs` — what a product costs us to make.
+ *
+ * Its own table, readable only by an admin, because `products` is public. See
+ * product_cost_price.sql for why, and lib/admin/cost.ts for how it is read.
+ */
+export interface ProductCost {
+  cost_price: number;
+}
+
 export interface Product {
   id: string;
   category_id: string | null;
@@ -55,6 +65,21 @@ export interface Product {
   pieces?: string | null;
   /** Original price, struck through when higher than `price`. */
   compare_at_price?: number | null;
+  /**
+   * What one unit costs us to make — cloth, stitching, packaging.
+   *
+   * Embedded from `product_costs` rather than held as a column here, and that
+   * is a security decision rather than a modelling one: this table is
+   * world-readable, so a cost on it would be a cost published to every shopper
+   * holding the anon key. The sidecar has an admin-only policy, so this field
+   * is present on an admin's query and absent on everybody else's.
+   *
+   * Absent means "not costed", which is not a cost of zero. Read it through
+   * `productCost()` in lib/admin/cost.ts rather than reaching in: PostgREST
+   * returns a to-one embed as an object or as a one-element array depending on
+   * what it can prove about the relationship.
+   */
+  cost?: ProductCost | ProductCost[] | null;
   created_at: string;
   updated_at: string;
   category?: Category | null;
@@ -76,6 +101,13 @@ export interface OrderItem {
   product_id: string;
   quantity: number;
   unit_price: number;
+  /**
+   * What the unit cost to make, frozen at the moment it was ordered — the
+   * cost twin of `unit_price`, and snapshotted for the same reason: history
+   * must not move when the catalogue does. Null where it is unknown: the row
+   * predates product_cost_price.sql, or the product had no cost recorded.
+   */
+  unit_cost?: number | null;
   /* ── Variant (present once order_item_variants.sql has run) ────────────── */
   /** Bed size ordered, or `CUSTOM_SIZE_LABEL` when cut to measurement. Null on
    *  rows written before the migration — unknown, rather than "no size". */

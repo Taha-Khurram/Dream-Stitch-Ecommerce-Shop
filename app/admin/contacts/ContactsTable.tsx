@@ -6,6 +6,7 @@ import { MessageStatusPill } from "@/components/admin/InboxPills";
 import { MarkRepliedButton } from "@/components/admin/MessageActions";
 import { InboxNotInstalled } from "@/components/admin/InboxNotInstalled";
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
+import { Eye } from "lucide-react";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
 import { isMissingInstall } from "@/lib/inbox/install";
@@ -130,8 +131,8 @@ export async function ContactsTable({
                   {head}
                 </th>
               ))}
-              {/* Screen readers only — a visible "Actions" label over one
-                  button earns nothing but width. */}
+              {/* Screen readers only — a visible "Actions" label over a pair
+                  of buttons earns nothing but width. */}
               <th className="admin-th pb-3 text-right">
                 <span className="sr-only">Actions</span>
               </th>
@@ -154,11 +155,13 @@ export async function ContactsTable({
                 </td>
 
                 {/* The subject is the link, and it carries the weight — the
-                    preview under it is there to be skimmed, not clicked. */}
+                    preview under it is there to be skimmed, not clicked. The
+                    underline on hover is the affordance: without it the
+                    subject reads as a label, and nobody thinks to click it. */}
                 <td className="max-w-[24rem] py-3.5">
                   <Link
                     href={`${BASE_PATH}/${message.id}`}
-                    className="block truncate font-medium text-ink transition-colors hover:text-purple"
+                    className="block truncate font-medium text-ink underline-offset-4 transition-colors hover:text-purple hover:underline"
                   >
                     {message.subject}
                   </Link>
@@ -179,22 +182,31 @@ export async function ContactsTable({
                   <MessageStatusPill status={message.status} />
                 </td>
 
-                {/* Ticking a message off from the list is worth a button; the
-                    rest of its states are a decision made with the message in
-                    front of you, so those rows link to it instead. */}
+                {/* Two actions, and the order is deliberate. "View" is always
+                    offered: reading the whole message, changing its status to
+                    anything, and deleting it all live on the detail page, and
+                    a row whose only control was "Replied" left no visible way
+                    in — the subject link above is easy to miss when it is
+                    styled like the text around it.
+
+                    "Replied" stays beside it while the message is still open,
+                    because ticking off a message answered in the mail client
+                    is the one action worth doing without the trip. */}
                 <td className="py-3.5 text-right">
-                  {isOpenMessage(message.status) ? (
-                    <div className="flex justify-end">
-                      <MarkRepliedButton id={message.id} />
-                    </div>
-                  ) : (
+                  <div className="flex items-start justify-end gap-2">
                     <Link
                       href={`${BASE_PATH}/${message.id}`}
-                      className="text-[12px] font-medium text-muted transition-colors hover:text-purple"
+                      className="flex shrink-0 items-center gap-1.5 border border-line px-3 py-1.5 text-[12px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
                     >
-                      Open
+                      <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                      View
+                      {/* The row gives no context to a screen reader reaching
+                          the button alone — name the message it opens. */}
+                      <span className="sr-only"> message from {message.name}</span>
                     </Link>
-                  )}
+
+                    {isOpenMessage(message.status) && <MarkRepliedButton id={message.id} />}
+                  </div>
                 </td>
               </tr>
             ))}

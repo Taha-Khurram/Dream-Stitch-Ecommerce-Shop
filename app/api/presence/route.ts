@@ -14,6 +14,12 @@ export const dynamic = "force-dynamic";
  * this as user activity — see `isPresencePing` in lib/presence.ts, which is
  * what stops an abandoned tab from keeping a signed-in session alive forever.
  *
+ * One ping, two records, because the same hello answers two questions that
+ * are kept apart everywhere else. `record_presence` maintains the row that
+ * says this browser is here *now* and is pruned within the hour;
+ * `record_visit` stamps the visitor-day that survives it, which is what
+ * /admin/analytics counts a footfall out of. See visit_analytics.sql.
+ *
  * The visitor id lives in an httpOnly session cookie minted here rather than
  * in the browser, for two reasons: the page's own JavaScript never needs to
  * read it, and an id the client chose would let one visitor claim to be many.
@@ -33,9 +39,16 @@ export async function POST() {
   const visitor = isVisitorId(existing) ? existing : crypto.randomUUID();
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("record_presence", { p_visitor: visitor });
 
-  const response = presenceResponse(error);
+  /* Together rather than in sequence: they touch different tables, neither
+     reads the other's result, and the beacon is a background request whose
+     latency is a visitor's to pay. Two round trips at once cost one. */
+  const [presence, visit] = await Promise.all([
+    supabase.rpc("record_presence", { p_visitor: visitor }),
+    supabase.rpc("record_visit", { p_visitor: visitor }),
+  ]);
+
+  const response = presenceResponse(presence.error, visit.error);
 
   /**
    * Attached whatever happened above, not only on success.
@@ -61,15 +74,34 @@ export async function POST() {
   return response;
 }
 
-function presenceResponse(error: { code?: string; message?: string } | null): NextResponse {
-  if (!error) return new NextResponse(null, { status: 204 });
+/**
+ * One status for two writes.
+ *
+ * The rule is "did this ping accomplish anything", not "did everything
+ * succeed", because the two migrations behind them are independent and either
+ * can be installed without the other. A store running presence_schema.sql but
+ * not visit_analytics.sql is a supported state, and a 501 there would stop the
+ * beacon for good (see PresenceBeacon) and take the live-visitor tile down
+ * with it — a missing panel would have silenced a working one.
+ *
+ * So: anything landed, 204. Nothing landed because neither function exists,
+ * 501 — there is genuinely nothing here to ping. Anything else is transient.
+ */
+function presenceResponse(
+  ...errors: ({ code?: string; message?: string } | null)[]
+): NextResponse {
+  if (errors.some((error) => !error)) return new NextResponse(null, { status: 204 });
 
-  /* presence_schema.sql has not been applied. Say so with a status the beacon
+  /* Neither migration has been applied. Say so with a status the beacon
      recognises, so it stops pinging instead of retrying every thirty seconds
      for the life of the tab. */
-  if (isMissingFunction(error)) {
+  if (errors.every(isMissingFunction)) {
     return NextResponse.json(
-      { success: false, error: "Presence is not installed. Run presence_schema.sql." },
+      {
+        success: false,
+        error:
+          "Presence is not installed. Run presence_schema.sql (and visit_analytics.sql).",
+      },
       { status: 501 }
     );
   }
@@ -89,10 +121,11 @@ function presenceResponse(error: { code?: string; message?: string } | null): Ne
  * for undefined_function. Either can surface depending on whether the schema
  * cache or the planner notices first.
  */
-function isMissingFunction(error: { code?: string; message?: string }): boolean {
+function isMissingFunction(error: { code?: string; message?: string } | null): boolean {
   return (
-    error.code === "PGRST202" ||
-    error.code === "42883" ||
-    (error.message ?? "").includes("Could not find the function")
+    !!error &&
+    (error.code === "PGRST202" ||
+      error.code === "42883" ||
+      (error.message ?? "").includes("Could not find the function"))
   );
 }

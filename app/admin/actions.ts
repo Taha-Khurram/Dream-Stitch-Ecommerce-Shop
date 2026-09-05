@@ -128,6 +128,16 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
   if (!name) return { ok: false, message: "Name is required." };
   if (price === null || price < 0) return { ok: false, message: "Enter a valid price." };
 
+  /* Blank is a real answer — a product nobody has costed yet sells perfectly
+     well and simply sits outside the profit figures. A negative one is not,
+     and the CHECK in product_cost_price.sql would refuse it with a message
+     nobody could act on. Selling below cost is deliberately allowed: the form
+     says so in red as it is typed, and a loss-leader is the shop's call. */
+  const costPrice = num(formData.get("cost_price"));
+  if (costPrice !== null && costPrice < 0) {
+    return { ok: false, message: "Cost to make cannot be negative." };
+  }
+
   const categoryId = text(formData.get("category_id"));
   const gallery = lines(formData.get("images"));
   const primary = text(formData.get("image_url")) || gallery[0] || null;
@@ -149,9 +159,12 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = id
-    ? await supabase.from("products").update(payload).eq("id", id)
-    : await supabase.from("products").insert(payload);
+  /* The id comes back on both branches now, because the cost is written to a
+     second table keyed by it and a brand-new product has no id until Postgres
+     hands one over. */
+  const { data: saved, error } = id
+    ? await supabase.from("products").update(payload).eq("id", id).select("id").maybeSingle()
+    : await supabase.from("products").insert(payload).select("id").single();
 
   if (error) {
     return {
@@ -163,11 +176,87 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
     };
   }
 
+  /* An update that matched nothing is RLS refusing the write — it filters
+     rather than raises — and reporting it beats "Saved" over unchanged
+     values. It also matters here specifically: the cost write below would go
+     through on its own policy and leave a costed product that was never
+     actually edited. */
+  if (!saved) return { ok: false, message: NOT_WRITTEN };
+
+  const costProblem = await saveProductCost(supabase, saved.id, costPrice);
+
+  /* Revalidated either way: the product itself went in, and leaving the list
+     showing yesterday's name because the cost table is missing would compound
+     one problem with a second. */
   revalidatePath("/admin/products");
+  revalidatePath("/admin");
   revalidatePath("/shop");
   revalidatePath("/");
 
+  if (costProblem) return costProblem;
+
   return { ok: true, message: id ? "Product updated." : "Product created." };
+}
+
+/**
+ * The cost, into the admin-only table that holds it.
+ *
+ * A second write rather than another column, because `products` is
+ * world-readable and `product_costs` is not — see product_cost_price.sql. It
+ * follows the product write rather than sharing it, so a failure here means a
+ * saved product with a stale cost rather than a lost edit, and the message
+ * says which half went in.
+ *
+ * A blank box deletes the row. That is the same "not costed" state a product
+ * starts life in, and leaving the old figure behind would quietly keep costing
+ * a set against a number somebody had just cleared.
+ *
+ * Returns null when there is nothing to report. Every other answer is `ok:
+ * false`, including the missing-migration one: the product genuinely saved, so
+ * "failed" is not quite true, but the form redirects away on success and this
+ * is a sentence the shop owner needs to be left looking at.
+ */
+async function saveProductCost(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+  cost: number | null
+): Promise<ActionResult | null> {
+  const { error } =
+    cost === null
+      ? await supabase.from("product_costs").delete().eq("product_id", productId)
+      : await supabase
+          .from("product_costs")
+          .upsert(
+            {
+              product_id: productId,
+              cost_price: cost,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "product_id" }
+          );
+
+  if (!error) return null;
+
+  /* Clearing a cost from a database that has no cost table is not a failure,
+     it is a no-op that already happened. Saying otherwise would put a
+     migration warning on every single product save until the file is run,
+     including on the ones nobody typed a cost into. */
+  if (cost === null && isMissingInstall(error)) return null;
+
+  /* The table arrives with product_cost_price.sql and nothing else in the app
+     depends on it, so a product saved against a database without it is saved —
+     it simply has no cost, which is a state the profit panel already knows how
+     to describe. Naming the file beats "Could not find the table
+     'public.product_costs' in the schema cache". */
+  if (isMissingInstall(error)) {
+    return {
+      ok: false,
+      message:
+        "The product saved, but the cost did not: run product_cost_price.sql in the Supabase SQL editor.",
+    };
+  }
+
+  return { ok: false, message: `The product saved, but the cost did not: ${error.message}` };
 }
 
 export async function deleteProduct(id: string): Promise<ActionResult> {

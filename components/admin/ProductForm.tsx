@@ -1,5 +1,7 @@
 import React from "react";
 import { ActionForm, Field } from "./ActionForm";
+import { CostFields } from "./CostFields";
+import { productCost } from "@/lib/admin/cost";
 import { MediaListField } from "./MediaField";
 import { SelectField } from "./SelectField";
 import { inputClass } from "./field-styles";
@@ -66,18 +68,10 @@ export function ProductForm({
         />
       </Field>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <Field label={`Price (${CURRENCY})`} name="price">
-          <input
-            id="price"
-            name="price"
-            required
-            inputMode="decimal"
-            defaultValue={product?.price}
-            placeholder="6490"
-            className={`${inputClass} tabular-nums`}
-          />
-        </Field>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Price and cost travel together — the margin under the cost box is
+            the reason, and it needs both values as they are typed. */}
+        <CostFields price={product?.price} cost={productCost(product)} />
 
         <Field
           label={`Compare at (${CURRENCY})`}

@@ -26,6 +26,9 @@ prefix. This table is the ordering.
 | 12 | `admin_search.sql` | 1, 6 — trigram indexes for the order and customer search boxes |
 | 13 | `discount_codes.sql` | 1, 3 — coupon rules, the redemption ledger, `orders.discount_*` |
 | 14 | `order_payment_method.sql` | 1 — `orders.payment_method`, the cash-on-delivery flag |
+| 15 | `analytics_schema.sql` | 1, 3, 6, 8 — the `/admin/analytics` breakdowns and rates |
+| 16 | `visit_analytics.sql` | 3 — `visit_days`, the footfall panel on `/admin/analytics` |
+| 17 | `product_cost_price.sql` | 1, 3, 8 — admin-only `product_costs` + `order_item_costs`, the profit panel on `/admin` |
 
 Optional, run at any point after their dependency:
 

@@ -12,10 +12,12 @@ import {
   readCategoryRevenue,
   readShopperStats,
   readTopProducts,
+  readVisits,
   shareOf,
   type Breakdown,
   type BreakdownRow,
   type Panel,
+  type VisitWindow,
 } from "@/lib/admin/analytics";
 
 export const dynamic = "force-dynamic";
@@ -26,19 +28,23 @@ const BASE_PATH = "/admin/analytics";
  * The trading questions the dashboard does not answer.
  *
  * /admin is a morning screen — what needs attention, and how much came in.
- * This is the one you open when nothing is on fire: **what sells**, **which
- * part of the range earns it**, **how many of the people who sign up go on to
- * buy**, and **how many come back**. Four numbers, all of them already sitting
- * in the order book; see lib/admin/analytics.
+ * This is the one you open when nothing is on fire: **how many people came**,
+ * **what sells**, **which part of the range earns it**, **how many of the
+ * people who sign up go on to buy**, and **how many come back**.
  *
  * Same window control as the dashboard, reading the same `?range=` key through
  * the same parser, so moving between the two screens keeps the window you were
  * looking at and "the last 90 days" stays an address rather than a click. Every
- * figure here is dated by `orders.created_at` and counts fulfilled orders only,
- * exactly as the revenue tile does.
+ * figure below the visits panel is dated by `orders.created_at` and counts
+ * fulfilled orders only, exactly as the revenue tile does.
  *
- * Three regions, three Suspense boundaries — the rates land first because they
- * are two counts, and neither breakdown holds up the other or the page frame.
+ * Visits are the one panel the range tabs do not reach, and that is the point
+ * of it: "how many came today, this week, this month" is three fixed windows
+ * asked at once, not one window you have to click between. It sits at the top
+ * because it is the top of the funnel the two rates below it measure.
+ *
+ * Four regions, four Suspense boundaries — the counts land first, and no panel
+ * holds up another or the page frame.
  */
 export default async function AdminAnalyticsPage({
   searchParams,
@@ -53,9 +59,16 @@ export default async function AdminAnalyticsPage({
     <div>
       <AdminHeading
         title="Analytics"
-        copy="What sells, where the money comes from, and how many people come back."
+        copy="How many people come, what sells, where the money comes from, and how many come back."
         action={<RangeTabs active={range} basePath={BASE_PATH} />}
       />
+
+      {/* Unkeyed, alone on this page: its three windows are fixed, so a range
+          switch has nothing to invalidate and re-rendering a skeleton over
+          numbers that are not about to change would be a lie about staleness. */}
+      <Suspense fallback={<VisitsSkeleton />}>
+        <Visits />
+      </Suspense>
 
       {/* Keyed on the window, like the dashboard's tiles: switching to 90 days
           should put the skeleton back rather than leave last week's rates on
@@ -85,15 +98,26 @@ export default async function AdminAnalyticsPage({
  * the answer is genuinely nothing. Rendering the same empty table for all
  * three would tell an admin their best week sold nothing.
  */
-function PanelNotice({ missing, empty }: { missing: boolean; empty: string }) {
+function PanelNotice({
+  missing,
+  empty,
+  file = "analytics_schema.sql",
+  note = "Nothing is backfilled — the figures are read out of the orders you already have.",
+}: {
+  missing: boolean;
+  empty: string;
+  /** Which migration this panel needs. Most of them need the same one. */
+  file?: string;
+  /** What running it will and will not produce. */
+  note?: string;
+}) {
   if (missing) {
     return (
       <div className="mt-4 border border-line bg-white p-8 text-center">
         <p className="text-sm text-ink">This panel is not installed yet.</p>
         <p className="admin-hint mx-auto mt-2 max-w-md">
-          Run <code className="text-ink">analytics_schema.sql</code> in the Supabase SQL
-          editor, then reload. Nothing is backfilled — the figures are read out of the
-          orders you already have.
+          Run <code className="text-ink">{file}</code> in the Supabase SQL editor, then
+          reload. {note}
         </p>
       </div>
     );
@@ -106,13 +130,121 @@ function PanelNotice({ missing, empty }: { missing: boolean; empty: string }) {
   );
 }
 
-/** The heading every panel wears, with the window it covers spelled out. */
-function PanelHeading({ title, note }: { title: string; note: string }) {
+/**
+ * The heading every panel wears, with the window it covers spelled out.
+ *
+ * `first` is the one that sits directly under the page heading, which brings
+ * its own bottom rule and padding — the full gap on top of that reads as a
+ * hole rather than as separation.
+ */
+function PanelHeading({ title, note, first }: { title: string; note: string; first?: boolean }) {
   return (
-    <div className="mt-12">
+    <div className={first ? "mt-8" : "mt-12"}>
       <h2 className="admin-section-title">{title}</h2>
       <p className="admin-hint mt-1.5">{note}</p>
     </div>
+  );
+}
+
+/* ── Visits ─────────────────────────────────────────────────────────────── */
+
+/**
+ * What each window is called on screen.
+ *
+ * Spelled out rather than derived, because "week" and "month" are the words
+ * the question was asked in and "the last 7 days" is what the number actually
+ * means. A tile labelled "This month" would be claiming a calendar month, and
+ * on the 2nd that is a very different figure from the one being shown.
+ */
+const VISIT_LABELS: Record<string, string> = {
+  day: "Today",
+  week: "Last 7 days",
+  month: "Last 30 days",
+};
+
+function visitLabel({ bucket, days }: VisitWindow): string {
+  return VISIT_LABELS[bucket] ?? `Last ${days} days`;
+}
+
+/**
+ * Footfall, at the three lengths the question is usually asked in.
+ *
+ * The headline on every tile is *visitors* and the line beneath it is
+ * *visits*, which counts the same visitor once for each day they came. Both,
+ * on every tile, because over a week the two are genuinely different facts
+ * and a panel showing only one of them invites the reader to take it for the
+ * other. On the daily tile they coincide, which is the definitions agreeing
+ * rather than a bug: a hundred people today is a hundred visitors and a
+ * hundred visits.
+ *
+ * Zeroes are rendered, not hidden. A day on which nobody came is a real
+ * answer, and the only state that gets a notice instead is the migration not
+ * having been run — see visit_analytics.sql, and PanelNotice.
+ */
+async function Visits() {
+  const { data, missing } = await readVisits();
+
+  if (!data || data.length === 0) {
+    return (
+      <section>
+        <PanelHeading
+          title="Visits"
+          note="How many people came to the storefront, daily, weekly and monthly."
+          first
+        />
+        <PanelNotice
+          missing={missing}
+          empty="The visit figures could not be read."
+          file="visit_analytics.sql"
+          note="Nothing is backfilled — counting starts from the moment it is applied."
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <PanelHeading
+        title="Visits"
+        note="Storefront footfall, counted once per browser per day. The headline is distinct visitors; the line beneath counts every day each of them came. A browser that has been closed since arrives as a new visitor, so the longer windows lean generous."
+        first
+      />
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {data.map((entry) => (
+          <Stat
+            key={entry.bucket}
+            label={visitLabel(entry)}
+            value={entry.visitors.toLocaleString()}
+            delta={
+              <Delta current={entry.visitors} previous={entry.priorVisitors} days={entry.days} />
+            }
+            note={`${entry.visits.toLocaleString()} ${
+              entry.visits === 1 ? "visit" : "visits"
+            } in all, ${entry.signedIn.toLocaleString()} signed in`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Three tiles, sized like the real ones, so the swap is a fill and not a jump. */
+function VisitsSkeleton() {
+  return (
+    <section className="mt-8" aria-hidden>
+      <Skeleton className="h-3.5 w-20" />
+      <Skeleton className="mt-2 h-2.5 w-80" />
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="border border-line bg-white p-5">
+            <Skeleton className="h-2 w-20" />
+            <Skeleton className="mt-4 h-7 w-14" />
+            <Skeleton className="mt-3.5 h-3.5 w-32" />
+            <Skeleton className="mt-3 h-2.5 w-40" />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -159,9 +291,10 @@ async function Rates({ days, span }: { days: number; span: string }) {
 
   if (!data) {
     return (
-      <div className="mt-8">
+      <section>
+        <RatesHeading span={span} />
         <PanelNotice missing={missing} empty="The conversion figures could not be read." />
-      </div>
+      </section>
     );
   }
 
@@ -171,46 +304,69 @@ async function Rates({ days, span }: { days: number; span: string }) {
   const priorRepeat = rate(data.priorRepeatBuyers, data.priorBuyers);
 
   return (
-    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Stat
-        label="Signup conversion"
-        value={formatRate(conversion)}
-        delta={
-          conversion !== null && priorConversion !== null ? (
-            <Delta unit="points" current={conversion} previous={priorConversion} days={days} />
-          ) : undefined
-        }
-        note={`${data.converted} of ${data.signups} who joined in ${span} have since ordered`}
-      />
-      <Stat
-        label="Repeat customers"
-        value={formatRate(repeat)}
-        delta={
-          repeat !== null && priorRepeat !== null ? (
-            <Delta unit="points" current={repeat} previous={priorRepeat} days={days} />
-          ) : undefined
-        }
-        note={`${data.repeatBuyers} of ${data.buyers} who bought in ${span} have ordered more than once`}
-      />
-    </div>
+    <section>
+      <RatesHeading span={span} />
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Stat
+          label="Signup conversion"
+          value={formatRate(conversion)}
+          delta={
+            conversion !== null && priorConversion !== null ? (
+              <Delta unit="points" current={conversion} previous={priorConversion} days={days} />
+            ) : undefined
+          }
+          note={`${data.converted} of ${data.signups} who joined in ${span} have since ordered`}
+        />
+        <Stat
+          label="Repeat customers"
+          value={formatRate(repeat)}
+          delta={
+            repeat !== null && priorRepeat !== null ? (
+              <Delta unit="points" current={repeat} previous={priorRepeat} days={days} />
+            ) : undefined
+          }
+          note={`${data.repeatBuyers} of ${data.buyers} who bought in ${span} have ordered more than once`}
+        />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Named, now that it is no longer the first thing under the page heading.
+ *
+ * Untitled tiles read as belonging to whatever panel is above them, and the
+ * one above them counts visitors — two rates about customers sitting loose
+ * under a visits heading would invite exactly the wrong reading of both.
+ */
+function RatesHeading({ span }: { span: string }) {
+  return (
+    <PanelHeading
+      title="Shoppers"
+      note={`Of the people who signed up in ${span}, how many went on to buy — and of those who bought, how many had bought before.`}
+    />
   );
 }
 
 function RatesSkeleton() {
   return (
-    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden>
-      {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="border border-line bg-white p-5">
-          <Skeleton className="h-2 w-24" />
-          <Skeleton className="mt-4 h-7 w-16" />
-          {/* Reserved on both, so the grid does not resettle when the chips
-              arrive — or when one of them turns out to have nothing to
-              compare against and never renders one. */}
-          <Skeleton className="mt-3.5 h-3.5 w-32" />
-          <Skeleton className="mt-3 h-2.5 w-44" />
-        </div>
-      ))}
-    </div>
+    <section className="mt-12" aria-hidden>
+      <Skeleton className="h-3.5 w-24" />
+      <Skeleton className="mt-2 h-2.5 w-80" />
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="border border-line bg-white p-5">
+            <Skeleton className="h-2 w-24" />
+            <Skeleton className="mt-4 h-7 w-16" />
+            {/* Reserved on both, so the grid does not resettle when the chips
+                arrive — or when one of them turns out to have nothing to
+                compare against and never renders one. */}
+            <Skeleton className="mt-3.5 h-3.5 w-32" />
+            <Skeleton className="mt-3 h-2.5 w-44" />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

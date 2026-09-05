@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminHeading } from "@/components/admin/AdminHeading";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { PRODUCT_COST_EMBED } from "@/lib/admin/cost";
 import nextDynamic from "next/dynamic";
 import type { Category, Product, ProductMedia } from "@/types/ecommerce";
 
@@ -36,7 +37,7 @@ export default async function EditProductPage({
   const supabase = await createClient();
 
   const [{ data: product }, { data: categories }, { data: media }] = await Promise.all([
-    supabase.from("products").select("*").eq("id", id).single(),
+    supabase.from("products").select(`*, ${PRODUCT_COST_EMBED}`).eq("id", id).single(),
     supabase.from("categories").select("*").order("name"),
     // Fetched here rather than in the client so the gallery is on screen with
     // the first paint. Missing table (migration not run yet) => no media.

@@ -16,8 +16,16 @@ import { OPEN_STATUSES, REVENUE_STATUSES } from "@/lib/orders/lifecycle";
 import { OPEN_MESSAGE_STATUSES } from "@/lib/inbox/lifecycle";
 import { isMissingInstall } from "@/lib/inbox/install";
 import { readDiscountUsage } from "@/lib/discounts/usage";
+import { readProfitWindow } from "@/lib/admin/profit";
 import { describeDiscount, isDiscountKind } from "@/lib/discounts/lifecycle";
-import { AlertTriangle, ArrowRight, Inbox as InboxIcon, Mail, Ticket } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Coins,
+  Inbox as InboxIcon,
+  Mail,
+  Ticket,
+} from "lucide-react";
 import type { Order, Product } from "@/types/ecommerce";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +72,13 @@ export default async function AdminDashboard({
           under a tab that now says something else. */}
       <Suspense key={range} fallback={<StatsSkeleton />}>
         <Stats days={days} />
+      </Suspense>
+
+      {/* Directly under the tiles, because it is the other half of them: what
+          the store took is above, what it kept is here. Keyed on the window
+          for the same reason they are. */}
+      <Suspense key={range} fallback={null}>
+        <Profit days={days} span={span} />
       </Suspense>
 
       {/* Its own boundary, below the settled totals: these two are the
@@ -431,6 +446,171 @@ function StatsSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ── Profit ─────────────────────────────────────────────────────────────── */
+
+/**
+ * What is left of the trading above, once the goods are paid for.
+ *
+ * Every figure here comes from one place — what each product costs to make,
+ * entered on its own product page and frozen onto the order line the day it
+ * sells. See lib/admin/profit.ts for the two conventions that matter: goods
+ * rather than takings, and a margin measured only over the sales whose cost is
+ * actually known.
+ *
+ * That second one is why the panel carries a coverage line rather than three
+ * bare tiles. A margin over a window where half the sales have no cost on file
+ * is a real number about half a business, and the difference between "39%" and
+ * "39%, over the 51% of sales we can see" is the difference between a figure
+ * somebody can act on and one that will quietly mislead them. The uncosted
+ * products are named and linked, so the fix is one click from the number that
+ * prompted it.
+ *
+ * A store that has not run the migration is told which file to run rather than
+ * shown a confident PKR 0 — the same choice the discounts and inbox panels
+ * make about theirs.
+ */
+async function Profit({ days, span }: { days: number; span: string }) {
+  const { current, previous, installed, uncostedProducts } = await readProfitWindow(days);
+
+  if (!installed) {
+    return (
+      <section className="mt-10">
+        <ProfitHeading />
+        <p className="mt-4 border border-line bg-white p-8 text-center text-sm text-muted">
+          Profit reporting is not installed yet. Run{" "}
+          <span className="font-medium text-ink">product_cost_price.sql</span> in the
+          Supabase SQL editor, then enter what each set costs to make on its product
+          page.
+        </p>
+      </section>
+    );
+  }
+
+  /* Nothing costed is not the same as nothing sold, and neither is a margin of
+     zero — so both get a dash and a sentence rather than a number. */
+  const measured = current.costedRevenue > 0;
+  const comparable = previous.costedRevenue > 0;
+
+  return (
+    <section className="mt-10">
+      <ProfitHeading />
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Stat
+          label="Gross profit"
+          value={measured ? formatPrice(current.profit) : "—"}
+          delta={
+            measured && comparable ? (
+              <Delta current={current.profit} previous={previous.profit} days={days} />
+            ) : undefined
+          }
+          note={`Goods sold in ${span}, less what they cost to make`}
+          tone={current.profit < 0 ? "alert" : "plain"}
+        />
+        <Stat
+          label="Cost of goods"
+          value={measured ? formatPrice(current.cost) : "—"}
+          note={
+            measured
+              ? `Behind ${formatPrice(current.costedRevenue)} of sales`
+              : "No sale in this window has a cost recorded"
+          }
+        />
+        <Stat
+          label="Margin"
+          value={current.margin === null ? "—" : `${current.margin}%`}
+          delta={
+            current.margin !== null && previous.margin !== null ? (
+              <Delta
+                current={current.margin}
+                previous={previous.margin}
+                days={days}
+                unit="points"
+              />
+            ) : undefined
+          }
+          note="Profit as a share of the sales it was earned on"
+        />
+      </div>
+
+      <ProfitCoverage
+        coverage={current.coverage}
+        revenue={current.revenue}
+        span={span}
+        uncostedProducts={uncostedProducts}
+      />
+    </section>
+  );
+}
+
+function ProfitHeading() {
+  return (
+    <div className="flex items-center gap-2">
+      <Coins className="h-4 w-4 text-purple" strokeWidth={1.5} />
+      <h2 className="admin-section-title">Profit</h2>
+    </div>
+  );
+}
+
+/**
+ * How much of the window the three tiles above actually speak for.
+ *
+ * Deliberately always rendered, including when the answer is "all of it": a
+ * caveat that only appears when things are bad teaches the reader to skim past
+ * the tiles on every other day, and the sentence that says the figures are
+ * complete is worth as much as the one that says they are not.
+ *
+ * Goods revenue is spelled out here rather than on a tile of its own because
+ * it is not the same number as the revenue tile at the top of the screen —
+ * this one is lines only, so no delivery and before any code came off. Two
+ * revenue figures on one screen need the smaller one to explain itself.
+ */
+function ProfitCoverage({
+  coverage,
+  revenue,
+  span,
+  uncostedProducts,
+}: {
+  coverage: number | null;
+  revenue: number;
+  span: string;
+  uncostedProducts: number;
+}) {
+  const fix =
+    uncostedProducts > 0 ? (
+      <>
+        {" · "}
+        <Link
+          href="/admin/products"
+          className="font-medium text-ink-soft underline-offset-4 transition-colors hover:text-purple hover:underline"
+        >
+          {uncostedProducts.toLocaleString()}{" "}
+          {uncostedProducts === 1 ? "product has" : "products have"} no cost yet
+        </Link>
+      </>
+    ) : null;
+
+  if (coverage === null) {
+    return (
+      <p className="admin-hint mt-3">
+        Nothing was fulfilled in {span}, so there is nothing to cost{fix}
+      </p>
+    );
+  }
+
+  const percent = Math.round(coverage * 100);
+
+  return (
+    <p className="admin-hint mt-3">
+      {percent >= 100
+        ? `Every set sold in ${span} has a cost on file`
+        : `Costs on file for ${percent}% of the ${formatPrice(revenue)} of goods sold in ${span}`}
+      {" · goods only, so no delivery and before any discount code"}
+      {fix}
+    </p>
   );
 }
 

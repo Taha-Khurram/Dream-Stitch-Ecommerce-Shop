@@ -13,6 +13,7 @@ import {
 import { Pagination, PaginationSkeleton } from "@/components/admin/Pagination";
 import { Skeleton } from "@/components/motion/Skeleton";
 import { formatPrice } from "@/lib/format";
+import { marginPercent, productCost, PRODUCT_COST_EMBED } from "@/lib/admin/cost";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
 import { SEARCH_PARAM } from "@/lib/admin/search";
 import type { Product } from "@/types/ecommerce";
@@ -35,6 +36,10 @@ const BASE_PATH = "/admin/products";
 const COLUMNS =
   "id, name, price, compare_at_price, stock, image_url, fabric, category:categories(name)";
 
+/* The margin column's half of it. Embedded rather than joined by hand, and
+   admin-only by policy — see lib/admin/cost.ts. */
+const COLUMNS_WITH_COST = `${COLUMNS}, ${PRODUCT_COST_EMBED}`;
+
 const LOW_STOCK_AT = 5;
 
 /* The thumbnail is 40x48 CSS px. next/image asks the optimiser for the 2x
@@ -56,15 +61,29 @@ export async function ProductsTable({
 
   /* `count: "exact"` rides along on the same request, so the pager is sized
      without a second round trip. */
-  let request = supabase
-    .from("products")
-    .select(COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  const read = async (columns: string) => {
+    let request = supabase
+      .from("products")
+      .select(columns, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  if (query) request = request.ilike("name", `%${query}%`);
+    if (query) request = request.ilike("name", `%${query}%`);
 
-  const { data, count } = await request;
+    return request;
+  };
+
+  let { data, count, error } = await read(COLUMNS_WITH_COST);
+
+  /* The embed is the only part of that query that can fail on a database which
+     is otherwise fine — `product_costs` arrives with its own migration, and
+     PostgREST refuses the whole request when it cannot find the relationship.
+     A catalogue that will not load is a worse outcome than a margin column of
+     dashes, so the second attempt drops the cost and keeps the table. */
+  if (error) {
+    ({ data, count } = await read(COLUMNS));
+  }
+
   const products = (data ?? []) as unknown as Product[];
   const total = count ?? 0;
   const lastPage = lastPageFor(total, perPage);
@@ -99,7 +118,7 @@ export async function ProductsTable({
        bulk action reaches exactly the rows drawn below it and nothing else. */
     <SelectionProvider ids={products.map((product) => product.id)}>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
+        <table className="w-full min-w-[52rem] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-ink">
               <th className="admin-th w-8 pb-3 pr-6">
@@ -108,7 +127,7 @@ export async function ProductsTable({
               {/* A gutter on every column but the last. Without it the cells
                   only look separated while their contents happen to be short:
                   a four-digit price runs straight into the stock number. */}
-              {["Product", "Category", "Price", "Stock", ""].map((head, i, all) => (
+              {["Product", "Category", "Price", "Margin", "Stock", ""].map((head, i, all) => (
                 <th key={head} className={`admin-th pb-3 ${i < all.length - 1 ? "pr-6" : ""}`}>
                   {head === "" ? <span className="sr-only">Actions</span> : head}
                 </th>
@@ -119,6 +138,14 @@ export async function ProductsTable({
             {products.map((product) => {
               const soldOut = product.stock <= 0;
               const low = product.stock > 0 && product.stock <= LOW_STOCK_AT;
+
+              /* Null covers both "no cost table" and "nobody has costed this
+                 one", and the row treats them the same: there is no margin to
+                 show, and the way to change that is the same product page
+                 either way. */
+              const cost = productCost(product);
+              const margin =
+                cost === null ? null : marginPercent(Number(product.price), cost);
 
               return (
                 <tr
@@ -162,6 +189,33 @@ export async function ProductsTable({
                           {formatPrice(product.compare_at_price)}
                         </span>
                       )}
+                  </td>
+                  {/* Cost sits under the margin rather than in a column of its
+                      own: what a set costs is only ever read against what it
+                      sells for, and a fifth money column would push the table
+                      wider than the screen it is read on. */}
+                  <td className="py-3 pr-6">
+                    {cost === null ? (
+                      <Link
+                        href={`/admin/products/${product.id}`}
+                        className="text-[12px] text-muted underline-offset-4 transition-colors hover:text-purple hover:underline"
+                      >
+                        Add cost
+                      </Link>
+                    ) : (
+                      <>
+                        <span
+                          className={`tabular-nums ${
+                            margin !== null && margin < 0 ? "text-sale" : "text-ink"
+                          }`}
+                        >
+                          {margin === null ? "—" : `${margin}%`}
+                        </span>
+                        <span className="admin-hint mt-0.5 block tabular-nums">
+                          {formatPrice(cost)} to make
+                        </span>
+                      </>
+                    )}
                   </td>
                   <td className="py-3 pr-6">
                     <span
