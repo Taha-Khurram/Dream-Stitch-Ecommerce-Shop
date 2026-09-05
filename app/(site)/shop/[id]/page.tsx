@@ -32,6 +32,12 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   return {
     title: `${product.name} | ${BRAND.name}`,
+    /* Every product answers on two URLs: the uuid the product cards link by,
+       and the slug. This names the slug as the real one, which is what stops
+       Google treating a card click and a sitemap entry as two thin pages
+       competing with each other — and it is the slug that carries the
+       product's words in the address bar. */
+    alternates: { canonical: `/shop/${product.slug}` },
     // The fallback used to quote a PKR 5,000 delivery threshold that no longer
     // came from anywhere — Settings owns that number, and a search snippet is
     // no place to hardcode a second copy of it.

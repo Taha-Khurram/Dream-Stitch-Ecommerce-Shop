@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getProducts, getCategories } from "@/lib/api/products";
 import { getSiteContent } from "@/lib/api/content";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -9,6 +10,7 @@ import { FilterSheet } from "@/components/products/FilterSheet";
 import { SortMenu } from "@/components/products/SortMenu";
 import { productSizes } from "@/lib/product-attributes";
 import { IMG, img } from "@/lib/imagery";
+import { BRAND } from "@/lib/constants";
 import { ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,29 @@ interface ShopPageProps {
     max?: string;
     sale?: string;
   }>;
+}
+
+/**
+ * The filter rail writes its state into the query string, so one catalogue is
+ * reachable at thousands of addresses — `?sort=price-asc&size=King` and its
+ * permutations. robots.txt closes those to crawling; this closes the gap for
+ * the ones already crawled or linked from elsewhere, by pointing every
+ * filtered view back at the collection it filters.
+ *
+ * `?category=` is the exception, and is kept: those are real collection pages
+ * with their own banner and copy, and they are listed in the sitemap as such.
+ */
+export async function generateMetadata({ searchParams }: ShopPageProps): Promise<Metadata> {
+  const { category } = await searchParams;
+
+  return {
+    title: `Shop Bedsheets | ${BRAND.name} ${BRAND.suffix}`,
+    description:
+      "Browse pure cotton, cotton zeen and cotton satin bedsheet sets in king and single sizes — or order a set cut to your own measurements.",
+    alternates: {
+      canonical: category ? `/shop?category=${encodeURIComponent(category)}` : "/shop",
+    },
+  };
 }
 
 const COLLECTION_BANNER: Record<string, { image: string; copy: string }> = {

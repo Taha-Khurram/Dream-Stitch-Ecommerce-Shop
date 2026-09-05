@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Jost, Prata, Great_Vibes } from "next/font/google";
 import "./globals.css";
 import { BRAND } from "@/lib/constants";
+import { SITE_URL } from "@/lib/site-url";
 import { RouteProgress } from "@/components/motion/RouteProgress";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -28,6 +29,11 @@ const greatVibes = Great_Vibes({
 });
 
 export const metadata: Metadata = {
+  /* The origin every relative URL in a page's metadata is resolved against.
+     Without it Next emits canonical tags and Open Graph image URLs as bare
+     paths, which a crawler cannot follow — so a product's `alternates.canonical`
+     would silently do nothing. */
+  metadataBase: new URL(SITE_URL),
   title: `${BRAND.name} ${BRAND.suffix} | ${BRAND.tagline}`,
   description:
     "Premium bedsheets in pure cotton, cotton zeen and cotton satin. King and single sets in stock, or made to your exact measurements. Delivered nationwide.",

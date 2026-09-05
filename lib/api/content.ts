@@ -28,3 +28,35 @@ export const getSiteContent = cache(async (): Promise<SiteContent> => {
     return DEFAULT_CONTENT;
   }
 });
+
+/**
+ * When the editable storefront copy last changed.
+ *
+ * Exists for `sitemap.xml`. The marketing pages — home, about, contact, custom
+ * — have no row of their own to date, but their copy all lives in
+ * `store_settings.content`, so this column is the closest thing to an honest
+ * "last modified" they have. Honest is the operative word: a sitemap that
+ * stamps `new Date()` on every static page claims the whole site changed on
+ * every crawl, and Google's documented response is to stop trusting the
+ * `lastmod` signal for the site entirely.
+ *
+ * Null when the column cannot be read, which callers should treat as "unknown"
+ * and omit — an absent `lastmod` is a smaller lie than a wrong one.
+ */
+export const getContentUpdatedAt = cache(async (): Promise<Date | null> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("store_settings")
+      .select("updated_at")
+      .eq("id", 1)
+      .single();
+
+    if (error || !data?.updated_at) return null;
+
+    const stamp = new Date(data.updated_at as string);
+    return Number.isNaN(stamp.getTime()) ? null : stamp;
+  } catch {
+    return null;
+  }
+});
