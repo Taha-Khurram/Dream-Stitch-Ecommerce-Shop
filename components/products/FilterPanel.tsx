@@ -25,6 +25,15 @@ interface Draft {
   search: string | null;
 }
 
+const EMPTY_DRAFT: Draft = {
+  category: null,
+  size: null,
+  min: null,
+  max: null,
+  sale: false,
+  search: null,
+};
+
 const readDraft = (params: URLSearchParams): Draft => ({
   category: params.get("category"),
   size: params.get("size"),
@@ -92,29 +101,47 @@ export function FilterPanel({ categories, onApplied }: FilterPanelProps) {
     draft.sale !== applied.sale ||
     draft.search !== applied.search;
 
-  const apply = () => {
-    const next = new URLSearchParams(qs);
+  /**
+   * Writes a draft to the URL. Every param the panel owns is written on every
+   * commit — including the ones being turned off, which is what makes removing
+   * a filter put the full listing back rather than leaving a stale param in
+   * the query string. Anything the panel does not own (sort) is carried over.
+   */
+  const commit = (next: Draft) => {
+    const params = new URLSearchParams(qs);
     const write = (key: string, value: string | null) => {
-      if (value === null) next.delete(key);
-      else next.set(key, value);
+      if (value === null) params.delete(key);
+      else params.set(key, value);
     };
-    write("category", draft.category);
-    write("size", draft.size);
-    write("min", draft.min);
-    write("max", draft.max);
-    write("search", draft.search);
-    write("sale", draft.sale ? "true" : null);
+    write("category", next.category);
+    write("size", next.size);
+    write("min", next.min);
+    write("max", next.max);
+    write("search", next.search);
+    write("sale", next.sale ? "true" : null);
 
-    const query = next.toString();
+    const query = params.toString();
     // Applying filters refetches the grid on the server; show the bar now
     // rather than leaving the sheet closing over an unchanged page.
     startRouteProgress();
     router.push(`/shop${query ? `?${query}` : ""}`);
+  };
+
+  const apply = () => {
+    commit(draft);
     onApplied?.();
   };
 
-  const clearAll = () =>
-    set({ category: null, size: null, min: null, max: null, sale: false, search: null });
+  /**
+   * Clear commits straight away instead of only emptying the draft. "Clear"
+   * that leaves the grid filtered until a second, separate Apply reads as the
+   * button having done nothing. The sheet stays open so the panel can be used
+   * again from a clean slate.
+   */
+  const clearAll = () => {
+    setDraft(EMPTY_DRAFT);
+    if (countActiveFilters(new URLSearchParams(qs)) > 0) commit(EMPTY_DRAFT);
+  };
 
   const chips: { label: string; clear: Partial<Draft> }[] = [];
   if (draft.category) {
@@ -134,6 +161,10 @@ export function FilterPanel({ categories, onApplied }: FilterPanelProps) {
     });
   }
 
+  // Something to clear if anything is staged *or* anything is live in the URL —
+  // otherwise clearing a chip would disable the button that undoes the rest.
+  const hasAnything = chips.length > 0 || countActiveFilters(new URLSearchParams(qs)) > 0;
+
   const optionButton = (selected: boolean) =>
     `cursor-pointer text-left transition-colors hover:text-purple ${
       selected ? "text-ink underline underline-offset-4" : "text-ink-soft"
@@ -141,7 +172,7 @@ export function FilterPanel({ categories, onApplied }: FilterPanelProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 text-[13px]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 text-[13px]">
         {chips.length > 0 && (
           <div className="border-b border-line py-5">
             <div className="flex items-center justify-between">
@@ -250,10 +281,10 @@ export function FilterPanel({ categories, onApplied }: FilterPanelProps) {
         </FilterGroup>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-line p-5">
+      <div className="flex shrink-0 items-center gap-3 border-t border-line p-5">
         <button
           onClick={clearAll}
-          disabled={chips.length === 0}
+          disabled={!hasAnything}
           className="btn-outline flex-1 cursor-pointer disabled:cursor-default disabled:opacity-40"
         >
           Clear

@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { CUSTOM_SIZE_LABEL, CUSTOM_SIZE_LIMITS } from "@/lib/custom-size";
 import { CODE_PATTERN } from "@/lib/discounts/lifecycle";
+import {
+  AVAILABLE_METHODS,
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_COPY,
+  isAvailableMethod,
+} from "@/lib/orders/payment";
 
 /**
  * Made-to-measure dimensions. The bounds are the ones in `lib/custom-size.ts`,
@@ -119,12 +125,43 @@ export const optionalDiscountCodeSchema = z.preprocess(
   discountCodeSchema.nullish()
 );
 
+/**
+ * How the order is to be paid for.
+ *
+ * Checked against `AVAILABLE_METHODS` rather than the full list of methods the
+ * column can hold, so a method that exists in the vocabulary but is not yet
+ * switched on — `card`, today — is refused here rather than written to an
+ * order nobody will ever collect the money for. The drawer greys the same
+ * option out from the same list, so the two agree by construction.
+ *
+ * Absent means cash on delivery. Not a guess: an older storefront build sends
+ * no method at all, and cash on delivery is what the store did before the
+ * field existed and what every order already on the books was.
+ */
+export const paymentMethodSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .default(DEFAULT_PAYMENT_METHOD)
+  .refine(isAvailableMethod, {
+    message: `We can only take ${AVAILABLE_METHODS.map(
+      (method) => PAYMENT_COPY[method].label
+    ).join(" or ")} right now`,
+  });
+
 export const checkoutPayloadSchema = z.object({
   items: z
     .array(cartItemSchema)
     .min(1, { message: "Your cart must contain at least one item to checkout" }),
   shippingAddress: shippingAddressSchema,
   discountCode: optionalDiscountCodeSchema,
+  /* `.default()` only fires on `undefined`, and a client that has the field but
+     left it unset sends `null` — so null is folded to undefined first and both
+     spellings of "did not choose" land on cash on delivery. */
+  paymentMethod: z.preprocess(
+    (value) => (value === null ? undefined : value),
+    paymentMethodSchema
+  ),
 });
 
 /**
@@ -143,5 +180,6 @@ export const discountPreviewSchema = z.object({
 export type CartItemInput = z.infer<typeof cartItemSchema>;
 export type CustomSizeInput = z.infer<typeof customSizeSchema>;
 export type ShippingAddressInput = z.infer<typeof shippingAddressSchema>;
+export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
 export type CheckoutPayloadInput = z.infer<typeof checkoutPayloadSchema>;
 export type DiscountPreviewInput = z.infer<typeof discountPreviewSchema>;

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Order } from "@/types/ecommerce";
 import { CUSTOMER_STATUS_COPY, customerStatusLabel, type OrderStatus } from "@/lib/orders/lifecycle";
+import { selectOrderColumns } from "@/lib/orders/columns";
 
 /**
  * Order tracking, as the person who placed the order experiences it.
@@ -157,26 +158,20 @@ export async function findTrackedOrder(
 /**
  * The order and everything the tracking screen renders off it.
  *
- * `discount_code` and `discount_amount` arrive with `discount_codes.sql`, and
- * PostgREST rejects the whole select if either column is unknown rather than
- * returning them as null — so they are asked for, and a failure falls back to
- * the shape that predates the migration. Same contract as
- * `lib/admin/order-document.ts` and the admin order screen.
+ * The discount and payment columns each arrive with a migration of their own,
+ * and PostgREST rejects the whole select if one is unknown rather than
+ * returning it as null — so `selectOrderColumns` asks for the most complete set
+ * this database will answer. Same contract as `lib/admin/order-document.ts` and
+ * the admin order screen.
  */
 async function readTrackedOrder(supabase: SupabaseClient, id: string): Promise<Order | null> {
-  const withDiscount = await supabase
-    .from("orders")
-    .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
-    .eq("id", id)
-    .single();
-
-  const { data } = withDiscount.error
-    ? await supabase
-        .from("orders")
-        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
-        .eq("id", id)
-        .single()
-    : withDiscount;
+  const { data } = await selectOrderColumns((extra) =>
+    supabase
+      .from("orders")
+      .select(`${ORDER_COLUMNS}${extra}, ${ITEMS_EMBED}`)
+      .eq("id", id)
+      .single()
+  );
 
   return (data as unknown as Order) ?? null;
 }

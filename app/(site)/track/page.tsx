@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/api/settings";
 import { orderTotals } from "@/lib/admin/order-document";
 import { formatPrice } from "@/lib/format";
 import { customerStatusLabel, orderReference } from "@/lib/orders/lifecycle";
+import { isCollectOnDelivery, paymentLabel, totalLabel } from "@/lib/orders/payment";
 import {
   REFERENCE_PROBLEM_COPY,
   TRACKING_PARAM,
@@ -301,12 +302,30 @@ function TrackedOrderView({
           )}
           <Figure label="Delivery" value={delivery > 0 ? formatPrice(delivery) : "Free"} />
           <div className="flex items-baseline justify-between gap-6 border-t border-line pt-3">
-            <dt className="font-medium text-ink">Total paid</dt>
-            <dd className="text-[16px] font-medium tabular-nums text-ink">
+            {/* "Total paid" was on this line for every order, which on a cash
+                order is a sentence about money the customer is still holding.
+                What the label says now depends on how the order is being paid
+                for — see lib/orders/payment.ts. */}
+            <dt className="font-medium text-ink">{totalLabel(order.payment_method)}</dt>
+            <dd className="shrink-0 text-[16px] font-medium tabular-nums text-ink">
               {formatPrice(total)}
             </dd>
           </div>
+          {order.payment_method && (
+            <Figure label="Payment" value={paymentLabel(order.payment_method)} />
+          )}
         </dl>
+
+        {/* The figure the courier will ask for, said once and in full. Repeated
+            from the line above on purpose: someone checking this page an hour
+            before the knock is checking exactly this. */}
+        {isCollectOnDelivery(order.payment_method) && (
+          <p className="mt-4 border border-purple/30 bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
+            Cash on delivery — please have{" "}
+            <span className="font-medium tabular-nums text-ink">{formatPrice(total)}</span> ready
+            for the courier. We cannot take card at the door.
+          </p>
+        )}
       </div>
 
       <footer className="border-t border-line bg-frost px-6 py-5 text-[12px] leading-relaxed text-ink-soft">

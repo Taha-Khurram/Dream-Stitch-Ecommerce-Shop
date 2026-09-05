@@ -8,6 +8,7 @@ import { getSiteContent } from "@/lib/api/content";
 import { resolveCutSpec, type CutSpec } from "@/lib/size-guide";
 import { formatPrice } from "@/lib/format";
 import { orderReference, statusLabel } from "@/lib/orders/lifecycle";
+import { isCollectOnDelivery, paymentLabel } from "@/lib/orders/payment";
 import { readOrderDocument, orderTotals } from "@/lib/admin/order-document";
 import {
   convertCustomSize,
@@ -172,6 +173,7 @@ export default async function OrderPackingSlipPage({
             <dl className="mt-2.5 space-y-1.5">
               <SlipField label="Reference" value={reference} />
               <SlipField label="Status" value={statusLabel(order.status)} />
+              <SlipField label="Payment" value={paymentLabel(order.payment_method)} />
               <SlipField
                 label="Lines"
                 value={`${items.length} ${items.length === 1 ? "line" : "lines"}`}
@@ -265,6 +267,27 @@ export default async function OrderPackingSlipPage({
                 </dd>
               </div>
             </dl>
+
+            {/* The instruction the parcel travels with.
+                Ruled and shouted rather than set as one more field above,
+                because it is the only thing on this sheet addressed to the
+                person carrying the box rather than the person packing it — and
+                a COD parcel that goes out without the driver knowing to collect
+                is money the shop does not get back. The figure is restated in
+                full for the same reason: nobody should be adding up a slip on
+                a doorstep. */}
+            {isCollectOnDelivery(order.payment_method) && (
+              <div className="mt-4 border-2 border-ink p-3">
+                <p className="eyebrow text-ink">Collect on delivery</p>
+                <p className="mt-1.5 text-[19px] font-semibold leading-none tabular-nums text-ink">
+                  {formatPrice(order.total_amount)}
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                  Cash only. Do not release the parcel until the full amount is
+                  collected.
+                </p>
+              </div>
+            )}
           </div>
         </section>
 

@@ -12,9 +12,11 @@ import {
 } from "@/components/admin/OrderIntakeActions";
 import { formatPrice } from "@/lib/format";
 import { isAwaitingReview, orderReference } from "@/lib/orders/lifecycle";
+import { selectOrderColumns } from "@/lib/orders/columns";
+import { isCollectOnDelivery, paymentLabel, totalLabel } from "@/lib/orders/payment";
 import { customSizeFromRow, formatCustomSize } from "@/lib/custom-size";
 import type { Order, OrderItem } from "@/types/ecommerce";
-import { Printer, Ruler } from "lucide-react";
+import { Printer, Ruler, Wallet } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -31,23 +33,19 @@ export default async function AdminOrderDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  /* The two discount columns arrive with discount_codes.sql, and PostgREST
-     rejects the whole select if either is unknown — so they are asked for, and
-     a failure falls back to the shape this page has always read. Same contract
-     as the customer embed on the dashboard's recent-orders list. */
-  const withDiscount = await supabase
-    .from("orders")
-    .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
-    .eq("id", id)
-    .single();
-
-  const { data } = withDiscount.error
-    ? await supabase
-        .from("orders")
-        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
-        .eq("id", id)
-        .single()
-    : withDiscount;
+  /* The discount and payment columns each arrive with a migration of their
+     own, and PostgREST rejects the whole select if one is unknown — so
+     `selectOrderColumns` asks for the most complete set this database will
+     answer and narrows until it gets one, rather than one missing migration
+     costing this page the columns of another. Same contract as the customer
+     embed on the dashboard's recent-orders list. */
+  const { data } = await selectOrderColumns((extra) =>
+    supabase
+      .from("orders")
+      .select(`${ORDER_COLUMNS}${extra}, ${ITEMS_EMBED}`)
+      .eq("id", id)
+      .single()
+  );
 
   if (!data) notFound();
 
@@ -65,6 +63,7 @@ export default async function AdminOrderDetailPage({
      what those two columns on `orders` are for. */
   const delivery = Number(order.total_amount) - itemsTotal + discount;
   const awaitingReview = isAwaitingReview(order.status);
+  const collectOnDelivery = isCollectOnDelivery(order.payment_method);
 
   return (
     <div>
@@ -229,12 +228,34 @@ export default async function AdminOrderDetailPage({
                 </dd>
               </div>
               <div className="flex justify-between gap-6 border-t border-line pt-2">
-                <dt className="font-medium text-ink">Total</dt>
-                <dd className="text-base font-medium tabular-nums text-ink">
+                <dt className="font-medium text-ink">{totalLabel(order.payment_method)}</dt>
+                <dd className="shrink-0 text-base font-medium tabular-nums text-ink">
                   {formatPrice(order.total_amount)}
                 </dd>
               </div>
+              <div className="flex justify-between gap-6 pt-1">
+                <dt className="text-muted">Payment</dt>
+                <dd className="shrink-0 text-ink">{paymentLabel(order.payment_method)}</dd>
+              </div>
             </dl>
+
+            {/* A cash order is a different job for whoever hands the parcel to
+                the courier, so it is called out under the figure it is about
+                rather than left as a word in a list. The amount is repeated on
+                purpose: this is the number the driver has to come back with,
+                and "the total" is not something you want them working out. */}
+            {collectOnDelivery && (
+              <p className="mt-3 flex items-start gap-2 border border-purple/30 bg-lilac px-3 py-2.5 text-sm leading-relaxed text-ink-soft">
+                <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-purple" strokeWidth={1.6} />
+                <span>
+                  Courier collects{" "}
+                  <span className="font-medium tabular-nums text-ink">
+                    {formatPrice(order.total_amount)}
+                  </span>{" "}
+                  in cash on delivery.
+                </span>
+              </p>
+            )}
           </section>
 
           {/* Intake already offers a delete of its own, so this only shows for

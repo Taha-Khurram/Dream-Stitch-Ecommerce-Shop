@@ -136,6 +136,17 @@ export interface Order {
   discount_code?: string | null;
   /** What that code took off. 0 on every order that carried none. */
   discount_amount?: number;
+  /* ── Payment (present once order_payment_method.sql has run) ───────────── */
+  /**
+   * How the order is being paid for: `cod` or `card`.
+   *
+   * Widened to `string` for the reason `status` is, and optional for the reason
+   * the discount columns are — a read that fell back to the pre-migration
+   * column set does not carry it, and `undefined` there means "this deployment
+   * cannot tell you", not "no method". `lib/orders/payment.ts` is the list of
+   * methods and the only thing that should be interpreting this.
+   */
+  payment_method?: string | null;
   shipping_address: ShippingAddress;
   created_at: string;
   updated_at: string;

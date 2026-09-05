@@ -7,6 +7,15 @@ import { formatPrice } from "@/lib/format";
 import { amountToFreeShipping } from "@/lib/pricing";
 import { formatCustomSize } from "@/lib/custom-size";
 import { isDiscountOutcome } from "@/lib/discounts/lifecycle";
+import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_COPY,
+  PAYMENT_METHODS,
+  isAvailableMethod,
+  isCollectOnDelivery,
+  totalLabel,
+  type PaymentMethod,
+} from "@/lib/orders/payment";
 import { BRAND } from "@/lib/constants";
 import { usePresence, useScrollLock } from "@/components/motion/usePresence";
 import {
@@ -19,6 +28,7 @@ import {
   AlertTriangle,
   Tag,
   Truck,
+  Wallet,
 } from "lucide-react";
 
 type Stage = "bag" | "address" | "done";
@@ -67,8 +77,14 @@ export function CartDrawer() {
     totalAmount: number;
     discountCode: string | null;
     discountAmount: number;
+    paymentMethod: string | null;
   } | null>(null);
   const [address, setAddress] = useState(EMPTY_ADDRESS);
+
+  /* How they intend to pay. Cash on delivery to start with, because it is the
+     only method live today and because a payment step that opens with nothing
+     chosen is a step everyone has to touch to get past. */
+  const [payment, setPayment] = useState<PaymentMethod>(DEFAULT_PAYMENT_METHOD);
 
   /* The promo field's own state. Deliberately not in the cart context: what has
      been typed but not yet submitted is this control's business, and the
@@ -110,6 +126,7 @@ export function CartDrawer() {
           items: cartLines(items),
           shippingAddress: address,
           discountCode: discount?.code ?? null,
+          paymentMethod: payment,
         }),
       });
 
@@ -134,6 +151,9 @@ export function CartDrawer() {
         totalAmount: data.totalAmount,
         discountCode: data.discountCode ?? null,
         discountAmount: Number(data.discountAmount ?? 0),
+        /* What the server recorded, not what this component last had selected
+           — the two can differ if the payment column is not installed yet. */
+        paymentMethod: data.paymentMethod ?? null,
       });
       setStage("done");
       clearCart();
@@ -168,6 +188,7 @@ export function CartDrawer() {
          still there. Only what was typed and refused is cleared. */
       setCodeInput("");
       setCodeError(null);
+      setPayment(DEFAULT_PAYMENT_METHOD);
     }, EXIT_MS);
   };
 
@@ -255,11 +276,23 @@ export function CartDrawer() {
                   <dd className="shrink-0 text-purple">−{formatPrice(order.discountAmount)}</dd>
                 </div>
               )}
-              <div className="flex justify-between">
-                <dt className="text-muted">Total paid</dt>
-                <dd className="text-ink">{formatPrice(order.totalAmount)}</dd>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">{totalLabel(order.paymentMethod)}</dt>
+                <dd className="shrink-0 text-ink">{formatPrice(order.totalAmount)}</dd>
               </div>
             </dl>
+            {/* The one instruction a cash order leaves the customer with. It
+                belongs on the confirmation rather than only in the email,
+                because this is the screen they are looking at. */}
+            {isCollectOnDelivery(order.paymentMethod) && (
+              <p className="mt-5 flex items-start gap-2 text-left text-[11px] leading-relaxed text-ink-soft">
+                <Wallet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.5} />
+                <span>
+                  You&apos;re paying cash on delivery — please have{" "}
+                  {formatPrice(order.totalAmount)} ready for the courier.
+                </span>
+              </p>
+            )}
             <button onClick={close} className="btn-primary mt-8 w-full cursor-pointer">
               Continue Shopping
             </button>
@@ -630,6 +663,80 @@ export function CartDrawer() {
                 </div>
               </div>
 
+              {/* ── Payment ───────────────────────────────────────────────
+                  Last, under the address, because it is the last thing decided
+                  and the cheapest to change: everything above is typed, this is
+                  picked. The method that is not live yet is shown rather than
+                  hidden — a shopper who wants to pay by card should find out
+                  here that they cannot, not after typing an address for
+                  nothing. */}
+              <fieldset className="border-t border-line pt-5">
+                <legend className="sr-only">Payment method</legend>
+                <p className="eyebrow text-muted">Payment</p>
+
+                <div className="mt-3 space-y-2.5">
+                  {PAYMENT_METHODS.map((method) => {
+                    const copy = PAYMENT_COPY[method];
+                    const available = isAvailableMethod(method);
+                    const selected = payment === method;
+
+                    return (
+                      <label
+                        key={method}
+                        /* Built as one branch rather than layered overrides:
+                           `cursor-pointer` and `cursor-not-allowed` carry the
+                           same specificity, so which wins is decided by the
+                           order Tailwind emits them in, not the order they are
+                           written here. Only ever emit the one that applies. */
+                        className={`flex items-start gap-3 border px-3.5 py-3 transition-colors ${
+                          !available
+                            ? "cursor-not-allowed border-line opacity-55"
+                            : selected
+                              ? "cursor-pointer border-purple bg-lilac"
+                              : "cursor-pointer border-line hover:border-ink"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={method}
+                          checked={selected}
+                          disabled={!available}
+                          onChange={() => setPayment(method)}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--color-purple)]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-[13px] text-ink">{copy.label}</span>
+                            {!available && (
+                              <span className="eyebrow border border-line px-1.5 py-0.5 text-[8px] text-muted">
+                                Coming soon
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-1 block text-[11px] leading-relaxed text-muted">
+                            {copy.note}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Said once, plainly, and only when it applies: the courier
+                    wants the exact figure and the person answering the door is
+                    not always the person who ordered. */}
+                {isCollectOnDelivery(payment) && (
+                  <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-ink-soft">
+                    <Wallet className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple" strokeWidth={1.5} />
+                    <span>
+                      Please have {formatPrice(totalPrice)} ready for the courier. We
+                      cannot take card at the door.
+                    </span>
+                  </p>
+                )}
+              </fieldset>
+
               <p className="text-[11px] leading-relaxed text-muted">
                 You need a {BRAND.name} account to place an order.{" "}
                 <Link href="/signin" onClick={close} className="link-rule text-ink">
@@ -649,8 +756,11 @@ export function CartDrawer() {
                   <span className="shrink-0 text-purple">−{formatPrice(discountAmount)}</span>
                 </p>
               )}
-              <div className="flex items-baseline justify-between">
-                <span className="eyebrow text-ink">Total</span>
+              {/* Named for what the number is about to do. On a cash order
+                  the figure is not paid at this button, it is owed at a door,
+                  and the button above says "Place Order" rather than "Pay". */}
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="eyebrow text-ink">{totalLabel(payment)}</span>
                 <span className="font-[family-name:var(--font-display)] text-lg text-ink">
                   {formatPrice(totalPrice)}
                 </span>

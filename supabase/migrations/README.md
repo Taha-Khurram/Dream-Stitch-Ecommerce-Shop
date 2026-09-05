@@ -25,6 +25,7 @@ prefix. This table is the ordering.
 | 11 | `revenue_recognition.sql` | 6, 8 — dashboard revenue counts fulfilled orders only |
 | 12 | `admin_search.sql` | 1, 6 — trigram indexes for the order and customer search boxes |
 | 13 | `discount_codes.sql` | 1, 3 — coupon rules, the redemption ledger, `orders.discount_*` |
+| 14 | `order_payment_method.sql` | 1 — `orders.payment_method`, the cash-on-delivery flag |
 
 Optional, run at any point after their dependency:
 

@@ -525,7 +525,15 @@ body {
   from { opacity: 0; transform: translate3d(0, 8px, 0); }
   to   { opacity: 1; transform: none; }
 }
-.page-in { animation: page-in 300ms var(--ease-out-quint) both; }
+/* `backwards`, not `both`, and that is load-bearing. A forwards-filling
+   transform animation leaves this wrapper holding a transform-related
+   property for the life of the page, which makes it a stacking context *and*
+   a containing block for `position: fixed` descendants. Any overlay rendered
+   from inside a page — the shop's filter sheet — would then be sized and
+   positioned against this box rather than the viewport, and would paint under
+   the sticky header. The last keyframe is the element's natural state anyway,
+   so dropping the forwards fill costs nothing visually. */
+.page-in { animation: page-in 300ms var(--ease-out-quint) backwards; }
 
 /* ── Loading skeletons ────────────────────────────────────────
    A sheen that travels across the placeholder rather than a pulsing

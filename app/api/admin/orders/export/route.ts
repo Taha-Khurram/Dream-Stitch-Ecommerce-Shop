@@ -3,6 +3,8 @@ import { requireAdminUser } from "@/lib/auth/api";
 import { csvDocument, csvFilename, csvHeaders } from "@/lib/admin/csv";
 import { SEARCH_PARAM, orderSearchFilter } from "@/lib/admin/search";
 import { isOrderStatus, orderReference, statusLabel } from "@/lib/orders/lifecycle";
+import { OPTIONAL_ORDER_COLUMNS, selectOrderColumns } from "@/lib/orders/columns";
+import { isCollectOnDelivery, paymentLabel } from "@/lib/orders/payment";
 import { customSizeFromRow, formatCustomSize } from "@/lib/custom-size";
 import type { ShippingAddress } from "@/types/ecommerce";
 
@@ -48,20 +50,19 @@ const COLUMNS =
   "id, status, total_amount, created_at, shipping_address, " +
   "order_items(quantity, size, custom_width, custom_height, custom_unit, product:products(name))";
 
-/**
- * The discount, asked for separately because it may not be there.
+/*
+ * The optional columns — the discount pair and the payment method — are asked
+ * for through `lib/orders/columns.ts`, because each arrives with a migration of
+ * its own and PostgREST refuses the whole select if one is unknown. Whichever
+ * this database has, the file gets; the rest come out as empty cells, which is
+ * the truth on a store that has never issued a code.
  *
- * These two columns arrive with `discount_codes.sql`, and PostgREST refuses
- * the whole select if either is unknown — so the export is attempted with them
- * and falls back to the shape it has always had. The two cells then come out
- * empty, which is the truth on a store that has never issued a code.
- *
- * Worth the fallback rather than left out: `total` is already net of the
- * reduction, so a file without these columns balances but cannot be explained.
- * Anyone reconciling a day's takings needs to see why an order came to less
- * than its lines.
+ * Worth the fallback rather than left out. `total` is already net of the
+ * reduction, so a file without the discount columns balances but cannot be
+ * explained — and a file without the payment column cannot tell you which of a
+ * day's totals is money in the bank and which is money a courier is still
+ * carrying. Both are the questions someone opens this file to answer.
  */
-const DISCOUNT_COLUMNS = "discount_code, discount_amount";
 
 type ExportItem = {
   quantity: number;
@@ -82,6 +83,8 @@ type ExportRow = {
   /** Absent on the fallback select, and on every store without codes. */
   discount_code?: string | null;
   discount_amount?: number | null;
+  /** Absent on the fallback select — see order_payment_method.sql. */
+  payment_method?: string | null;
 };
 
 /** `2 × Velvet Throw (Cut to measure 82 × 78 in)` — one line of an order. */
@@ -114,10 +117,10 @@ export async function GET(request: Request) {
 
   const search = orderSearchFilter(query);
 
-  const build = (columns: string) => {
+  const build = (extra: string) => {
     let select = auth.supabase
       .from("orders")
-      .select(columns)
+      .select(`${COLUMNS}${extra}`)
       .order("created_at", { ascending: false })
       .range(0, MAX_ROWS - 1);
 
@@ -133,8 +136,7 @@ export async function GET(request: Request) {
     return select;
   };
 
-  const withDiscount = await build(`${COLUMNS}, ${DISCOUNT_COLUMNS}`);
-  const { data, error } = withDiscount.error ? await build(COLUMNS) : withDiscount;
+  const { data, error } = await selectOrderColumns(build, OPTIONAL_ORDER_COLUMNS);
 
   if (error) {
     console.error("Order export failed:", error.message);
@@ -162,6 +164,8 @@ export async function GET(request: Request) {
       "items",
       "discount_code",
       "discount",
+      "payment_method",
+      "cash_to_collect",
       "total",
     ],
     rows.map((row) => {
@@ -193,6 +197,12 @@ export async function GET(request: Request) {
         (row.order_items ?? []).map(itemLine).join("; "),
         row.discount_code ?? "",
         Number(row.discount_amount ?? 0),
+        row.payment_method ? paymentLabel(row.payment_method) : "",
+        /* Its own column rather than a filter someone has to remember to apply:
+           summing this gives the cash the couriers owe, and it is zero on every
+           order that is not collect-on-delivery, so the column adds up on its
+           own. */
+        isCollectOnDelivery(row.payment_method) ? Number(row.total_amount) : 0,
         /* The bare number, not `formatPrice`: this column exists to be summed,
            and "PKR 7,000" is text to every spreadsheet that opens it. Already
            net of the discount column beside it. */

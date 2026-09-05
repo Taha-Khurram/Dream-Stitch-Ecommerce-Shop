@@ -8,6 +8,7 @@ import { getSiteContent } from "@/lib/api/content";
 import { resolveCutSpec } from "@/lib/size-guide";
 import { formatPrice } from "@/lib/format";
 import { customerStatusLabel, orderReference } from "@/lib/orders/lifecycle";
+import { isCollectOnDelivery, paymentLabel, totalLabel } from "@/lib/orders/payment";
 import { readOrderDocument, orderTotals } from "@/lib/admin/order-document";
 import {
   convertCustomSize,
@@ -200,6 +201,9 @@ export default async function OrderReceiptPage({
               {order.discount_code && (
                 <ReceiptField label="Code" value={order.discount_code} />
               )}
+              {order.payment_method && (
+                <ReceiptField label="Payment" value={paymentLabel(order.payment_method)} />
+              )}
             </dl>
           </div>
         </section>
@@ -270,13 +274,26 @@ export default async function OrderReceiptPage({
                   {delivery > 0 ? formatPrice(delivery) : "Free"}
                 </dd>
               </div>
+              {/* Not always "paid". This sheet can be printed the moment the
+                  order lands, and on a cash order that is days before anyone
+                  hands over anything — a receipt claiming otherwise is a
+                  receipt the customer could reasonably wave at the courier.
+                  See lib/orders/payment.ts. */}
               <div className="flex justify-between gap-6 border-t-2 border-ink pt-2">
-                <dt className="font-medium text-ink">Total paid</dt>
-                <dd className="text-[17px] font-medium tabular-nums text-ink">
+                <dt className="font-medium text-ink">{totalLabel(order.payment_method)}</dt>
+                <dd className="shrink-0 text-[17px] font-medium tabular-nums text-ink">
                   {formatPrice(total)}
                 </dd>
               </div>
             </dl>
+
+            {isCollectOnDelivery(order.payment_method) && (
+              <p className="mt-3 border border-line px-3 py-2.5 text-[11px] leading-relaxed text-muted">
+                Please have{" "}
+                <span className="font-medium tabular-nums text-ink">{formatPrice(total)}</span> in
+                cash ready for the courier. We cannot take card at the door.
+              </p>
+            )}
           </div>
         </section>
 

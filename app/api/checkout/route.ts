@@ -9,6 +9,7 @@ import { priceCart } from "@/lib/api/cart";
 import { previewDiscount, redeemDiscount } from "@/lib/discounts/api";
 import { DISCOUNTS_NOT_INSTALLED, outcomeMessage } from "@/lib/discounts/lifecycle";
 import { INTAKE_STATUS } from "@/lib/orders/lifecycle";
+import { DEFAULT_PAYMENT_METHOD, PAYMENT_COPY } from "@/lib/orders/payment";
 import { z } from "zod";
 
 export async function POST(request: Request) {
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { items, shippingAddress, discountCode } = validationResult.data;
+    const { items, shippingAddress, discountCode, paymentMethod } = validationResult.data;
 
     /* 3. Security best practice: prices come from the database, never from the
           payload. Shared with /api/discount so a code cannot be quoted against
@@ -153,26 +154,63 @@ export async function POST(request: Request) {
     );
 
     // 4. Create Order in Supabase
-    const { data: newOrder, error: orderInsertError } = await supabase
-      .from("orders")
-      .insert({
-        /* Received, not yet triaged. An admin accepts it into the workflow
-           (or deletes it) from /admin/orders — see lib/orders/lifecycle.ts. */
-        user_id: user.id,
-        status: INTAKE_STATUS,
-        total_amount: totalAmount,
-        shipping_address: shippingAddress,
-        /* Spread rather than always sent: the two columns arrive with
-           discount_codes.sql, and an order that carries no code must still be
-           placeable on a deployment where that file has not been run. A code
-           cannot have got this far without it — preview_discount() would have
-           answered "not installed" above. */
-        ...(discountCode
-          ? { discount_code: discountCode, discount_amount: discountAmount }
-          : {}),
-      })
-      .select("id, user_id, status, total_amount, created_at")
-      .single();
+    const insertOrder = (row: Record<string, unknown>) =>
+      supabase
+        .from("orders")
+        .insert({
+          /* Received, not yet triaged. An admin accepts it into the workflow
+             (or deletes it) from /admin/orders — see lib/orders/lifecycle.ts. */
+          user_id: user.id,
+          status: INTAKE_STATUS,
+          total_amount: totalAmount,
+          shipping_address: shippingAddress,
+          /* Spread rather than always sent: the two columns arrive with
+             discount_codes.sql, and an order that carries no code must still be
+             placeable on a deployment where that file has not been run. A code
+             cannot have got this far without it — preview_discount() would have
+             answered "not installed" above. */
+          ...(discountCode
+            ? { discount_code: discountCode, discount_amount: discountAmount }
+            : {}),
+          ...row,
+        })
+        .select("id, user_id, status, total_amount, created_at")
+        .single();
+
+    let created = await insertOrder({ payment_method: paymentMethod });
+
+    /* The payment column arrives with order_payment_method.sql, and unlike the
+       discount columns it is on every order rather than the occasional one —
+       so it cannot be spread in conditionally, and a deployment that has not
+       run the file would fail every checkout instead of the odd discounted one.
+       Hence the retry.
+     *
+     * Dropping the column is only honest while the method being dropped is the
+     * one the database would have defaulted to anyway. Today that is every
+     * order — cash on delivery is the only method `AVAILABLE_METHODS` allows,
+     * and it is the default — so the fallback records exactly what was chosen.
+     * The day a second method goes live, silently writing "cash" over a card
+     * payment would be the worst outcome available, so that case refuses
+     * instead and names the file to run. */
+    if (created.error && isMissingColumn(created.error)) {
+      console.error(
+        "orders.payment_method is unknown. Run order_payment_method.sql in the Supabase SQL editor."
+      );
+
+      if (paymentMethod !== DEFAULT_PAYMENT_METHOD) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `${PAYMENT_COPY[paymentMethod].label} is not available yet. Please choose ${PAYMENT_COPY[DEFAULT_PAYMENT_METHOD].label}.`,
+          },
+          { status: 501 }
+        );
+      }
+
+      created = await insertOrder({});
+    }
+
+    const { data: newOrder, error: orderInsertError } = created;
 
     if (orderInsertError || !newOrder) {
       console.error("Order creation failed in Supabase:", orderInsertError?.message);
@@ -211,7 +249,7 @@ export async function POST(request: Request) {
 
       /* Same shape of problem as the status CHECK above: the variant columns
          arrived after the table did, and without them every checkout fails. */
-      if (itemsInsertError.code === "42703" || itemsInsertError.code === "PGRST204") {
+      if (isMissingColumn(itemsInsertError)) {
         console.error(
           "order_items rejected the variant columns. Run order_item_variants.sql."
         );
@@ -313,6 +351,11 @@ export async function POST(request: Request) {
         totalAmount,
         discountCode: discountCode ?? null,
         discountAmount,
+        /* Echoed back so the confirmation panel can say what happens next
+           without re-reading the bag it has just emptied — and, on a
+           deployment that fell back above, so it says what was actually
+           recorded rather than what was asked for. */
+        paymentMethod,
         status: newOrder.status,
         itemCount: totalItemCount,
       },
@@ -339,6 +382,22 @@ export async function POST(request: Request) {
  */
 function firstProblem(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Some of these details are not valid.";
+}
+
+/**
+ * True when an insert failed because a column does not exist yet.
+ *
+ * Two codes for one fact, the way `isMissingInstall` needs five: PostgREST
+ * answers PGRST204 off its cached schema, and Postgres raises 42703
+ * (undefined_column) when the planner gets there first — which is what happens
+ * in the window after a migration runs but before the cache catches up.
+ *
+ * Kept separate from `isMissingInstall` deliberately. That one answers "is this
+ * table or function installed", and a missing column is a different question
+ * with a different remedy: the table is there, one migration against it is not.
+ */
+function isMissingColumn(error: { code?: string } | null | undefined): boolean {
+  return error?.code === "PGRST204" || error?.code === "42703";
 }
 
 /**

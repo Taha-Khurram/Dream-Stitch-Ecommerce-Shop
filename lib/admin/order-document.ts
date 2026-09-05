@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { selectOrderColumns } from "@/lib/orders/columns";
 import type { Order } from "@/types/ecommerce";
 
 /**
@@ -18,8 +19,8 @@ import type { Order } from "@/types/ecommerce";
  * was needed in two places is the reason this module exists.
  */
 
-/* Kept apart from the embed so the discount retry below can ask for the same
-   columns twice without spelling them twice. */
+/* Kept apart from the embed so the optional-column retry below can ask for the
+   same columns repeatedly without spelling them out each time. */
 const ORDER_COLUMNS = "id, status, total_amount, created_at, shipping_address";
 
 const ITEMS_EMBED =
@@ -29,11 +30,11 @@ const ITEMS_EMBED =
 /**
  * One order, with everything either document needs to render.
  *
- * `discount_code` and `discount_amount` arrive with `discount_codes.sql`, and
- * PostgREST rejects the whole select if either column is unknown rather than
- * returning them as null — so they are asked for, and a failure falls back to
- * the shape these sheets read before that migration existed. Same contract as
- * the order screen they print from.
+ * The discount and payment columns arrive with migrations of their own, and
+ * PostgREST rejects the whole select if one is unknown rather than returning it
+ * as null — so `selectOrderColumns` asks for the most complete set this
+ * database will answer and narrows from there. Same contract as the order
+ * screen these sheets print from.
  *
  * Null means no such order; both callers turn that into `notFound()`.
  */
@@ -41,19 +42,13 @@ export async function readOrderDocument(
   supabase: SupabaseClient,
   id: string
 ): Promise<Order | null> {
-  const withDiscount = await supabase
-    .from("orders")
-    .select(`${ORDER_COLUMNS}, discount_code, discount_amount, ${ITEMS_EMBED}`)
-    .eq("id", id)
-    .single();
-
-  const { data } = withDiscount.error
-    ? await supabase
-        .from("orders")
-        .select(`${ORDER_COLUMNS}, ${ITEMS_EMBED}`)
-        .eq("id", id)
-        .single()
-    : withDiscount;
+  const { data } = await selectOrderColumns((extra) =>
+    supabase
+      .from("orders")
+      .select(`${ORDER_COLUMNS}${extra}, ${ITEMS_EMBED}`)
+      .eq("id", id)
+      .single()
+  );
 
   return (data as unknown as Order) ?? null;
 }
