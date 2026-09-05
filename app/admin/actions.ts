@@ -76,6 +76,22 @@ function text(value: FormDataEntryValue | null): string {
 }
 
 /**
+ * Whether a `<Switch>` was left on.
+ *
+ * That component posts a hidden "off" *ahead* of the checkbox so the server can
+ * tell "switched off" from "this form never had the field" — which means a
+ * switched-on field arrives twice, as ["off", "on"]. `formData.get` hands back
+ * the first of those, so reading a switch that way says "off" no matter what
+ * the admin did. The last value is the one the browser meant; `parseContentForm`
+ * reads switches the same way.
+ */
+function switchOn(formData: FormData, name: string): boolean {
+  const submitted = formData.getAll(name);
+  if (submitted.length === 0) return false;
+  return text(submitted[submitted.length - 1]) === "on";
+}
+
+/**
  * A write that Postgres accepted but that touched no row. RLS filters rather
  * than raises, so this is what a rejected policy looks like from here — and
  * reporting it beats the alternative the settings form used to show: "saved",
@@ -783,7 +799,7 @@ export async function bulkDeleteOrders(ids: string[]): Promise<ActionResult> {
  * the order, which cascades. See discount_codes.sql.
  */
 
-/** `datetime-local` → an ISO instant, read in the admin's own timezone. */
+/** The ISO instant `DateTimeField` posts, revalidated. Blank means "no bound". */
 function when(value: FormDataEntryValue | null): string | null | false {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
@@ -1017,7 +1033,7 @@ export async function saveComingSoon(formData: FormData): Promise<ActionResult> 
   await requireAdmin();
   const supabase = await createClient();
 
-  const enabled = text(formData.get("coming_soon_enabled")) === "on";
+  const enabled = switchOn(formData, "coming_soon_enabled");
 
   /* `DateTimeField` posts the ISO instant the browser computed from the local
      time typed into it, so what arrives here is unambiguous — see that file
