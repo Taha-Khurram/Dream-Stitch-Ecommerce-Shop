@@ -29,6 +29,7 @@ prefix. This table is the ordering.
 | 15 | `analytics_schema.sql` | 1, 3, 6, 8 — the `/admin/analytics` breakdowns and rates |
 | 16 | `visit_analytics.sql` | 3 — `visit_days`, the footfall panel on `/admin/analytics` |
 | 17 | `product_cost_price.sql` | 1, 3, 8 — admin-only `product_costs` + `order_item_costs`, the profit panel on `/admin` |
+| 18 | `coming_soon.sql` | 3 — the pre-launch holding page: switch, launch instant and copy on `store_settings` |
 
 Optional, run at any point after their dependency:
 

@@ -6,8 +6,11 @@ import { ActionForm, Field } from "@/components/admin/ActionForm";
 import { inputClass } from "@/components/admin/field-styles";
 import { ContentEditor, type EditorOptions } from "@/components/admin/ContentEditor";
 import { ResetTabButton } from "@/components/admin/ResetTabButton";
-import { saveSettings, saveContent, resetContent } from "@/app/admin/actions";
+import { DateTimeField } from "@/components/admin/DateTimeField";
+import { Switch } from "@/components/admin/Switch";
+import { saveSettings, saveComingSoon, saveContent, resetContent } from "@/app/admin/actions";
 import { getSettings } from "@/lib/api/settings";
+import { isHoldingPageUp } from "@/lib/coming-soon";
 import { getSiteContent } from "@/lib/api/content";
 import { getCategories } from "@/lib/api/products";
 import { CONTENT_TABS, findTab, tabOptionSources, type TabSpec } from "@/lib/content/fields";
@@ -16,8 +19,17 @@ import { Skeleton } from "@/components/motion/Skeleton";
 
 export const dynamic = "force-dynamic";
 
-/** The store-wide tab, plus one per surface the content editor covers. */
-const TABS = [{ key: "general", label: "General" }, ...CONTENT_TABS.map((tab) => ({
+/**
+ * The store-wide tabs. "General" is the landing tab, so it is the one with no
+ * query string; anything else added here needs a branch in the switch below.
+ */
+const STORE_TABS = [
+  { key: "general", label: "General" },
+  { key: "coming-soon", label: "Coming soon" },
+];
+
+/** The store-wide tabs, plus one per surface the content editor covers. */
+const TABS = [...STORE_TABS, ...CONTENT_TABS.map((tab) => ({
   key: tab.key,
   label: tab.label,
 }))];
@@ -49,12 +61,14 @@ export default async function AdminSettingsPage({
       <nav aria-label="Settings sections" className="mt-6 border-b border-line">
         <div className="flex flex-wrap items-center gap-x-1 gap-y-2 pb-px">
           <span className="admin-th mr-2 py-2.5">Store</span>
-          <TabLink tab={TABS[0]} active={active} />
+          {STORE_TABS.map((tab) => (
+            <TabLink key={tab.key} tab={tab} active={active} />
+          ))}
 
           <span aria-hidden className="mx-3 hidden h-5 w-px bg-line sm:block" />
 
           <span className="admin-th mr-2 py-2.5">Page content</span>
-          {TABS.slice(1).map((tab) => (
+          {TABS.slice(STORE_TABS.length).map((tab) => (
             <TabLink key={tab.key} tab={tab} active={active} />
           ))}
         </div>
@@ -64,7 +78,13 @@ export default async function AdminSettingsPage({
           being read, so switching tabs never parks you on a blank screen. */}
       <div className="mt-8 max-w-3xl">
         <Suspense key={active} fallback={<FieldsSkeleton />}>
-          {active === "general" ? <GeneralSettings /> : <ContentSettings tabKey={active} />}
+          {active === "general" ? (
+            <GeneralSettings />
+          ) : active === "coming-soon" ? (
+            <ComingSoonSettings />
+          ) : (
+            <ContentSettings tabKey={active} />
+          )}
         </Suspense>
       </div>
     </div>
@@ -209,6 +229,127 @@ async function GeneralSettings() {
         </div>
       </section>
     </ActionForm>
+  );
+}
+
+/* ── Coming soon — the pre-launch holding page ──────────────────────────── */
+
+async function ComingSoonSettings() {
+  const settings = await getSettings();
+  const holding = isHoldingPageUp(settings);
+
+  return (
+    <div>
+      {/* The switch alone does not answer "so is my shop up?" — a countdown
+          that has already run out leaves it on and the shop open. This says
+          which of the two is true right now. */}
+      <p
+        className={`flex items-start gap-2.5 border p-4 text-[13px] leading-relaxed ${
+          holding ? "border-purple/30 bg-lilac text-ink" : "border-line bg-frost text-ink-soft"
+        }`}
+      >
+        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${holding ? "bg-purple" : "bg-jade"}`} />
+        {holding ? (
+          <span>
+            <strong className="font-medium">Visitors see the holding page.</strong> You do not —
+            signed-in admins always get the real storefront, so you can check it before it opens.
+          </span>
+        ) : (
+          <span>
+            <strong className="font-medium">The storefront is open to everyone.</strong> Switch
+            the holding page on below to close it.
+          </span>
+        )}
+      </p>
+
+      <div className="mt-8">
+        <ActionForm action={saveComingSoon} submitLabel="Save Coming Soon">
+          <section>
+            <h2 className="admin-section-title border-b border-line pb-3">Holding page</h2>
+            <p className="admin-hint mt-2">
+              While this is on, every storefront page is replaced by the countdown. Sign-in and
+              this panel stay reachable, so you can never lock yourself out.
+            </p>
+
+            <div className="mt-5">
+              <Switch
+                name="coming_soon_enabled"
+                checked={settings.coming_soon_enabled}
+                label="Show the coming soon page to visitors"
+              />
+            </div>
+
+            <div className="mt-6">
+              <Field
+                label="Opens at"
+                name="coming_soon_launch_at"
+                hint="Your own local time. When this passes, the shop opens by itself — a visitor watching the timer just clicks the screen to come in. Leave it blank to hold the page until you switch it off."
+              >
+                <DateTimeField
+                  name="coming_soon_launch_at"
+                  defaultValue={settings.coming_soon_launch_at}
+                />
+              </Field>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="admin-section-title border-b border-line pb-3">What it says</h2>
+            <p className="admin-hint mt-2">
+              The wordmark and the countdown are drawn for you. These are the words around them.
+            </p>
+
+            <div className="mt-5 space-y-6">
+              <Field label="Heading" name="coming_soon_heading">
+                <input
+                  name="coming_soon_heading"
+                  defaultValue={settings.coming_soon_heading}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field
+                label="Message"
+                name="coming_soon_message"
+                hint="A line or two under the heading. Leave blank for heading and clock only."
+              >
+                <textarea
+                  name="coming_soon_message"
+                  rows={3}
+                  defaultValue={settings.coming_soon_message}
+                  className={`${inputClass} resize-y`}
+                />
+              </Field>
+
+              <Field
+                label="Small print"
+                name="coming_soon_note"
+                hint="Under the clock, while the shop is still shut — a phone number or an address, for anyone who needs you before opening day."
+              >
+                <input
+                  name="coming_soon_note"
+                  defaultValue={settings.coming_soon_note}
+                  placeholder={`e.g. Orders and questions: ${settings.brand_whatsapp ?? ""}`}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field
+                label="Button, once the timer ends"
+                name="coming_soon_cta"
+                hint="Replaces the small print the moment the countdown reaches zero. The whole screen is clickable too."
+              >
+                <input
+                  name="coming_soon_cta"
+                  defaultValue={settings.coming_soon_cta}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+          </section>
+        </ActionForm>
+      </div>
+    </div>
   );
 }
 

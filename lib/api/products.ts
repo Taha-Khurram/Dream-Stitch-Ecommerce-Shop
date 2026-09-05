@@ -5,6 +5,17 @@ import type { Product, Category } from "@/types/ecommerce";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Whether a URL segment could be a product id at all.
+ *
+ * `products.id` is a uuid column, so asking for a slug by id is not a miss —
+ * PostgREST refuses the request outright. Anywhere a route segment might be
+ * either has to make this check before it reaches for the id.
+ */
+export function isUuid(value: string): boolean {
+  return UUID_PATTERN.test(value);
+}
+
 export interface GetProductsOptions {
   categorySlug?: string;
   query?: string;

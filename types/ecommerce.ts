@@ -20,6 +20,19 @@ export interface StoreSettings {
   free_shipping_threshold: number;
   shipping_fee: number;
   announcements: string[];
+
+  /**
+   * The pre-launch holding page. `coming_soon_enabled` is the switch;
+   * `coming_soon_launch_at` is the instant the gate opens by itself, and null
+   * means it stays shut until an admin says otherwise. See
+   * `lib/coming-soon.ts` for the one function that reads all six.
+   */
+  coming_soon_enabled: boolean;
+  coming_soon_launch_at: string | null;
+  coming_soon_heading: string;
+  coming_soon_message: string;
+  coming_soon_note: string;
+  coming_soon_cta: string;
 }
 
 export interface Category {

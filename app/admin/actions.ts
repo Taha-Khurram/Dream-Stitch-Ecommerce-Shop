@@ -1002,6 +1002,97 @@ export async function saveSettings(formData: FormData): Promise<ActionResult> {
   return { ok: true, message: "Settings saved." };
 }
 
+/* ── Coming soon ────────────────────────────────────────────────────────── */
+
+/**
+ * The pre-launch holding page: the switch, the instant it lifts, and the copy
+ * on it.
+ *
+ * Split out of `saveSettings` rather than bolted onto it because the two are
+ * saved from different tabs, and a form only ever posts its own fields — a
+ * shared action would read `coming_soon_enabled` as absent (so, off) every
+ * time somebody changed the delivery fee, and take the shop live by accident.
+ */
+export async function saveComingSoon(formData: FormData): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const enabled = text(formData.get("coming_soon_enabled")) === "on";
+
+  /* `DateTimeField` posts the ISO instant the browser computed from the local
+     time typed into it, so what arrives here is unambiguous — see that file
+     for why the raw datetime-local value would not have been. */
+  const rawLaunch = text(formData.get("coming_soon_launch_at"));
+  const launch = rawLaunch ? new Date(rawLaunch) : null;
+
+  if (launch && Number.isNaN(launch.getTime())) {
+    return { ok: false, message: "That launch date and time could not be read." };
+  }
+
+  const heading = text(formData.get("coming_soon_heading"));
+  if (enabled && !heading) {
+    return { ok: false, message: "Give the page a heading — it is the only line a visitor is guaranteed to read." };
+  }
+
+  const { data: saved, error } = await supabase
+    .from("store_settings")
+    .upsert(
+      {
+        id: 1,
+        coming_soon_enabled: enabled,
+        coming_soon_launch_at: launch ? launch.toISOString() : null,
+        coming_soon_heading: heading || null,
+        coming_soon_message: text(formData.get("coming_soon_message")) || null,
+        coming_soon_note: text(formData.get("coming_soon_note")) || null,
+        coming_soon_cta: text(formData.get("coming_soon_cta")) || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    )
+    .select("id");
+
+  if (error) {
+    // The one failure worth naming: the columns arrive with their own file.
+    if (/coming_soon/.test(error.message)) {
+      return {
+        ok: false,
+        message:
+          "Could not save — run supabase/migrations/coming_soon.sql, then try again.",
+      };
+    }
+    return { ok: false, message: `Could not save: ${error.message}` };
+  }
+  if (!saved || saved.length === 0) {
+    return { ok: false, message: NOT_WRITTEN };
+  }
+
+  // The gate is read by the (site) layout, so the whole tree has to go.
+  revalidatePath("/", "layout");
+
+  return { ok: true, message: outcome(enabled, launch) };
+}
+
+/**
+ * What the save actually did to the storefront.
+ *
+ * "Settings saved." would be true and useless here: the same three fields
+ * produce three different shops, and the difference between "closed until I
+ * say so" and "already open again" is exactly what an admin needs confirmed.
+ */
+function outcome(enabled: boolean, launch: Date | null): string {
+  if (!enabled) return "Coming soon is off. The storefront is open.";
+
+  if (!launch) {
+    return "Coming soon is on with no countdown. The storefront stays closed until you switch this off.";
+  }
+
+  if (launch.getTime() <= Date.now()) {
+    return "Saved — but that time has already passed, so the storefront is open. Set a future time to hold it.";
+  }
+
+  return "Coming soon is on. The storefront opens by itself when the countdown ends.";
+}
+
 /* ── Page content ───────────────────────────────────────────────────────── */
 
 /**

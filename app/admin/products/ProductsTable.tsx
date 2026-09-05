@@ -32,15 +32,26 @@ import type { Product } from "@/types/ecommerce";
 
 const BASE_PATH = "/admin/products";
 
-/* Exactly what the table renders. `slug` was being fetched and never read. */
+/* Exactly what the table renders, plus the slug — which is not drawn in a cell
+   but is the address every row links to. */
 const COLUMNS =
-  "id, name, price, compare_at_price, stock, image_url, fabric, category:categories(name)";
+  "id, slug, name, price, compare_at_price, stock, image_url, fabric, category:categories(name)";
 
 /* The margin column's half of it. Embedded rather than joined by hand, and
    admin-only by policy — see lib/admin/cost.ts. */
 const COLUMNS_WITH_COST = `${COLUMNS}, ${PRODUCT_COST_EMBED}`;
 
 const LOW_STOCK_AT = 5;
+
+/**
+ * Where a row points.
+ *
+ * The slug rather than the id, so the address bar says what the product is and
+ * matches the slug that was typed on the form that created it. The product
+ * page resolves either, so the id is a fallback rather than a second scheme —
+ * it only stands in if a row somehow reached the database without a slug.
+ */
+const editHref = (product: Product) => `${BASE_PATH}/${product.slug || product.id}`;
 
 /* The thumbnail is 40x48 CSS px. next/image asks the optimiser for the 2x
    variant on its own, so this is all the size information it needs. */
@@ -171,7 +182,7 @@ export async function ProductsTable({
                       </div>
                       <div className="min-w-0">
                         <Link
-                          href={`/admin/products/${product.id}`}
+                          href={editHref(product)}
                           className="block truncate font-medium text-ink transition-colors hover:text-purple"
                         >
                           {product.name}
@@ -197,7 +208,7 @@ export async function ProductsTable({
                   <td className="py-3 pr-6">
                     {cost === null ? (
                       <Link
-                        href={`/admin/products/${product.id}`}
+                        href={editHref(product)}
                         className="text-[12px] text-muted underline-offset-4 transition-colors hover:text-purple hover:underline"
                       >
                         Add cost
@@ -227,7 +238,11 @@ export async function ProductsTable({
                     </span>
                   </td>
                   <td className="py-3 text-right">
-                    <ProductRowActions id={product.id} name={product.name} />
+                    <ProductRowActions
+                      id={product.id}
+                      href={editHref(product)}
+                      name={product.name}
+                    />
                   </td>
                 </tr>
               );

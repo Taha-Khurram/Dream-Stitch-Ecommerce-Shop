@@ -5,11 +5,23 @@ import Link from "next/link";
 import { DeleteButton } from "./ActionForm";
 import { deleteProduct } from "@/app/admin/actions";
 
-export function ProductRowActions({ id, name }: { id: string; name: string }) {
+/**
+ * `id` and `href` are deliberately separate: the delete is keyed by the row's
+ * id, while the link is the readable address the list decided on — the slug.
+ */
+export function ProductRowActions({
+  id,
+  href,
+  name,
+}: {
+  id: string;
+  href: string;
+  name: string;
+}) {
   return (
     <div className="flex items-center justify-end gap-3">
       <Link
-        href={`/admin/products/${id}`}
+        href={href}
         className="border border-line px-3 py-2 text-[12px] font-medium text-ink-soft transition-colors hover:border-purple hover:bg-lilac hover:text-purple"
       >
         Edit

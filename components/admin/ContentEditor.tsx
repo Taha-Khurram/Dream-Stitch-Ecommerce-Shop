@@ -2,6 +2,7 @@ import React from "react";
 import { inputClass } from "@/components/admin/field-styles";
 import { Repeater } from "@/components/admin/Repeater";
 import { MediaField } from "@/components/admin/MediaField";
+import { Switch } from "@/components/admin/Switch";
 import type {
   FieldSpec,
   OptionSource,
@@ -165,29 +166,6 @@ function ContentField({
 
       {field.hint && <p className="admin-hint mt-1.5">{field.hint}</p>}
     </div>
-  );
-}
-
-/**
- * CSS-only switch. The hidden "off" ahead of the checkbox is what tells the
- * server the field was on the form at all — see `parseContentForm`.
- */
-function Switch({
-  name,
-  checked,
-  label,
-}: {
-  name: string;
-  checked: boolean;
-  label: string;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-3">
-      <input type="hidden" name={name} value="off" />
-      <input type="checkbox" name={name} value="on" defaultChecked={checked} className="peer sr-only" />
-      <span className="relative block h-5 w-9 shrink-0 border border-line bg-white transition-colors after:absolute after:left-[3px] after:top-1/2 after:h-3 after:w-3 after:-translate-y-1/2 after:bg-line after:transition-transform peer-checked:border-purple peer-checked:bg-purple peer-checked:after:translate-x-4 peer-checked:after:bg-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-purple" />
-      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
-    </label>
   );
 }
 
