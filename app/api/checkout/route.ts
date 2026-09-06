@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth/api";
+import { sendOrderEmails } from "@/lib/email-service";
 import { isMissingColumn, isMissingInstall } from "@/lib/inbox/install";
 import { checkoutPayloadSchema } from "@/lib/validations/checkout";
 import { calcTotal } from "@/lib/pricing";
@@ -342,6 +343,35 @@ export async function POST(request: Request) {
         await supabase.from("products").update({ stock: newStock }).eq("id", productId);
       }
     }
+
+    /* 6b. Tell the customer and the shop, after the response has gone out.
+     *
+     * `after()` rather than a bare floating promise: on a serverless host the
+     * invocation is frozen the moment the response is flushed, so an unawaited
+     * send is not "fire and forget", it is "fire and maybe get killed
+     * mid-handshake". This keeps the function alive for the send without
+     * holding the shopper's request open behind two SMTP round trips.
+     *
+     * Registered inside this handler's try/catch but *run* after it, so a
+     * throw in the callback could never be caught here and turned into a 500.
+     * That is why `sendOrderEmails` never throws: by this point the order is
+     * written and the customer is about to be told so, and email is a
+     * notification about the order, not a step in placing it. A full mailbox
+     * must not be able to fail an order that already exists.
+     */
+    after(async () => {
+      const sent = await sendOrderEmails(newOrder.id);
+
+      if (!sent.customerSent || !sent.ownerSent) {
+        console.error(
+          "[checkout] order %s placed but email incomplete: customer=%s owner=%s%s",
+          newOrder.id,
+          sent.customerSent,
+          sent.ownerSent,
+          sent.reason ? ` (${sent.reason})` : ""
+        );
+      }
+    });
 
     // 7. Return standard HTTP 201 Created response
     return NextResponse.json(
