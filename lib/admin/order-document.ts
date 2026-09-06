@@ -20,10 +20,17 @@ import type { Order } from "@/types/ecommerce";
  */
 
 /* Kept apart from the embed so the optional-column retry below can ask for the
-   same columns repeatedly without spelling them out each time. */
-const ORDER_COLUMNS = "id, status, total_amount, created_at, shipping_address";
+   same columns repeatedly without spelling them out each time.
 
-const ITEMS_EMBED =
+   Exported because a third reader turned up: lib/email-service.ts mails the
+   customer the receipt itself, and a message built from a narrower select would
+   be a different document from the sheet in the parcel — short of the fabric,
+   the piece count and the measurements the size line is written from. It reads
+   these rather than keeping a second copy that can drift from them. */
+export const ORDER_DOCUMENT_COLUMNS =
+  "id, status, total_amount, created_at, shipping_address";
+
+export const ORDER_DOCUMENT_ITEMS =
   "order_items(id, product_id, quantity, unit_price, size, custom_width, custom_height, custom_unit, " +
   "product:products(id, name, fabric, pieces, category:categories(slug)))";
 
@@ -45,7 +52,7 @@ export async function readOrderDocument(
   const { data } = await selectOrderColumns((extra) =>
     supabase
       .from("orders")
-      .select(`${ORDER_COLUMNS}${extra}, ${ITEMS_EMBED}`)
+      .select(`${ORDER_DOCUMENT_COLUMNS}${extra}, ${ORDER_DOCUMENT_ITEMS}`)
       .eq("id", id)
       .single()
   );

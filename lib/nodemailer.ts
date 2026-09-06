@@ -87,10 +87,59 @@ export function transporter(): Transporter<SMTPPool.SentMessageInfo> {
   return instance;
 }
 
-/** The envelope sender. Gmail rewrites this to `SMTP_USER` unless the address
- *  is a verified alias, so the two are normally the same mailbox. */
-export function fromAddress(): string {
-  return process.env.SMTP_FROM?.trim() || required("SMTP_USER");
+export interface MailIdentity {
+  name: string;
+  address: string;
+}
+
+/**
+ * The sender, as a name and a bare address.
+ *
+ * `SMTP_FROM` is accepted in all three shapes people actually write:
+ *
+ *     orders@dreamstitch.pk                    → address only
+ *     Dream Stitch <orders@dreamstitch.pk>     → both
+ *     Dream Stitch By SK                       → a display name, no address
+ *
+ * The third is the one that bit us. Interpolating it into `Name <...>` built a
+ * From header whose address part was not an address, Gmail patched its own on,
+ * and the receipt arrived looking like `Dream Stitch by Sk <Dream Stitch By SK>
+ * <dreamstitchbysk@gmail.com>` — which is precisely the malformed-sender shape
+ * a spam classifier is built to catch. So the address is validated here and the
+ * name is kept separate, and callers hand nodemailer the two fields rather than
+ * a string they have to quote correctly.
+ *
+ * Gmail rewrites the address to `SMTP_USER` anyway unless it is a verified
+ * alias, so anything else here is silently overridden rather than honoured.
+ */
+export function fromIdentity(fallbackName: string): MailIdentity {
+  const configured = process.env.SMTP_FROM?.trim();
+  const user = required("SMTP_USER");
+
+  if (!configured) return { name: fallbackName, address: user };
+
+  // "Name <addr>" — take both halves.
+  const bracketed = configured.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  if (bracketed) {
+    const [, name, address] = bracketed;
+    return {
+      name: name.replace(/^["']|["']$/g, "").trim() || fallbackName,
+      address: address.trim(),
+    };
+  }
+
+  // A bare address is the only other thing that can legitimately be an address.
+  if (configured.includes("@")) return { name: fallbackName, address: configured };
+
+  /* No `@` anywhere: this is a display name in an address-shaped variable.
+     Honour the intent — use it as the name — rather than emitting a header
+     that cannot be parsed. Warned about because the variable is misconfigured
+     and SMTP_FROM is documented as an address. */
+  console.warn(
+    `[email] SMTP_FROM="${configured}" is not an email address — using it as the display name and sending from ${user}. Set SMTP_FROM to an address (or "Name <address>") to silence this.`
+  );
+
+  return { name: configured, address: user };
 }
 
 /**
