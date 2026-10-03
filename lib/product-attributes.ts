@@ -1,4 +1,4 @@
-import type { Product } from "@/types/ecommerce";
+import type { Product, ProductType } from "@/types/ecommerce";
 import { DEFAULT_SIZES, CUSTOM_SIZES } from "@/lib/constants";
 
 /**
@@ -6,6 +6,33 @@ import { DEFAULT_SIZES, CUSTOM_SIZES } from "@/lib/constants";
  * every product a sensible set of gallery shots and bed sizes whether or not
  * the migration has been applied, so the UI never renders half-empty.
  */
+
+/** The kinds of product the catalogue carries, in the order they are offered. */
+export const PRODUCT_TYPES: { value: ProductType; label: string }[] = [
+  { value: "bedsheet", label: "Bedsheet" },
+  { value: "cushion_cover", label: "Cushion Cover" },
+];
+
+export function isProductType(value: unknown): value is ProductType {
+  return PRODUCT_TYPES.some((type) => type.value === value);
+}
+
+/**
+ * What this product is. Anything unmarked — including every row on a database
+ * that has not run product_type.sql — is a bedsheet, which is what the whole
+ * page assumed before the column existed.
+ */
+export function productType(product: Product): ProductType {
+  return isProductType(product.product_type) ? product.product_type : "bedsheet";
+}
+
+export function isCushion(product: Product): boolean {
+  return productType(product) === "cushion_cover";
+}
+
+export function productTypeLabel(type: ProductType): string {
+  return PRODUCT_TYPES.find((each) => each.value === type)?.label ?? type;
+}
 
 /**
  * True for sets we cut to the customer's own measurements rather than to a
@@ -19,9 +46,14 @@ export function isMadeToOrder(product: Product): boolean {
   return sizes.length > 0 && sizes.every((size) => size.toLowerCase().includes("custom"));
 }
 
+/**
+ * The size run to offer. Empty means "one size" — a cushion cover set with no
+ * sizes entered is sold as it is, rather than borrowing the bed-size run.
+ */
 export function productSizes(product: Product): string[] {
   if (product.sizes?.length) return product.sizes;
   if (isMadeToOrder(product)) return CUSTOM_SIZES;
+  if (isCushion(product)) return [];
   return DEFAULT_SIZES;
 }
 

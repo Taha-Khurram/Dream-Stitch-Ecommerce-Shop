@@ -36,19 +36,30 @@ const FALLBACK_CHART = DEFAULT_CONTENT.product.size_guide.charts[0];
  * The chart to show beside a product, or `null` when there is nothing worth
  * opening — the guide is switched off, no chart matches, or every row for it
  * is blank. Callers hide the link entirely on `null`.
+ *
+ * `ownOnly` skips the store-wide fallback. A cushion cover borrowing the bed
+ * chart would be told its sizes in bedsheet inches, which is worse than no
+ * guide: it only gets one when its category has a chart and rows of its own.
  */
 export function resolveSizeGuide(
   content: SiteContent,
-  categorySlug?: string | null
+  categorySlug?: string | null,
+  { ownOnly = false }: { ownOnly?: boolean } = {}
 ): SizeGuide | null {
   const guide = content.product.size_guide;
   if (!guide.enabled) return null;
 
   const slug = (categorySlug ?? "").trim();
-  const chart = pickChart(guide.charts ?? [], slug);
+  if (ownOnly && !slug) return null;
+
+  const chart = ownOnly
+    ? (guide.charts ?? []).find((candidate) => candidate.category.trim() === slug)
+    : pickChart(guide.charts ?? [], slug);
   if (!chart) return null;
 
-  const rows = pickRows(guide.rows ?? [], slug);
+  const rows = pickRows(guide.rows ?? [], slug).filter(
+    (row) => !ownOnly || row.category.trim() === slug
+  );
   if (rows.length === 0) return null;
 
   // A column is shown only if it is both named and filled in, so a chart of

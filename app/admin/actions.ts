@@ -24,6 +24,7 @@ import {
   statusLabel,
   type OrderStatus,
 } from "@/lib/orders/lifecycle";
+import { isProductType, productTypeLabel } from "@/lib/product-attributes";
 
 /**
  * Every mutation runs through the caller's own Supabase session, so the RLS
@@ -154,6 +155,9 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
     return { ok: false, message: "Cost to make cannot be negative." };
   }
 
+  const type = text(formData.get("product_type")) || "bedsheet";
+  if (!isProductType(type)) return { ok: false, message: "Choose a product type." };
+
   const categoryId = text(formData.get("category_id"));
   const gallery = lines(formData.get("images"));
   const primary = text(formData.get("image_url")) || gallery[0] || null;
@@ -172,6 +176,7 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
     fabric: text(formData.get("fabric")) || null,
     pieces: text(formData.get("pieces")) || null,
     is_featured: formData.get("is_featured") === "on",
+    product_type: type,
     updated_at: new Date().toISOString(),
   };
 
@@ -188,7 +193,9 @@ export async function saveProduct(formData: FormData): Promise<ActionResult> {
       message:
         error.code === "23505"
           ? "That slug is already taken by another product."
-          : `Could not save: ${error.message}`,
+          : isMissingProductType(error)
+            ? PRODUCT_TYPE_NOT_INSTALLED
+            : `Could not save: ${error.message}`,
     };
   }
 
@@ -358,6 +365,87 @@ export async function bulkDeleteProducts(ids: string[]): Promise<ActionResult> {
             onOrders.size === 1 ? "it appears" : "they appear"
           } on placed orders.`
         : ""),
+  };
+}
+
+const PRODUCT_TYPE_NOT_INSTALLED =
+  "The products table has no product_type column yet: run product_type.sql in the Supabase SQL editor.";
+
+/** PostgREST's answer to a write naming a column it has never heard of. */
+function isMissingProductType(error: { code?: string; message?: string }): boolean {
+  return error.code === "PGRST204" && (error.message ?? "").includes("product_type");
+}
+
+/** What a batch of product writes stales: the admin list and the storefront. */
+function revalidateProducts(): void {
+  revalidatePath("/admin/products");
+  revalidatePath("/admin");
+  revalidatePath("/shop", "layout");
+  revalidatePath("/");
+}
+
+/**
+ * Mark a ticked selection as bedsheets or as cushion covers.
+ *
+ * One UPDATE over the lot — unlike delete there is nothing that can refuse a
+ * single row, so there is no partial outcome to report.
+ */
+export async function bulkSetProductType(ids: string[], type: string): Promise<ActionResult> {
+  await requireAdmin();
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+  if (!isProductType(type)) return { ok: false, message: "Choose a product type." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .update({ product_type: type, updated_at: new Date().toISOString() })
+    .in("id", targets)
+    .select("id");
+
+  if (error) {
+    return {
+      ok: false,
+      message: isMissingProductType(error)
+        ? PRODUCT_TYPE_NOT_INSTALLED
+        : `Could not update: ${error.message}`,
+    };
+  }
+
+  const changed = data?.length ?? 0;
+  if (changed === 0) return { ok: false, message: NOT_WRITTEN };
+
+  revalidateProducts();
+  return {
+    ok: true,
+    message: `${plural(changed, "product")} marked as ${productTypeLabel(type).toLowerCase()}.`,
+  };
+}
+
+/** Feature or unfeature a ticked selection for the homepage rails. */
+export async function bulkSetFeatured(ids: string[], featured: boolean): Promise<ActionResult> {
+  await requireAdmin();
+
+  const targets = bulkIds(ids);
+  if (targets.length === 0) return { ok: false, message: "Nothing selected." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .update({ is_featured: featured === true, updated_at: new Date().toISOString() })
+    .in("id", targets)
+    .select("id");
+
+  if (error) return { ok: false, message: `Could not update: ${error.message}` };
+
+  const changed = data?.length ?? 0;
+  if (changed === 0) return { ok: false, message: NOT_WRITTEN };
+
+  revalidateProducts();
+  return {
+    ok: true,
+    message: `${plural(changed, "product")} ${featured ? "featured" : "removed from featured"}.`,
   };
 }
 

@@ -34,7 +34,6 @@ export default async function HomePage() {
       ? { label: slide.secondary_label, href: slide.secondary_href || "/shop" }
       : undefined,
     image: slide.image,
-    align: slide.align === "center" ? "center" : "left",
   }));
 
   return (

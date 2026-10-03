@@ -8,6 +8,7 @@ import { inputClass } from "./field-styles";
 import { saveProduct } from "@/app/admin/actions";
 import { CURRENCY } from "@/lib/format";
 import { FILTER_SIZES } from "@/lib/constants";
+import { PRODUCT_TYPES, productType } from "@/lib/product-attributes";
 import type { Category, Product } from "@/types/ecommerce";
 
 /**
@@ -99,7 +100,20 @@ export function ProductForm({
         </Field>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <Field
+          label="Product type"
+          name="product_type"
+          hint="Decides how the product page talks about size."
+        >
+          <SelectField
+            id="product_type"
+            name="product_type"
+            defaultValue={product ? productType(product) : "bedsheet"}
+            options={PRODUCT_TYPES}
+          />
+        </Field>
+
         <Field label="Category" name="category_id">
           <SelectField
             id="category_id"
@@ -132,9 +146,9 @@ export function ProductForm({
         </Field>
 
         <Field
-          label="Bed sizes"
+          label="Sizes"
           name="sizes"
-          hint={`Comma separated. Recognised: ${FILTER_SIZES.join(", ")}.`}
+          hint={`Comma separated. Bedsheets: ${FILTER_SIZES.join(", ")}. Cushion covers: e.g. 16" x 16", or blank for one size.`}
         >
           <input
             id="sizes"

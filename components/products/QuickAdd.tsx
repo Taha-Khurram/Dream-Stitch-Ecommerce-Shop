@@ -27,20 +27,21 @@ export function QuickAdd({ product }: { product: Product }) {
     );
   }
 
-  const add = (e: React.MouseEvent, size: string) => {
+  const add = (e: React.MouseEvent, size: string | null) => {
     e.preventDefault();
     e.stopPropagation();
     if (maxed) return;
     addItem(product, 1, { size });
-    setJustAdded(size);
+    setJustAdded(size ?? "one-size");
     setTimeout(() => setJustAdded(null), 1600);
   };
 
-  // Made-to-order sets have no size run — a single "Add to Bag" is enough
-  if (madeToOrder) {
+  // Made-to-order sets and one-size products have no run to pick from — a
+  // single "Add to Bag" is enough
+  if (madeToOrder || sizes.length === 0) {
     return (
       <button
-        onClick={(e) => add(e, sizes[0])}
+        onClick={(e) => add(e, sizes[0] ?? null)}
         disabled={maxed}
         className="label-track w-full cursor-pointer bg-white/95 py-3.5 text-[10px] font-medium text-ink transition-colors hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:text-muted disabled:hover:bg-white/95 disabled:hover:text-muted"
       >

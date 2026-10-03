@@ -10,8 +10,6 @@ export interface HeroSlide {
   cta: { label: string; href: string };
   secondary?: { label: string; href: string };
   image: string;
-  /** Which side the copy sits on over the image. */
-  align?: "left" | "center";
 }
 
 const AUTOPLAY_MS = 6500;
@@ -66,33 +64,19 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               loading={i === 0 ? "eager" : "lazy"}
             />
             {/* Scrim: heavy enough to keep white type legible over any photo */}
-            <div
-              className={`absolute inset-0 ${
-                slide.align === "center"
-                  ? "bg-ink/45"
-                  : "bg-gradient-to-r from-ink/70 via-ink/35 to-transparent"
-              }`}
-            />
+            <div className="absolute inset-0 bg-ink/45" />
 
             <div className="absolute inset-0">
-              <div
-                className={`mx-auto flex h-full max-w-[1500px] flex-col justify-center px-6 xl:px-10 ${
-                  slide.align === "center" ? "items-center text-center" : "items-start"
-                }`}
-              >
-                <div className={active ? "animate-fade-up max-w-lg" : "max-w-lg"}>
+              <div className="mx-auto flex h-full max-w-[1500px] flex-col items-center justify-center px-6 text-center xl:px-10">
+                <div className={active ? "animate-fade-up max-w-3xl" : "max-w-3xl"}>
                   <span className="eyebrow text-white/80">{slide.eyebrow}</span>
                   <h2 className="mt-5 whitespace-pre-line font-[family-name:var(--font-display)] text-[42px] leading-[1.05] text-white sm:text-[56px] lg:text-[64px]">
                     {slide.title}
                   </h2>
-                  <p className="mt-4 max-w-md text-[13px] leading-relaxed text-white/85">
+                  <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-white/85">
                     {slide.copy}
                   </p>
-                  <div
-                    className={`mt-8 flex flex-wrap gap-3 ${
-                      slide.align === "center" ? "justify-center" : ""
-                    }`}
-                  >
+                  <div className="mt-8 flex flex-wrap justify-center gap-3">
                     <Link
                       href={slide.cta.href}
                       className="label-track bg-white px-8 py-4 text-[11px] font-medium text-ink transition-colors hover:bg-purple hover:text-white"

@@ -55,6 +55,9 @@ export interface ProductCost {
   cost_price: number;
 }
 
+/** What a product is, which decides how its page talks about size. */
+export type ProductType = "bedsheet" | "cushion_cover";
+
 export interface Product {
   id: string;
   category_id: string | null;
@@ -65,6 +68,8 @@ export interface Product {
   stock: number;
   image_url: string | null;
   is_featured: boolean;
+  /** Absent until product_type.sql has run; read it through `productType()`. */
+  product_type?: ProductType | null;
   rating?: number;
   reviews_count?: number;
   /* ── Bedding attributes (optional: present once bedding_seed.sql has run) ── */

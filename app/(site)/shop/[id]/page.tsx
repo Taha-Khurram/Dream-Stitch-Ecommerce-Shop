@@ -13,7 +13,7 @@ import { getSettings } from "@/lib/api/settings";
 import { getSiteContent } from "@/lib/api/content";
 import { resolveSizeGuide } from "@/lib/size-guide";
 import { BRAND } from "@/lib/constants";
-import { productImages, productSubtitle } from "@/lib/product-attributes";
+import { isCushion, productImages, productSubtitle } from "@/lib/product-attributes";
 import { ChevronRight, Star, Truck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -63,8 +63,10 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
   const [settings, content] = await Promise.all([getSettings(), getSiteContent()]);
 
   // The size chart is per category, and the buy box is a client component —
-  // so it is resolved here and handed over already picked.
-  const sizeGuide = resolveSizeGuide(content, product.category?.slug);
+  // so it is resolved here and handed over already picked. A cushion cover
+  // never falls back to the store-wide chart, which is a bed chart.
+  const cushion = isCushion(product);
+  const sizeGuide = resolveSizeGuide(content, product.category?.slug, { ownOnly: cushion });
 
   const related = await getProducts({
     categorySlug: product.category?.slug,
@@ -94,7 +96,10 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
   const specs = [
     { label: "Fabric", value: product.fabric },
     { label: "Set includes", value: product.pieces },
-    { label: "Sizing", value: product.sizes?.length ? product.sizes.join(", ") : null },
+    {
+      label: "Sizing",
+      value: product.sizes?.length ? product.sizes.join(", ") : cushion ? "One size" : null,
+    },
   ].filter((spec): spec is { label: string; value: string } => Boolean(spec.value));
 
   const panels: AccordionPanel[] = [];

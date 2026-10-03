@@ -6,13 +6,17 @@ import { AddToCartButton } from "./AddToCartButton";
 import { WishlistButton } from "./WishlistButton";
 import { SizeGuideDialog } from "./SizeGuideDialog";
 import { CustomSizeFields, type CustomSizeDraft } from "./CustomSizeFields";
-import { productSizes, isMadeToOrder } from "@/lib/product-attributes";
+import { productSizes, isMadeToOrder, isCushion } from "@/lib/product-attributes";
 import { CUSTOM_SIZE_LABEL, parseCustomSize } from "@/lib/custom-size";
 import type { SizeGuide } from "@/lib/size-guide";
 import { Ruler, X } from "lucide-react";
 
 /**
- * Bed-size selection for the product page.
+ * Size selection for the product page.
+ *
+ * Bedsheets are sized by bed; cushion covers by the cushion, and may have no
+ * run at all — a one-size set shows no picker and goes straight to the bag.
+ * Only the wording differs between them, never the rules.
  *
  * Two ways to buy: a stocked size off the run, or this same design cut to the
  * buyer's own mattress. Made-to-order products only have the second — they
@@ -29,6 +33,8 @@ export function ProductOptions({
 }) {
   const sizes = productSizes(product);
   const madeToOrder = isMadeToOrder(product);
+  const cushion = isCushion(product);
+  const oneSize = sizes.length === 0;
 
   const [size, setSize] = useState<string | null>(
     madeToOrder || sizes.length === 1 ? sizes[0] : null
@@ -65,17 +71,19 @@ export function ProductOptions({
     ? parsed && !parsed.ok
       ? parsed.message
       : null
-    : !size && !soldOut
-      ? "Please choose a bed size first."
+    : !size && !soldOut && !oneSize
+      ? cushion
+        ? "Please choose a size first."
+        : "Please choose a bed size first."
       : null;
 
   return (
     <div className="space-y-7">
-      {!madeToOrder && !customOpen && (
+      {!madeToOrder && !customOpen && !oneSize && (
         <div>
           <div className="flex items-center justify-between">
             <span className="eyebrow text-ink">
-              Bed Size {size && <span className="text-muted">· {size}</span>}
+              {cushion ? "Size" : "Bed Size"} {size && <span className="text-muted">· {size}</span>}
             </span>
             {sizeGuide && <SizeGuideDialog guide={sizeGuide} />}
           </div>
@@ -102,7 +110,8 @@ export function ProductOptions({
         <div className="space-y-3">
           {madeToOrder && (
             <p className="border-l-2 border-purple bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
-              Made to order — this design is cut to your bed rather than to a stocked size.
+              Made to order — this design is cut to your {cushion ? "cushions" : "bed"} rather
+              than to a stocked size.
             </p>
           )}
 
@@ -130,7 +139,7 @@ export function ProductOptions({
         </div>
       ) : (
         <p className="border-l-2 border-purple bg-lilac px-4 py-3 text-[12px] leading-relaxed text-ink-soft">
-          Bed an odd size?{" "}
+          {cushion ? "Need a different size?" : "Bed an odd size?"}{" "}
           <button
             type="button"
             onClick={openCustom}

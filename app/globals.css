@@ -269,8 +269,9 @@
   /* Product image cross-fade on hover */
   .img-swap > .img-back { opacity: 0; transition: opacity 0.7s ease; }
   .img-swap:hover > .img-back { opacity: 1; }
-  .img-swap > .img-front { transition: opacity 0.7s ease, transform 1.2s ease; }
-  .img-swap:hover > .img-front { opacity: 0; }
+  /* The front image stays put; the back image fades in over it. If there is no
+     back image (or it fails to load) the front remains visible. */
+  .img-swap > .img-front { transition: transform 1.2s ease; }
 
   /* Fabric-swatch chip used for colour selection */
   .swatch {

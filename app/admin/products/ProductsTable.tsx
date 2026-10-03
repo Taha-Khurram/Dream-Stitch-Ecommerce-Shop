@@ -16,6 +16,7 @@ import { formatPrice } from "@/lib/format";
 import { marginPercent, productCost, PRODUCT_COST_EMBED } from "@/lib/admin/cost";
 import { buildPageHref, lastPageFor, rangeFor, type PerPage } from "@/lib/pagination";
 import { SEARCH_PARAM } from "@/lib/admin/search";
+import { productType, productTypeLabel } from "@/lib/product-attributes";
 import type { Product } from "@/types/ecommerce";
 
 /**
@@ -34,8 +35,12 @@ const BASE_PATH = "/admin/products";
 
 /* Exactly what the table renders, plus the slug — which is not drawn in a cell
    but is the address every row links to. */
-const COLUMNS =
-  "id, slug, name, price, compare_at_price, stock, image_url, fabric, category:categories(name)";
+const BASE_COLUMNS =
+  "id, slug, name, price, compare_at_price, stock, image_url, fabric, is_featured, category:categories(name)";
+
+/* `product_type` arrives with product_type.sql. Until then it is left out
+   rather than taking the catalogue down, and every row reads as a bedsheet. */
+const COLUMNS = `${BASE_COLUMNS}, product_type`;
 
 /* The margin column's half of it. Embedded rather than joined by hand, and
    admin-only by policy — see lib/admin/cost.ts. */
@@ -92,7 +97,10 @@ export async function ProductsTable({
      A catalogue that will not load is a worse outcome than a margin column of
      dashes, so the second attempt drops the cost and keeps the table. */
   if (error) {
-    ({ data, count } = await read(COLUMNS));
+    ({ data, count, error } = await read(COLUMNS));
+  }
+  if (error) {
+    ({ data, count } = await read(BASE_COLUMNS));
   }
 
   const products = (data ?? []) as unknown as Product[];
@@ -187,7 +195,16 @@ export async function ProductsTable({
                         >
                           {product.name}
                         </Link>
-                        <span className="text-[12px] text-muted">{product.fabric}</span>
+                        <span className="flex items-center gap-2 text-[12px] text-muted">
+                          {[productTypeLabel(productType(product)), product.fabric]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {product.is_featured && (
+                            <span className="label-track bg-lilac px-1.5 py-0.5 text-[9px] font-medium text-purple">
+                              Featured
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </div>
                   </td>
