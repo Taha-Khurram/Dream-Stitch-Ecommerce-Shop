@@ -91,7 +91,8 @@ export function WhatsAppFab({ phone }: { phone: string | null }) {
        it is also what keeps the flex column's own gap from catching clicks. */
     <div
       ref={rootRef}
-      className="pointer-events-none fixed right-6 bottom-6 z-40 flex flex-col items-end gap-3"
+      /* Bottom-left: the bottom-right corner belongs to the Sky chat widget. */
+      className="pointer-events-none fixed left-6 bottom-6 z-40 flex flex-col items-start gap-3"
     >
       {mounted && (
       <div
@@ -100,7 +101,7 @@ export function WhatsAppFab({ phone }: { phone: string | null }) {
         aria-label="WhatsApp concierge"
         aria-hidden={!open}
         data-state={state}
-        className={`wa-panel w-[min(21rem,calc(100vw-3rem))] origin-bottom-right overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_30px_60px_-28px_rgba(42,27,51,0.55)] ${
+        className={`wa-panel w-[min(21rem,calc(100vw-3rem))] origin-bottom-left overflow-hidden rounded-[14px] border border-line bg-white shadow-[0_30px_60px_-28px_rgba(42,27,51,0.55)] ${
           open ? "pointer-events-auto" : "pointer-events-none"
         }`}
       >

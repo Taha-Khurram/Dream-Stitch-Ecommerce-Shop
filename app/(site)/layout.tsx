@@ -98,11 +98,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
  *
  * Without this the shop looks perfectly normal to the one person who can tell
  * that it is not — which is how a store stays shut for a week after launch
- * day. Bottom left, clear of the WhatsApp button and the back-to-top control.
+ * day. Bottom left, stacked above the WhatsApp and back-to-top buttons.
  */
 function HoldingNotice() {
   return (
-    <div className="fixed bottom-4 left-4 z-40 flex max-w-[min(22rem,calc(100vw-2rem))] flex-wrap items-center gap-x-2 gap-y-1 border border-purple/30 bg-white px-3.5 py-2.5 text-[12px] shadow-[0_4px_16px_rgba(42,27,51,0.12)]">
+    <div className="fixed bottom-40 left-4 z-40 flex max-w-[min(22rem,calc(100vw-2rem))] flex-wrap items-center gap-x-2 gap-y-1 border border-purple/30 bg-white px-3.5 py-2.5 text-[12px] shadow-[0_4px_16px_rgba(42,27,51,0.12)]">
       <span className="font-medium text-ink">Coming soon is on.</span>
       <span className="text-muted">Visitors see the countdown, not the shop.</span>
       <Link
