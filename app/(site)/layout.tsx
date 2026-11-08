@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { CartDrawer } from "@/components/cart/CartDrawer";
@@ -80,6 +81,13 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             shop does not restart its clock. */}
         <PresenceBeacon />
         {holding && <HoldingNotice />}
+        {/* Sky chat support agent. The key is Sky's publishable key, meant to
+            sit in page source. Storefront only — admin and auth stay clean. */}
+        <Script
+          src="https://skyagents.vercel.app/widget.js"
+          data-agent-key="sky_pk_t4KkBjMvZfQ9rOgn6m38WXkghBc1f70r"
+          strategy="afterInteractive"
+        />
       </WishlistProvider>
     </CartProvider>
   );

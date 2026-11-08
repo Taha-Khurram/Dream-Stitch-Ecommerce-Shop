@@ -125,10 +125,40 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  /* No Supabase cookies means no session to refresh — skip the network call
+     entirely so anonymous storefront traffic never waits on GoTrue. */
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith(AUTH_COOKIE_PREFIX));
+
+  if (!hasAuthCookie) {
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      const signIn = request.nextUrl.clone();
+      signIn.pathname = "/signin";
+      signIn.search = `?next=${encodeURIComponent(request.nextUrl.pathname)}`;
+      return dropStaleStamp(request, NextResponse.redirect(signIn));
+    }
+    return dropStaleStamp(request, supabaseResponse);
+  }
+
+  /* Refresh auth token, but never let a slow or unreachable Supabase hang the
+     middleware: Vercel kills it with a 504 MIDDLEWARE_INVOCATION_TIMEOUT and
+     the whole site goes down. On timeout, pass the request through untouched —
+     the admin layout re-checks the role and RLS still guards every write. */
+  const AUTH_TIMEOUT_MS = 5000;
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("auth timeout")), AUTH_TIMEOUT_MS)
+      ),
+    ]);
+    user = result.data.user;
+  } catch (error) {
+    console.error("[middleware] Supabase auth check failed:", error);
+    return NextResponse.next({ request });
+  }
 
   /* No session. Nothing to expire — but the activity stamp must not be left
      behind to poison the next sign-in. */
